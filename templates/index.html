@@ -1,0 +1,517 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+body {
+    background-color: #666699;
+}
+
+.slidecontainer {
+  width: 100%;
+}
+
+.slider {
+  -webkit-appearance: none;
+  width: 50%;
+  height: 25px;
+  background: #d3d3d3;
+  outline: none;
+  opacity: 0.7;
+  -webkit-transition: .2s;
+  transition: opacity .2s;
+}
+
+.slider:hover {
+  opacity: 1;
+}
+
+.slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 25px;
+  height: 25px;
+  background: #4CAF50;
+  cursor: pointer;
+}
+
+.slider::-moz-range-thumb {
+  width: 25px;
+  height: 25px;
+  background: #4CAF50;
+  cursor: pointer;
+}
+
+/* The container */
+.container {
+  display: block;
+  position: relative;
+  padding-left: 35px;
+  margin-bottom: 12px;
+  cursor: pointer;
+  font-size: 18px;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+}
+
+/* Hide the browser's default checkbox */
+.container input {
+  position: absolute;
+  opacity: 0;
+  cursor: pointer;
+  height: 0;
+  width: 0;
+}
+
+/* Create a custom checkbox */
+.checkmark {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 25px;
+  width: 25px;
+  background-color: #eee;
+}
+
+/* On mouse-over, add a grey background color */
+.container:hover input ~ .checkmark {
+  background-color: #ccc;
+}
+
+/* When the checkbox is checked, add a blue background */
+.container input:checked ~ .checkmark {
+  background-color: #2196F3;
+}
+
+/* Create the checkmark/indicator (hidden when not checked) */
+.checkmark:after {
+  content: "";
+  position: absolute;
+  display: none;
+}
+
+/* Show the checkmark when checked */
+.container input:checked ~ .checkmark:after {
+  display: block;
+}
+
+/* Style the checkmark/indicator */
+.container .checkmark:after {
+  left: 9px;
+  top: 5px;
+  width: 5px;
+  height: 10px;
+  border: solid white;
+  border-width: 0 3px 3px 0;
+  -webkit-transform: rotate(45deg);
+  -ms-transform: rotate(45deg);
+  transform: rotate(45deg);
+}
+</style>
+
+</head>
+    <body>
+    <h2>DeckCastDJ v0.5.4 (10/07/2020) -- Simple YouTube DJ "Casting"</h2>
+    
+    <label class="container"><b>I want to be the DJ </b>
+      <!-- <input type="checkbox" id="isDJ" checked="checked"> -->
+      <input type="checkbox" id="isDJ">
+      <span class="checkmark"></span>
+    </label>
+    
+    <table>
+    <tr>
+    
+    <td>
+    <label for="videoId1"><b>YouTube ID: </b></label>
+    <input type="text" id="videoId1" name="videoId1" value="fAcEaCF5zhw">
+    <button type="button" onclick="loadVideo(1)">Load Player 1 Video</button>
+    </td>
+    
+    <td>
+    <label for="videoId2"><b>YouTube ID: </b></label>
+    <input type="text" id="videoId2" name="videoId2" value="zIGKya3rWVI">
+    <button type="button" onclick="loadVideo(2)">Load Player 2 Video</button>
+    </td>
+    
+    </tr>
+    
+    <tr>
+    <!-- The <iframe> (and video player) will replace this <div> tag. -->
+    <td>
+    <div id="player1"></div>
+    </td>
+    
+    <!-- The <iframe> (and video player) will replace this <div> tag. -->
+    <td>
+    <div id="player2"></div>
+    </td>
+    
+    </tr>
+    
+    <tr>
+    <td colspan="2">
+    <p align="center">
+      <input type="range" min="0" max="100" value="50" id="mixer" class="slider">
+    </p>
+    </td>
+    </tr>
+    
+    <tr>
+    <td colspan="2">
+    <p>
+      <span id="playList"></span>
+      <b>Username: </b>
+      <input type="text" id="uname" name="uname" value="Guest">
+      <b>Filter: </b>
+      <input type="text" id="filter" name="filter" value="">
+      <button type="button" onclick="loadPlayList()">Load PlayList</button>
+    </p>
+    </td>
+    </tr>
+  
+    <tr>
+    <td>
+    <p>Mixer Value: <span id="mixerValue"></span></p>
+    </td>
+    <td>
+    <p>
+    <input type="button" onclick="resetValues()" value="RESET"> 
+    Console: <span id="messageText">Waiting for data ...</span>
+    </p>
+    </td>
+    </tr>
+    
+    </table>
+    
+    <!-- load script for socketio -->
+    <script src="//cdnjs.cloudflare.com/ajax/libs/socket.io/2.2.0/socket.io.js" integrity="sha256-yr4fRk/GU1ehYJPAs8P4JlTgu0Hdsp4ZKrx8bDEDC3I=" crossorigin="anonymous"></script>
+    
+    <script>
+      // 2. This code loads the IFrame Player API code asynchronously.
+      var tag = document.createElement('script');
+
+      tag.src = "https://www.youtube.com/iframe_api";
+      var firstScriptTag = document.getElementsByTagName('script')[0];
+      firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
+    
+      // 3. This function creates an <iframe> (and YouTube player)
+      //    after the API code downloads.
+      var player1;
+      var player2;
+      
+      // variable handel the mixer slider
+      var slider = document.getElementById("mixer");
+      var mixerOutput = document.getElementById("mixerValue");
+      mixerOutput.innerHTML = slider.value;
+      
+      var playListOutput = document.getElementById("playList");
+      
+      var connectedUsers = 0;
+      
+      var currentVideoId1 = "";
+      var currentVideoId2 = "";
+      
+      /**
+       * Functions and variables here are for socketio
+       */
+      var socket = io('http://' + document.domain + ':' + location.port);
+      var username = document.getElementById("uname").value
+      var messageText = document.getElementById("messageText");
+      
+      socket.on('connect', function() {    
+                socket.emit('my event', {
+                data: 'User Connected',
+                uname: username})
+      })
+        
+      socket.on('my response', function(msg) {
+        // need to see if the message has a playlist?
+        updatePlayList(msg);
+        
+        if(!getIsDJ()) {
+          processMessage(msg);
+        }
+        
+        console.log(msg);
+        messageText.innerHTML = msg.data + " (Users: " + connectedUsers + ")";
+      })
+      
+      // update the playList if need be
+      function updatePlayList(msg) {
+        console.log("Updating playlist: " + msg);
+        
+        if("playListHTML" in msg) {
+          playListOutput.innerHTML = msg.playListHTML;
+        }
+      }
+      // process messages
+      function processMessage(msg) {
+        var msgText = msg.data;
+        
+        if(msgText.includes("Mixer")) {
+          updateMixerValue(msg);
+        } else if(msgText.includes("Video Changed")) {  
+          updateVideo(msg);
+        } else if(msgText.includes("State Changed")) {  
+          updatePlayerState(msg);
+        } else if(msgText.includes("User Connected")) {  
+          updateConnectedUsers(msg);
+        } else {
+          console.log("Unhandeled event: " + msgText);
+        }
+      }
+      
+      // update the mixer value, and hence the player volumes
+      function updateMixerValue(msg) {
+        console.log("Updating mixer setting ...");
+          
+        var mixRatio = Number(msg.mixer);
+        slider.value = mixRatio;
+        player1.setVolume(msg.volume1);
+        player2.setVolume(msg.volume2);
+        
+        mixerOutput.innerHTML = mixRatio + " || Volume Player 1 @ " + msg.volume1 + "% / Player 2 @ " + msg.volume2 + "%";
+      }
+      
+      // change the video in the player
+      function updateVideo(msg) {
+        console.log("Changing video ...");
+          
+        var playerNum = msg.player;
+        var videoId = msg.videoId;
+        
+        if(playerNum == 1) {
+          player1.loadVideoById(videoId, 0);
+        } else {
+          player2.loadVideoById(videoId, 0);
+        }
+      }
+      
+      function updatePlayerState(msg) {
+        var playerNum = msg.player;
+        var playerState = msg.state;
+        var playerTime = msg.ctime;
+        
+        var player;
+        if(playerNum == 1) {
+          player = player1;
+        } else {
+          player = player2;
+        }
+        
+        if(playerState == YT.PlayerState.PLAYING) {
+          player.seekTo(playerTime, true);
+          player.playVideo();
+        } else if(playerState == YT.PlayerState.PAUSED) {
+          player.pauseVideo();
+        } else {
+          console.log("Ignoring state change: " + playerState);
+        }
+      }
+      
+      function updateConnectedUsers(msg) {
+        if(!getIsDJ()) {            
+            if("videoId1" in msg) {
+              currentVideoId1 = msg.videoId1; 
+            }
+            
+            if("videoId2" in msg) {
+              currentVideoId2 = msg.videoId2;
+            }
+        }
+        
+        connectedUsers = msg.userCount;
+      }
+      
+      function onYouTubeIframeAPIReady() {
+        var videoId1 = "1w4O-eiUrZ8"
+        var videoId2 = "J3VrtjFIy7U"
+        
+        player1 = new YT.Player('player1', {
+          height: '340',
+          width: '560',
+          videoId: videoId1,
+          events: {
+            'onReady': onPlayer1Ready,
+            'onStateChange': onPlayer1StateChange
+          }
+        });
+        
+        player2 = new YT.Player('player2', {
+          height: '340',
+          width: '560',
+          videoId: videoId2,
+          events: {
+            'onReady': onPlayer2Ready,
+            'onStateChange': onPlayer2StateChange
+          }
+        });
+      }
+
+      // 4. The API will call this function when the video player is ready.
+      function onPlayer1Ready(event) {
+        if(currentVideoId1) {
+          event.target.loadVideoById(currentVideoId1);
+        }
+        
+        event.target.setVolume(100);
+        event.target.playVideo();
+      }
+      
+      // 4. The API will call this function when the video player is ready.
+      function onPlayer2Ready(event) {
+        if(currentVideoId2) {
+          event.target.loadVideoById(currentVideoId2);
+        }
+        
+        event.target.setVolume(100);
+        event.target.playVideo();
+      }
+
+      // 5. The API calls this function when the player's state changes.
+      //    The function indicates that when playing a video (state=1),
+      //    the player should play for six seconds and then stop.
+      function onPlayer1StateChange(event) {
+        var isDJ = getIsDJ();
+        
+        if(isDJ) {
+          currentTime = player1.getCurrentTime();
+          jsonText = {data: 'Player 1 State Changed', 
+                      player: 1,
+                      state: event.data,
+                      ctime: currentTime}
+          
+          socket.emit('my event', jsonText)
+        }    
+        
+        console.log("Player1 State " + event.data + ", DJ: " + isDJ);
+      }
+      
+      // 5. The API calls this function when the player's state changes.
+      //    The function indicates that when playing a video (state=1),
+      //    the player should play for six seconds and then stop.
+      function onPlayer2StateChange(event) {
+        var isDJ = getIsDJ();
+        
+        if(isDJ) {
+          currentTime = player2.getCurrentTime();
+          jsonText = {data: 'Player 2 State Changed', 
+                      player: 2,
+                      state: event.data,
+                      ctime: currentTime}
+          
+          socket.emit('my event', jsonText)
+        }    
+        
+        console.log("Player2 State " + event.data + ", DJ: " + isDJ);
+      }
+      
+      // functon called by load video button
+      function loadVideo(playerNum) {
+        var input;
+        if(playerNum == 1) {
+          input = document.getElementById("videoId1");
+        } else {
+          input = document.getElementById("videoId2");
+        }
+        
+        var videoId = input.value;
+        loadVideoForPlayer(playerNum, videoId);
+        input.value = "";
+      }
+      
+      // load a video given the videoNum and videoID
+      function loadVideoForPlayer(playerNum, videoId) {
+        username = document.getElementById("uname").value;
+        
+        if(playerNum == 1) {
+            player1.loadVideoById(videoId, 0);
+            
+            if(getIsDJ()) {
+              jsonText = {data: 'Video Changed -- Player 1', 
+                        player: 1,
+                        uname: username,
+                        videoId: videoId}
+              socket.emit('my event', jsonText);
+            }
+        } else {
+            player2.loadVideoById(videoId, 0);
+            
+            if(getIsDJ()) {
+              jsonText = {data: 'Video Changed -- Player 2', 
+                        player: 2,
+                        uname: username,
+                        videoId: videoId}
+              socket.emit('my event', jsonText);
+            }
+        }
+      }
+      
+      // function to explicity load the playlist from server
+      function loadPlayList() {
+        username = document.getElementById("uname").value;
+        var filter = document.getElementById("filter").value;  
+        
+        jsonText = {data: 'Load PlayList', 
+                    uname: username,
+                    filter: filter}
+        socket.emit('my event', jsonText);
+        
+        console.log('Loading playlist ...' + uname);
+      }
+      
+      // function to remove a video from the playlist
+      function removeVideoFromList(videoId) {
+        alert('Delete not implemented ( ' + videoId + ' )')
+      }
+      
+      // return if a person is the DJ or not
+      function getIsDJ() {
+        return document.getElementById("isDJ").checked;
+      }
+      
+      // reset data on the server
+      function resetValues() {
+        connectedUsers = 1;
+        
+        jsonText = {data: 'RESET', 
+                    uname: username}
+        socket.emit('my event', jsonText);
+        
+        console.log('Reseting server values ...' + uname);
+      }
+      
+      // add a function to handle slider events
+      slider.oninput = function() {
+        var mixRatio = this.value
+        var player1Vol = 0;
+        var player2Vol = 0;
+        
+        if(mixRatio <= 50) {
+          player1Vol = 100;
+          player2Vol = mixRatio*2;
+        } else {
+          player1Vol = (100 - mixRatio)*2;
+          player2Vol = 100;
+        }
+         
+        player1.setVolume(player1Vol);
+        player2.setVolume(player2Vol);
+        
+        mixerOutput.innerHTML = mixRatio + " || Volume Player 1 @ " + player1Vol + "% / Player 2 @ " + player2Vol + "%";
+        
+        if(getIsDJ()) {
+          jsonText = {data: 'Mixer Ratio Changed', 
+                      volume1: player1Vol,
+                      volume2: player2Vol,
+                      mixer: mixRatio}
+          
+          socket.emit('my event', jsonText)
+        }
+      }
+    </script>
+  </body>
+</html>
