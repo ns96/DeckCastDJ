@@ -31,7 +31,8 @@ userCount = 0
 player1Video = ''
 player2Video = ''
 
-# function to upgrade the playlist
+# function to upgrade the playlist. called when additional information
+# needs to be added to playList records
 def upgradePlayListInfo(username):
     global playList
     
@@ -56,7 +57,7 @@ def savePlayList():
 
 # function to load the playlist from file
 def loadPlayList():
-    global playList, loadedPL
+    global playList
     
     if os.path.isfile(playListFile):
         with open(playListFile) as json_file: 
@@ -86,8 +87,9 @@ def loadUserPlayList(username):
     print("User playlist loaded: " + str(len(userPlayList)))
 
 # function to check if the playlist has any videos which were deleted
+# from youtube
 def checkPlayList(videoList):
-    global invalidList, videoInfo
+    global invalidList
     
     for videoId in videoList:
         videoInfo = videoList[videoId]
@@ -131,7 +133,7 @@ def getHTMLTable(username = "", filter_text = ""):
         title_lower = title.lower()
         
         if filter_text == "" or filter_text in title_lower:
-            # if odd add new row tag
+            # if odd, add new row tag
             if i % 2 == 0:
                 rowHtml = ' '
             else:
@@ -148,7 +150,7 @@ def getHTMLTable(username = "", filter_text = ""):
             #rowHtml += '<td><img src="' + videoInfo[1] + '" alt="Video Thumbnail" width="153" height="86"></td>'
             rowHtml += '<td><img src="' + videoInfo[1] + '" alt="Video Thumbnail"></td>'
             
-            # if even close row
+            # if even, add close row tag
             if i % 2 == 0:
                 rowHtml += '</tr>'
             
@@ -165,7 +167,7 @@ def getHTMLTable(username = "", filter_text = ""):
     #print(tableHtml)
     return(tableHtml)
     
-# get the title and thumnail image for the video
+# get the title and thumbnail image for the video
 # https://stackoverflow.com/questions/59627108/retrieve-youtube-video-title-using-api-python
 def getVideoInfo(videoId, username):
     '''
@@ -251,6 +253,4 @@ if __name__ == '__main__':
     #upgradePlayListInfo('Guest')
     loadPlayList()
     loadUserPlayList('Nathan')
-    #sortPlayList()
-    #print(getHTMLTable())
     socketio.run(app, host = '0.0.0.0', debug = False, port = 5054)

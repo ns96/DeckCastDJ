@@ -2,6 +2,8 @@
 """
 Created on Sat May  9 12:56:30 2020
 
+A simple script to process a users youtube likes and stream line for use with the main script
+
 https://stackoverflow.com/questions/59627108/retrieve-youtube-video-title-using-api-python
 @author: Nathan
 """
@@ -10,7 +12,7 @@ import json
 import urllib
 import pafy
 
-#change to yours VideoID or change url inparams
+#change to your VideoID or change url inparams
 VideoID = "iWe2R0gtHX0" 
 
 def getYouTubeInfo(VideoID):
