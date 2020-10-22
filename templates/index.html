@@ -113,9 +113,9 @@ body {
 
 </head>
     <body>
-    <h2>DeckCastDJ v0.5.4 (10/07/2020) -- Simple YouTube DJ "Casting"</h2>
+    <h2>DeckCastDJ v0.5.5 (10/22/2020) -- Simple YouTube DJ "Casting"</h2>
     
-    <label class="container"><b>I want to be the DJ </b>
+    <label class="container"><b>I am the DJ </b>
       <!-- <input type="checkbox" id="isDJ" checked="checked"> -->
       <input type="checkbox" id="isDJ">
       <span class="checkmark"></span>
@@ -154,7 +154,9 @@ body {
     <tr>
     <td colspan="2">
     <p align="center">
+      <button type="button" onclick="moveSlideTo(1)"> MOVE LEFT </button>
       <input type="range" min="0" max="100" value="50" id="mixer" class="slider">
+      <button type="button" onclick="moveSlideTo(2)"> MOVE RIGHT </button>
     </p>
     </td>
     </tr>
@@ -484,9 +486,38 @@ body {
         console.log('Reseting server values ...' + uname);
       }
       
-      // add a function to handle slider events
-      slider.oninput = function() {
-        var mixRatio = this.value
+      // add function to smoothly move the slider using a timer function
+      function moveSlideTo(playerNum) {
+        var steps = 25;
+        var mixStart = Number(slider.value);
+        var mixStep = 0;
+        var mixRatio = 0;
+        
+        if(playerNum == 1) {
+          mixStep = mixStart/steps;
+        } else {
+          mixStep = (100 - mixStart)/steps;
+        }
+        
+        for (let i = 1; i < (steps + 1); i++) {
+          setTimeout(function timer() {
+            if(playerNum == 1) {
+              mixRatio = mixStart - mixStep*i
+            } else {
+              mixRatio = mixStart + mixStep*i
+            }
+            
+            // move the slider
+            slider.value = mixRatio
+            changePlayerVolume(mixRatio);
+            
+            console.log(i + ": delay for " + playerNum + " mixer: " + mixStart + " / " + mixStep + " / " + mixRatio);
+          }, i * 200);
+        }
+      }
+      
+      // function to change the players volume base on the slider position
+      function changePlayerVolume(mixRatio) {
         var player1Vol = 0;
         var player2Vol = 0;
         
@@ -511,7 +542,13 @@ body {
           
           socket.emit('my event', jsonText)
         }
-      }
+      }  
+      
+      // add a function to handle slider events
+      slider.oninput = function() {
+        var mixRatio = Number(this.value);
+        changePlayerVolume(mixRatio);
+      }    
     </script>
   </body>
 </html>
