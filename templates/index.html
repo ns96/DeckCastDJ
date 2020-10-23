@@ -113,7 +113,7 @@ body {
 
 </head>
     <body>
-    <h2>DeckCastDJ v0.5.5 (10/22/2020) -- Simple YouTube DJ "Casting"</h2>
+    <h2>DeckCastDJ v0.5.6 (10/23/2020) -- Simple YouTube DJ "Casting"</h2>
     
     <label class="container"><b>I am the DJ </b>
       <!-- <input type="checkbox" id="isDJ" checked="checked"> -->
@@ -126,13 +126,13 @@ body {
     
     <td>
     <label for="videoId1"><b>YouTube ID: </b></label>
-    <input type="text" id="videoId1" name="videoId1" value="fAcEaCF5zhw">
+    <input type="text" id="videoId1" name="videoId1" value="fAcEaCF5zhw" size="40">
     <button type="button" onclick="loadVideo(1)">Load Player 1 Video</button>
     </td>
     
     <td>
     <label for="videoId2"><b>YouTube ID: </b></label>
-    <input type="text" id="videoId2" name="videoId2" value="zIGKya3rWVI">
+    <input type="text" id="videoId2" name="videoId2" value="zIGKya3rWVI" size="40">
     <button type="button" onclick="loadVideo(2)">Load Player 2 Video</button>
     </td>
     
@@ -420,9 +420,21 @@ body {
           input = document.getElementById("videoId2");
         }
         
-        var videoId = input.value;
+        var videoId = getYouTubeID(input.value);
         loadVideoForPlayer(playerNum, videoId);
         input.value = "";
+      }
+      
+      // extract the youtube ID from url
+      // https://stackoverflow.com/questions/3452546/how-do-i-get-the-youtube-video-id-from-a-url
+      function getYouTubeID(url){
+        if(url.length == 11) {
+          return url;
+        } else {       
+          var regExp = /^.*((youtu.be\/)|(v\/)|(\/u\/\w\/)|(embed\/)|(watch\?))\??v?=?([^#&?]*).*/;
+          var match = url.match(regExp);
+          return (match&&match[7].length==11)? match[7] : false;
+        }
       }
       
       // load a video given the videoNum and videoID
@@ -488,7 +500,7 @@ body {
       
       // add function to smoothly move the slider using a timer function
       function moveSlideTo(playerNum) {
-        var steps = 25;
+        var steps = 50;
         var mixStart = Number(slider.value);
         var mixStep = 0;
         var mixRatio = 0;
@@ -511,8 +523,8 @@ body {
             slider.value = mixRatio
             changePlayerVolume(mixRatio);
             
-            console.log(i + ": delay for " + playerNum + " mixer: " + mixStart + " / " + mixStep + " / " + mixRatio);
-          }, i * 200);
+            //console.log(i + ": delay for " + playerNum + " mixer: " + mixStart + " / " + mixStep + " / " + mixRatio);
+          }, i * 100);
         }
       }
       
