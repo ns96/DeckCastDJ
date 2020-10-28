@@ -6,7 +6,7 @@ A simple flask/SocketIO for building very simple youtube DJ application that
 can be shared by other users
 
 @author: Nathan
-@version: 0.5.4 (10/07/2020)
+@version: 0.5.7 (10/28/2020)
 """
 import os.path
 from urllib.request import urlopen
@@ -117,7 +117,7 @@ def getHTMLTable(username = "", filter_text = ""):
     
     print('Generating playlist html...')
     
-    tableHtml = '<table style="width:100%">'
+    tableHtml = '<table cellpadding="2" cellspacing="0" border="0" width="100%">'
     
     i = 1
     for video in sortedList:
@@ -140,15 +140,16 @@ def getHTMLTable(username = "", filter_text = ""):
                 rowHtml = '<tr>'
             
             rowHtml += '<td>'
-            rowHtml += '<input type="button" onclick="loadVideoForPlayer(1,\'' + videoId + '\')" value="<"> '
-            rowHtml += '<input type="button" onclick="loadVideoForPlayer(2,\'' + videoId + '\')" value=">"> '
+            rowHtml += '<input type="button" onclick="loadVideoForPlayer(1,\'' + videoId + '\')" value="<"> <br>'
+            rowHtml += '<input type="button" onclick="loadVideoForPlayer(2,\'' + videoId + '\')" value=">"> <br>'
             rowHtml += '<input type="button" onclick="removeVideoFromList(\'' + videoId + '\')" value="X">'
             rowHtml += '</td>'
             rowHtml += '<td><b>' + str(i) + '.</b></td>'
-            rowHtml += '<td><b>' + title + '</b></td>'
+            rowHtml += '<td width="25%"><b>' + title + '</b><br>[' + videoId + ']</td>'
             rowHtml += '<td><b>' + videoInfo[2] + '</b></td>'
             #rowHtml += '<td><img src="' + videoInfo[1] + '" alt="Video Thumbnail" width="153" height="86"></td>'
             rowHtml += '<td><img src="' + videoInfo[1] + '" alt="Video Thumbnail"></td>'
+            rowHtml += '<td>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</td>'
             
             # if even, add close row tag
             if i % 2 == 0:
@@ -228,6 +229,13 @@ def processMessage(json):
         
         if (videoId not in playList) and (username == "" or username == "guest"):
             json['playListHTML'] = addToPlayList(json['videoId'], username)
+    
+    # delete a video from the playlist.
+    if 'Delete Video' in msgTitle:
+        videoId = json['videoId']
+        username = json['uname'].lower().strip()
+        # TO-DO Delete video from playlist and reload it
+        print("Deleted video:", videoId, "from playlist:", username)
     
     # reset the stored values
     if 'RESET' in msgTitle:

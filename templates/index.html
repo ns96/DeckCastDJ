@@ -113,7 +113,7 @@ body {
 
 </head>
     <body>
-    <h2>DeckCastDJ v0.5.6 (10/23/2020) -- Simple YouTube DJ "Casting"</h2>
+    <h2>DeckCastDJ v0.5.7 (10/28/2020) -- Simple YouTube DJ "Casting"</h2>
     
     <label class="container"><b>I am the DJ </b>
       <!-- <input type="checkbox" id="isDJ" checked="checked"> -->
@@ -125,14 +125,14 @@ body {
     <tr>
     
     <td>
-    <label for="videoId1"><b>YouTube ID: </b></label>
-    <input type="text" id="videoId1" name="videoId1" value="fAcEaCF5zhw" size="40">
+    <label for="videoId1"><b>YouTube Url: </b></label>
+    <input type="text" id="videoId1" name="videoId1" value="fAcEaCF5zhw" size="38">
     <button type="button" onclick="loadVideo(1)">Load Player 1 Video</button>
     </td>
     
     <td>
-    <label for="videoId2"><b>YouTube ID: </b></label>
-    <input type="text" id="videoId2" name="videoId2" value="zIGKya3rWVI" size="40">
+    <label for="videoId2"><b>YouTube Url: </b></label>
+    <input type="text" id="videoId2" name="videoId2" value="zIGKya3rWVI" size="38">
     <button type="button" onclick="loadVideo(2)">Load Player 2 Video</button>
     </td>
     
@@ -474,12 +474,21 @@ body {
                     filter: filter}
         socket.emit('my event', jsonText);
         
-        console.log('Loading playlist ...' + uname);
+        console.log('Loading playlist ... ' + uname);
       }
       
       // function to remove a video from the playlist
       function removeVideoFromList(videoId) {
-        alert('Delete not implemented ( ' + videoId + ' )')
+        if(confirm('Really Delete ( ' + videoId + ' ) From Playlist?')) {
+          username = document.getElementById("uname").value;
+          
+          jsonText = {data: 'Delete Video', 
+                    uname: username,
+                    videoId: videoId}
+          socket.emit('my event', jsonText);
+        } else {
+          console.log('Deletion cancelled ... ' + videoId);
+        }
       }
       
       // return if a person is the DJ or not
@@ -498,7 +507,7 @@ body {
         console.log('Reseting server values ...' + uname);
       }
       
-      // add function to smoothly move the slider using a timer function
+      // add function to "smoothly" move the slider using a timer function
       function moveSlideTo(playerNum) {
         var steps = 50;
         var mixStart = Number(slider.value);
