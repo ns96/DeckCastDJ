@@ -15,7 +15,11 @@ import pafy
 #change to your VideoID or change url inparams
 VideoID = "iWe2R0gtHX0" 
 
-def getYouTubeInfo(VideoID):
+userLikes = dict()
+
+def getYouTubeInfo(VideoID, username='Guest'):
+    global data
+    
     params = {"format": "json", "url": "https://www.youtube.com/watch?v=%s" % VideoID}
     url = "https://www.youtube.com/oembed"
     query_string = urllib.parse.urlencode(params)
@@ -24,7 +28,7 @@ def getYouTubeInfo(VideoID):
     with urllib.request.urlopen(url) as response:
         response_text = response.read()
         data = json.loads(response_text.decode())
-        print(data['title'])
+        print([data['title'], data['thumbnail_url'], "---", username])
     
 def getYouTubeInfo2(VideoID, username):
     url = "http://www.youtube.com/watch?v=" + VideoID
@@ -32,8 +36,27 @@ def getYouTubeInfo2(VideoID, username):
     print(video.title, video.thumb, video.duration)
     return([video.title, video.thumb, video.duration, username])
 
-userLikes = dict()
-def loadUserPlayList(filename, username):
+def getVideosFromPlayList(url, username):
+    global userLikes, playlist
+    
+    playlist = pafy.get_playlist(url)
+    playlistItems = playlist["items"]
+    
+    i = 0
+    for item in playlistItems:
+        video = item["pafy"]
+        userLikes[video.videoid] = [video.title, video.thumb, video.duration, username]
+        print(video.videoid, video.title, video.thumb, video.duration, "\n")
+        i += 1
+    
+    # save the list
+    filename = 'likes_' + username.lower() + '.json'
+    with open(filename, 'w') as fp:
+        json.dump(userLikes, fp, indent=2)
+    
+    print("\n\nProcessed " + str(i) + " Youtube videos ...")
+
+def processUserPlayList(filename, username):
     global userLikes
     
     with open(filename, encoding="utf8") as json_file: 
@@ -61,4 +84,7 @@ def loadUserPlayList(filename, username):
                 
 # run the script
 if __name__ == '__main__':
-    loadUserPlayList('likes.json', 'Nathan')
+    #loadUserPlayList('likes.json', 'Nathan')
+    #getYouTubeInfo('MHBMBRSb7ZI')
+    #getYouTubeInfo2('MHBMBRSb7ZI', 'Nathan')
+    getVideosFromPlayList('https://www.youtube.com/playlist?list=PLgASkX6vGzmBGM1RYaiS2Ga2vcz-C1AZQ', 'Ron')

@@ -113,11 +113,17 @@ body {
 
 </head>
     <body>
-    <h2>DeckCastDJ v0.5.7 (10/28/2020) -- Simple YouTube DJ "Casting"</h2>
+    <h2>DeckCastDJ v0.7.0 (11/25/2020) -- Simple YouTube DJ "Casting"</h2>
     
-    <label class="container"><b>I am the DJ </b>
+    <label class="container"><b>I am the DJ (cast what you are playing to other users)</b>
       <!-- <input type="checkbox" id="isDJ" checked="checked"> -->
       <input type="checkbox" id="isDJ">
+      <span class="checkmark"></span>
+    </label>
+    
+    <label class="container"><b>Private Mode (ignore what the DJ is playing)</b>
+      <!-- <input type="checkbox" id="isDJ" checked="checked"> -->
+      <input type="checkbox" id="isPrivate">
       <span class="checkmark"></span>
     </label>
     
@@ -167,8 +173,8 @@ body {
       <span id="playList"></span>
       <b>Username: </b>
       <input type="text" id="uname" name="uname" value="Guest">
-      <b>Filter: </b>
-      <input type="text" id="filter" name="filter" value="">
+      <b>Filter/Playlist Url: </b>
+      <input type="text" id="filter" name="filter" value="" size="45">
       <button type="button" onclick="loadPlayList()">Load PlayList</button>
     </p>
     </td>
@@ -233,7 +239,7 @@ body {
         // need to see if the message has a playlist?
         updatePlayList(msg);
         
-        if(!getIsDJ()) {
+        if(!getIsDJ() && !getIsPrivate()) {
           processMessage(msg);
         }
         
@@ -468,13 +474,22 @@ body {
       function loadPlayList() {
         username = document.getElementById("uname").value;
         var filter = document.getElementById("filter").value;  
-        
+        loadPlayListForUser(username, filter);
+      }
+      
+      // function to load a playlist for a user or youtube playlist linked to user
+      function loadPlayListForUser(username, filter) {
         jsonText = {data: 'Load PlayList', 
                     uname: username,
                     filter: filter}
         socket.emit('my event', jsonText);
         
-        console.log('Loading playlist ... ' + uname);
+        // if we loaded a youtube playlist clear filter input
+        if(filter.startsWith("https")) {
+            document.getElementById("filter").value = "";    
+        }
+        
+        console.log('Loading playlist ... ' + username);  
       }
       
       // function to remove a video from the playlist
@@ -494,6 +509,11 @@ body {
       // return if a person is the DJ or not
       function getIsDJ() {
         return document.getElementById("isDJ").checked;
+      }
+      
+      // return if the person wants to be private
+      function getIsPrivate() {
+        return document.getElementById("isPrivate").checked;
       }
       
       // reset data on the server

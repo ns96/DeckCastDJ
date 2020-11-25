@@ -6,13 +6,15 @@ A simple flask/SocketIO for building very simple youtube DJ application that
 can be shared by other users
 
 @author: Nathan
-@version: 0.5.7 (10/28/2020)
+@version: 0.7.0 (11/25/2020)
 """
 import os.path
 from urllib.request import urlopen
 from urllib.error import HTTPError
+#import urllib
 import json
 import pafy
+
 
 from flask import Flask, render_template
 from flask_socketio import SocketIO
@@ -24,6 +26,7 @@ socketio = SocketIO(app)
 playListFile = 'playlist.json'
 playList = dict()
 userPlayList = dict()
+youtubePlayList = dict();
 invalidVideos = list()
 
 # keep track of the number of connected users
@@ -72,7 +75,33 @@ def loadPlayList():
         playList[videoId] = [title, thumbnail]
     '''
 
-# function to load the playlist from a file
+# function to load a playlist 
+def loadYouTubePlayList(username, url):
+    global userPlayList, youtubePlayList
+    
+    try:
+        originalUsername = username
+        username = username.lower()
+        
+        youtubeList = pafy.get_playlist(url)
+        youtubeListItems = youtubeList["items"]
+        playlist = dict()
+    
+        for item in youtubeListItems:
+            video = item["pafy"]
+            playlist[video.videoid] = [video.title, video.thumb, video.duration, username]
+            #print(video.videoid, video.title, video.thumb, video.duration, "\n")
+    
+        userPlayList[username] = playlist
+        youtubePlayList[originalUsername] = url;
+        
+        #checkPlayList(playlist)
+    
+        print("YouTube playlist loaded: " + youtubeList["title"] + " / " + str(len(playlist)))
+    except Exception as e:
+        print("Error loading YouTube playlist ...\n", url, "\n" , e);
+
+# function to load a users playlist from a file
 def loadUserPlayList(username):
     global userPlayList
     username = username.lower()
@@ -107,17 +136,22 @@ def sortPlayList(playlist):
 
 # function to create an html table consisting of the playList
 def getHTMLTable(username = "", filter_text = ""):
-    global playList, userPlayList, invalidVideos
+    global playList, userPlayList, invalidVideos, youtubePlayList
     
     sortedList = sortPlayList(playList)
     
     if (username != "") and (username in userPlayList):
-        playlist = userPlayList[username]
-        sortedList = sortPlayList(playlist)
+        userlist = userPlayList[username]
+        sortedList = sortPlayList(userlist)
     
     print('Generating playlist html...')
     
-    tableHtml = '<table cellpadding="2" cellspacing="0" border="0" width="100%">'
+    # add the buttons for the playlist
+    tableHtml = '<b>YouTube Playlist: </b>'
+    for playlistName in youtubePlayList.keys():
+        tableHtml += '<input type="button" onclick="loadPlayListForUser(\'' + playlistName + '\', \' \')" value="' + playlistName + '"> '
+    
+    tableHtml += '<br><table cellpadding="2" cellspacing="0" border="0" width="100%">'
     
     i = 1
     for video in sortedList:
@@ -147,8 +181,8 @@ def getHTMLTable(username = "", filter_text = ""):
             rowHtml += '<td><b>' + str(i) + '.</b></td>'
             rowHtml += '<td width="25%"><b>' + title + '</b><br>[' + videoId + ']</td>'
             rowHtml += '<td><b>' + videoInfo[2] + '</b></td>'
-            #rowHtml += '<td><img src="' + videoInfo[1] + '" alt="Video Thumbnail" width="153" height="86"></td>'
-            rowHtml += '<td><img src="' + videoInfo[1] + '" alt="Video Thumbnail"></td>'
+            rowHtml += '<td><img src="' + videoInfo[1] + '" alt="Video Thumbnail" width="120" height="90"></td>'
+            #rowHtml += '<td><img src="' + videoInfo[1] + '" alt="Video Thumbnail"></td>'
             rowHtml += '<td>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</td>'
             
             # if even, add close row tag
@@ -180,8 +214,15 @@ def getVideoInfo(videoId, username):
     with urllib.request.urlopen(url) as response:
         response_text = response.read()
         data = json.loads(response_text.decode())
-        return (data['title'], data['thumbnail_url'])
+        
+    return ([data['title'], data['thumbnail_url'], "--:--:--", username])
     '''
+    
+    # 10/30/2020 -- Pafy library is now broken becuause yt-dl no longer works
+    # will eventual need to go to using the youtube api since duration is not 
+    # available from above code
+    # 11/6/2020 -- pafy is now working again
+    
     url = "http://www.youtube.com/watch?v=" + videoId
     video = pafy.new(url)
     return([video.title, video.thumb, video.duration, username])
@@ -214,8 +255,14 @@ def processMessage(json):
     # if we load a playlist indicate as much
     if 'Load PlayList' in msgTitle:
         username = json['uname'].lower().strip()
-        f_text = json['filter'].lower().strip()
-        json['playListHTML'] = getHTMLTable(username = username, filter_text = f_text)
+        f_text = json['filter'].strip()
+        
+        # check to see if to to load a youtube playlist
+        if 'https://www.youtube.com/playlist' in f_text:
+            loadYouTubePlayList(username, f_text)
+            f_text = ""
+            
+        json['playListHTML'] = getHTMLTable(username = username, filter_text = f_text.lower())
     
     # see if to update and return the playlist html
     if 'Video Changed' in msgTitle:
@@ -261,4 +308,9 @@ if __name__ == '__main__':
     #upgradePlayListInfo('Guest')
     loadPlayList()
     loadUserPlayList('Nathan')
+    
+    # Load playlist for various users
+    loadYouTubePlayList('Denvers Favorite', 'https://www.youtube.com/playlist?list=PLgASkX6vGzmBGM1RYaiS2Ga2vcz-C1AZQ')
+    loadYouTubePlayList('Trinidad Soca 2020', 'https://www.youtube.com/playlist?list=PLtytcEbClKCyqQ6wl_0H4a1ZuzjaFGlVi')
+    
     socketio.run(app, host = '0.0.0.0', debug = False, port = 5054)
