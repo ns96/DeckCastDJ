@@ -17,6 +17,8 @@ VideoID = "iWe2R0gtHX0"
 
 userLikes = dict()
 
+pafy.set_api_key('YourAPIKeyGoesHere')
+
 def getYouTubeInfo(VideoID, username='Guest'):
     global data
     
@@ -33,20 +35,18 @@ def getYouTubeInfo(VideoID, username='Guest'):
 def getYouTubeInfo2(VideoID, username):
     url = "http://www.youtube.com/watch?v=" + VideoID
     video = pafy.new(url)
-    print(video.title, video.thumb, video.duration)
-    return([video.title, video.thumb, video.duration, username])
+    print(video.title, video.thumb, video.duration, video.published)
+    return([video.title, video.thumb, video.duration, video.published, username])
 
-def getVideosFromPlayList(url, username):
+def getVideosFromPlayList(username, url):
     global userLikes, playlist
     
-    playlist = pafy.get_playlist(url)
-    playlistItems = playlist["items"]
+    playlist = pafy.get_playlist2(url)
     
     i = 0
-    for item in playlistItems:
-        video = item["pafy"]
+    for video in playlist:
         userLikes[video.videoid] = [video.title, video.thumb, video.duration, username]
-        print(video.videoid, video.title, video.thumb, video.duration, "\n")
+        print(video.videoid, video.title, video.thumb, video.duration, video.published, "\n")
         i += 1
     
     # save the list
@@ -87,4 +87,5 @@ if __name__ == '__main__':
     #loadUserPlayList('likes.json', 'Nathan')
     #getYouTubeInfo('MHBMBRSb7ZI')
     #getYouTubeInfo2('MHBMBRSb7ZI', 'Nathan')
-    getVideosFromPlayList('https://www.youtube.com/playlist?list=PLgASkX6vGzmBGM1RYaiS2Ga2vcz-C1AZQ', 'Ron')
+    getYouTubeInfo2('a3PecWTHIAM', 'Nathan')
+    #getVideosFromPlayList('Test', 'https://www.youtube.com/playlist?list=PLFD51ECAD4E496954')

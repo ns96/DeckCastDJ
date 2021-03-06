@@ -113,7 +113,7 @@ body {
 
 </head>
     <body>
-    <h2>DeckCastDJ v0.7.0 (11/25/2020) -- Simple YouTube DJ "Casting"</h2>
+    <h2>DeckCastDJ v0.9.0 (03/06/2021) -- Simple YouTube DJ "Casting"</h2>
     
     <label class="container"><b>I am the DJ (cast what you are playing to other users)</b>
       <!-- <input type="checkbox" id="isDJ" checked="checked"> -->
@@ -133,13 +133,15 @@ body {
     <td>
     <label for="videoId1"><b>YouTube Url: </b></label>
     <input type="text" id="videoId1" name="videoId1" value="fAcEaCF5zhw" size="38">
-    <button type="button" onclick="loadVideo(1)">Load Player 1 Video</button>
+    <button type="button" onclick="loadVideo(1)">Load Video</button>
+    <button type="button" onclick="queVideo(1)">Que</button>
     </td>
     
     <td>
     <label for="videoId2"><b>YouTube Url: </b></label>
     <input type="text" id="videoId2" name="videoId2" value="zIGKya3rWVI" size="38">
-    <button type="button" onclick="loadVideo(2)">Load Player 2 Video</button>
+    <button type="button" onclick="loadVideo(2)">Load Video</button>
+    <button type="button" onclick="queVideo(2)">Que</button>
     </td>
     
     </tr>
@@ -169,6 +171,9 @@ body {
     
     <tr>
     <td colspan="2">
+    <p>
+      <span id="queList"></span>
+    </p>
     <p>
       <span id="playList"></span>
       <b>Username: </b>
@@ -216,11 +221,13 @@ body {
       mixerOutput.innerHTML = slider.value;
       
       var playListOutput = document.getElementById("playList");
+      var queListOutput = document.getElementById("queList");
       
       var connectedUsers = 0;
       
       var currentVideoId1 = "";
       var currentVideoId2 = "";
+      var clientId = "N/A";
       
       /**
        * Functions and variables here are for socketio
@@ -233,6 +240,8 @@ body {
                 socket.emit('my event', {
                 data: 'User Connected',
                 uname: username})
+                
+                clientId = socket.io.engine.id;
       })
         
       socket.on('my response', function(msg) {
@@ -247,10 +256,22 @@ body {
         messageText.innerHTML = msg.data + " (Users: " + connectedUsers + ")";
       })
       
-      // update the playList if need be
+      // update the que list or playList if needed
       function updatePlayList(msg) {
-        console.log("Updating playlist: " + msg);
+        console.log("Updating que/playlist: " + msg);
         
+        // display the que list if needed
+        if("queListHTML" in msg) {
+          queClientId = msg.clientId;
+          
+          if(queClientId === clientId) {
+            queListOutput.innerHTML = msg.queListHTML;  
+          } else {
+            console.log("Que Client Id doesn't match ...");
+          }
+        }
+        
+        // display the playlist html if needed
         if("playListHTML" in msg) {
           playListOutput.innerHTML = msg.playListHTML;
         }
@@ -431,6 +452,27 @@ body {
         input.value = "";
       }
       
+      // functon called by load video button
+      function queVideo(playerNum) {
+        var input;
+        
+        if(playerNum == 1) {
+          input = document.getElementById("videoId1");
+        } else {
+          input = document.getElementById("videoId2");
+        }
+        
+        var videoId = getYouTubeID(input.value);
+        
+        jsonText = {data: 'Video Qued', 
+                        player: 1,
+                        clientId: clientId,
+                        videoId: videoId}
+        socket.emit('my event', jsonText);
+        input.value = "";
+        console.log("Video Qued: " + videoId + " " + clientId);
+      }
+      
       // extract the youtube ID from url
       // https://stackoverflow.com/questions/3452546/how-do-i-get-the-youtube-video-id-from-a-url
       function getYouTubeID(url){
@@ -478,7 +520,7 @@ body {
       }
       
       // function to load a playlist for a user or youtube playlist linked to user
-      function loadPlayListForUser(username, filter) {
+      function loadPlayListForUser(username, filter, showUsername = false) {
         jsonText = {data: 'Load PlayList', 
                     uname: username,
                     filter: filter}
@@ -487,6 +529,11 @@ body {
         // if we loaded a youtube playlist clear filter input
         if(filter.startsWith("https")) {
             document.getElementById("filter").value = "";    
+        }
+        
+        // show the user name if we used one of the buttons to load a playList
+        if(showUsername) {
+          document.getElementById("uname").value = username; 
         }
         
         console.log('Loading playlist ... ' + username);  

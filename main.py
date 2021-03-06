@@ -6,7 +6,7 @@ A simple flask/SocketIO for building very simple youtube DJ application that
 can be shared by other users
 
 @author: Nathan
-@version: 0.7.0 (11/25/2020)
+@version: 0.9.0 (03/06/2021)
 """
 import os.path
 from urllib.request import urlopen
@@ -15,6 +15,8 @@ from urllib.error import HTTPError
 import json
 import pafy
 
+# set the youtube api key. change this before pushing code to public repo!!!
+pafy.set_api_key('YourAPIKeyGoesHere')
 
 from flask import Flask, render_template
 from flask_socketio import SocketIO
@@ -34,22 +36,67 @@ userCount = 0
 player1Video = ''
 player2Video = ''
 
-# function to upgrade the playlist. called when additional information
+# function to upgrade the guest playlist. Only called when additional information
 # needs to be added to playList records
-def upgradePlayListInfo(username):
+def upgradeGuestPlayListInfo():
     global playList
     
     loadPlayList()
-        
+    
+    # keep track of bad videos
+    unv_videos = list()
+    
     for videoId in playList.keys():
-        videoInfo = playList[videoId]
-        videoInfo.append(username)
-        playList[videoId] = videoInfo
-        print("Updated: " + videoId + " " + str(videoInfo))
+        try:
+            videoInfo = getVideoInfo(videoId, "Guest")
+            playList[videoId] = videoInfo
+            print("Updated: " + videoId + " " + str(videoInfo))
+        except Exception as exp:
+            unv_videos.append(videoId)
+            print("\n\nUnable to Upgrade: ", videoId, "\n")
+            print(exp, "\n\n")
+            
+    # clean up the playlist so we dont have records for videos that no longer
+    # exists
+    for videoId in unv_videos:
+        playList.pop(videoId)
     
     # save the new playlist
     with open(playListFile, 'w') as fp:
         json.dump(playList, fp, indent=2)
+
+# function to upgrade a users like playlist
+def upgradeUserPlayListInfo(username):
+    username = username.lower()
+    
+    filename = 'likes_' + username + '.json'
+    if os.path.isfile(filename):
+        print("Upgrading", username, "playlist information ...\n")
+        
+        with open(filename) as json_file: 
+            playlist = json.load(json_file)
+        
+        # keep track of bad videos
+        unv_videos = list()
+    
+        for videoId in playlist.keys():
+            try:
+                videoInfo = getVideoInfo(videoId, username)
+                playlist[videoId] = videoInfo
+                print("Updated: " + videoId + " " + str(videoInfo))
+            except Exception as exp:
+                unv_videos.append(videoId)
+                print("\n\nUnable to Upgrade: ", videoId, "\n")
+                print(exp, "\n\n")
+            
+        # clean up the playlist so we dont have records for videos that no longer
+        # exists
+        for videoId in unv_videos:
+            playlist.pop(videoId)
+    
+        # save the new playlist
+        with open(filename, 'w') as fp:
+            json.dump(playlist, fp, indent=2)
         
 # save the playlist as json
 def savePlayList():
@@ -58,14 +105,14 @@ def savePlayList():
     with open(playListFile, 'w') as fp:
         json.dump(playList, fp, indent=2)
 
-# function to load the playlist from file
+# function to load the default playlist from file
 def loadPlayList():
     global playList
     
     if os.path.isfile(playListFile):
         with open(playListFile) as json_file: 
             playList = json.load(json_file)
-            checkPlayList(playList)
+            #checkPlayList(playList)
     
     '''
     for i in range(2):
@@ -80,26 +127,24 @@ def loadYouTubePlayList(username, url):
     global userPlayList, youtubePlayList
     
     try:
-        originalUsername = username
+        playlistKey = username.title()
         username = username.lower()
         
-        youtubeList = pafy.get_playlist(url)
-        youtubeListItems = youtubeList["items"]
+        youtubeList = pafy.get_playlist2(url)
         playlist = dict()
     
-        for item in youtubeListItems:
-            video = item["pafy"]
-            playlist[video.videoid] = [video.title, video.thumb, video.duration, username]
+        for video in youtubeList:
+            playlist[video.videoid] = [video.title, video.thumb, video.duration, video.published, username]
             #print(video.videoid, video.title, video.thumb, video.duration, "\n")
     
         userPlayList[username] = playlist
-        youtubePlayList[originalUsername] = url;
+        youtubePlayList[playlistKey] = url
         
         #checkPlayList(playlist)
     
-        print("YouTube playlist loaded: " + youtubeList["title"] + " / " + str(len(playlist)))
+        print("YouTube playlist loaded: " + youtubeList.title + " / " + str(len(playlist)))
     except Exception as e:
-        print("Error loading YouTube playlist ...\n", url, "\n" , e);
+        print("Error loading YouTube playlist ...\n", url, "\n" , e)
 
 # function to load a users playlist from a file
 def loadUserPlayList(username):
@@ -111,7 +156,11 @@ def loadUserPlayList(username):
         with open(filename) as json_file: 
             playlist = json.load(json_file)
             userPlayList[username] = playlist
-            checkPlayList(playlist)
+            #checkPlayList(playlist)
+    
+    # add it to the youtube playlist
+    playlistKey = username.title()
+    youtubePlayList[playlistKey] = "dummy url"
     
     print("User playlist loaded: " + str(len(userPlayList)))
 
@@ -119,6 +168,8 @@ def loadUserPlayList(username):
 # from youtube
 def checkPlayList(videoList):
     global invalidList
+    
+    print("Skipping video check ...")
     
     for videoId in videoList:
         videoInfo = videoList[videoId]
@@ -128,14 +179,18 @@ def checkPlayList(videoList):
         except HTTPError as err:
             print("Video Deleted:\t", videoId, err.code)
             invalidVideos.append(videoId)
-                
+             
 # function get sorted list
 def sortPlayList(playlist):    
     sorted_d = sorted(playlist.items(), key=lambda x: x[1])    
     return sorted_d
 
+# clean up the publish timestamp. For now just return the year-month-day part
+def cleanDate(publishTS):
+    return publishTS.split()[0]
+    
 # function to create an html table consisting of the playList
-def getHTMLTable(username = "", filter_text = ""):
+def getHTMLTable(username = "", filter_text = "", que_list = False):
     global playList, userPlayList, invalidVideos, youtubePlayList
     
     sortedList = sortPlayList(playList)
@@ -147,11 +202,16 @@ def getHTMLTable(username = "", filter_text = ""):
     print('Generating playlist html...')
     
     # add the buttons for the playlist
-    tableHtml = '<b>YouTube Playlist: </b>'
-    for playlistName in youtubePlayList.keys():
-        tableHtml += '<input type="button" onclick="loadPlayListForUser(\'' + playlistName + '\', \' \')" value="' + playlistName + '"> '
+    tableHtml = ""
     
-    tableHtml += '<br><table cellpadding="2" cellspacing="0" border="0" width="100%">'
+    if not que_list:
+        tableHtml += '<b>YouTube Playlist: </b>'
+        for playlistName in youtubePlayList.keys():
+            tableHtml += '<input type="button" onclick="loadPlayListForUser(\'' + playlistName + '\', \' \', true)" value="' + playlistName + '"> '
+    else:
+        tableHtml += '<b>Que List: </b>'
+        
+    tableHtml += '<br><br><table cellpadding="2" cellspacing="0" border="0" width="100%">'
     
     i = 1
     for video in sortedList:
@@ -163,8 +223,12 @@ def getHTMLTable(username = "", filter_text = ""):
             print("Invalid Video -- Deleted:\t", videoId)
             continue
         
-        title = videoInfo[0]
+        published = cleanDate(videoInfo[3])
+        
+        title = videoInfo[0] + " (-" + published.split('-')[0] + "-)"
         title_lower = title.lower()
+        
+        meta_info = videoId + " / " + published
         
         if filter_text == "" or filter_text in title_lower:
             # if odd, add new row tag
@@ -179,7 +243,7 @@ def getHTMLTable(username = "", filter_text = ""):
             rowHtml += '<input type="button" onclick="removeVideoFromList(\'' + videoId + '\')" value="X">'
             rowHtml += '</td>'
             rowHtml += '<td><b>' + str(i) + '.</b></td>'
-            rowHtml += '<td width="25%"><b>' + title + '</b><br>[' + videoId + ']</td>'
+            rowHtml += '<td width="25%"><b>' + title + '</b><br>[' + meta_info + ']</td>'
             rowHtml += '<td><b>' + videoInfo[2] + '</b></td>'
             rowHtml += '<td><img src="' + videoInfo[1] + '" alt="Video Thumbnail" width="120" height="90"></td>'
             #rowHtml += '<td><img src="' + videoInfo[1] + '" alt="Video Thumbnail"></td>'
@@ -224,8 +288,8 @@ def getVideoInfo(videoId, username):
     # 11/6/2020 -- pafy is now working again
     
     url = "http://www.youtube.com/watch?v=" + videoId
-    video = pafy.new(url)
-    return([video.title, video.thumb, video.duration, username])
+    video = pafy.new(url)            
+    return([video.title, video.thumb, video.duration, video.published, username])
     
 def addToPlayList(videoId, username):
     global playList
@@ -234,6 +298,21 @@ def addToPlayList(videoId, username):
     savePlayList()
     
     return getHTMLTable()
+
+def addToQueList(videoId, username):
+    global userPlayList
+    
+    if username in userPlayList:
+        playlist = userPlayList.get(username);
+        
+        if videoId not in playlist:
+            playlist[videoId] = getVideoInfo(videoId, username)
+    else:
+       playlist = dict();
+       playlist[videoId] = getVideoInfo(videoId, username)
+       userPlayList[username] = playlist
+    
+    return getHTMLTable(username, "", True)
 
 def processMessage(json):
     global playList, userCount, player1Video, player2Video
@@ -277,6 +356,12 @@ def processMessage(json):
         if (videoId not in playList) and (username == "" or username == "guest"):
             json['playListHTML'] = addToPlayList(json['videoId'], username)
     
+    # see if to add the video to the que list for the client
+    if 'Video Qued' in msgTitle:
+        videoId = json['videoId']
+        username = json['clientId'].lower().strip()
+        json['queListHTML'] = addToQueList(json['videoId'], username)    
+    
     # delete a video from the playlist.
     if 'Delete Video' in msgTitle:
         videoId = json['videoId']
@@ -305,12 +390,18 @@ def handle_my_custom_event(json, methods=['GET', 'POST']):
     socketio.emit('my response', json, callback=messageReceived)
 
 if __name__ == '__main__':
-    #upgradePlayListInfo('Guest')
+    #upgradeGuestPlayListInfo()
+    #upgradeUserPlayListInfo('Nathan')
+    
+    print("Loading user/youtube playlist ...\n\n")
     loadPlayList()
     loadUserPlayList('Nathan')
     
-    # Load playlist for various users
+    # Load youtube playlist for various users
     loadYouTubePlayList('Denvers Favorite', 'https://www.youtube.com/playlist?list=PLgASkX6vGzmBGM1RYaiS2Ga2vcz-C1AZQ')
-    loadYouTubePlayList('Trinidad Soca 2020', 'https://www.youtube.com/playlist?list=PLtytcEbClKCyqQ6wl_0H4a1ZuzjaFGlVi')
+    loadYouTubePlayList('trinidad soca 2020', 'https://www.youtube.com/playlist?list=PLtytcEbClKCyqQ6wl_0H4a1ZuzjaFGlVi')
+    #loadYouTubePlayList('Soca 400+ Videos', 'https://www.youtube.com/playlist?list=PLFD51ECAD4E496954')
+    
+    print("\nDone loading user playlist ...")
     
     socketio.run(app, host = '0.0.0.0', debug = False, port = 5054)
