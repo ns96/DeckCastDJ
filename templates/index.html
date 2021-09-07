@@ -113,7 +113,7 @@ body {
 
 </head>
     <body>
-    <h2>DeckCastDJ v1.1.0 (06/28/2021) -- Simple YouTube DJ "Casting"</h2>
+    <h2>DeckCastDJ v1.2.7 (09/06/2021) -- Simple YouTube DJ "Casting"</h2>
     
     <label class="container"><b>I am the DJ (cast what you are playing to other users)</b>
       <!-- <input type="checkbox" id="isDJ" checked="checked"> -->
@@ -131,7 +131,7 @@ body {
     <tr>
     
     <td>
-    <label for="videoId1"><b>YouTube Url: </b></label>
+    <label for="videoId1"><b id="pageTop">YouTube Url: </b></label>
     <input type="text" id="videoId1" name="videoId1" value="fAcEaCF5zhw" size="34">
     <button type="button" onclick="loadVideo(1)">Load Video</button>
     <button type="button" onclick="queVideo(1)">Que</button>
@@ -154,14 +154,15 @@ body {
     <div id="player1"></div>
     
     <div style="text-align:center"><b>
+    <button type="button" onclick="restartVideo(1)"><<</button>
     <input type="radio" id="speedA0" name="speedA" onclick="onChangeSpeed(1, this);" value="0">
-    <label for="male">0% (Normal)</label> 
+    <label for="speedA0">0% (Normal)</label> 
     <input type="radio" id="speedA1" name="speedA" onclick="onChangeSpeed(1, this);" value="1">
-    <label for="male">5% Faster</label> 
+    <label for="speedA1">5% Faster</label> 
     <input type="radio" id="speedA2" name="speedA" onclick="onChangeSpeed(1, this);" value="2">
-    <label for="male">10% Faster</label> 
+    <label for="speedA2">10% Faster</label> 
     <input type="radio" id="speedA3" name="speedA" onclick="onChangeSpeed(1, this);" value="3">
-    <label for="male">15% Faster</label> 
+    <label for="speedA3">15% Faster</label> 
     </b></div>
     
     </td>
@@ -171,14 +172,15 @@ body {
     <div id="player2"></div>
     
     <div style="text-align:center"><b>
+    <button type="button" onclick="restartVideo(2)"><<</button>
     <input type="radio" id="speedB0" name="speedB" onclick="onChangeSpeed(2, this);" value="0">
-    <label for="male">0% (Normal)</label> 
+    <label for="speedB0">0% (Normal)</label> 
     <input type="radio" id="speedB1" name="speedB" onclick="onChangeSpeed(2, this);" value="1">
-    <label for="male">5% Faster</label> 
+    <label for="speedB1">5% Faster</label> 
     <input type="radio" id="speedB2" name="speedB" onclick="onChangeSpeed(2, this);" value="2">
-    <label for="male">10% Faster</label> 
+    <label for="speedB2">10% Faster</label> 
     <input type="radio" id="speedB3" name="speedB" onclick="onChangeSpeed(2, this);" value="3">
-    <label for="male">15% Faster</label> 
+    <label for="speedB3">15% Faster</label>
     </b></div>
     
     </td>
@@ -204,7 +206,7 @@ body {
       <span id="playList"></span>
       <b>Username: </b>
       <input type="text" id="uname" name="uname" value="Guest">
-      <b>Filter/Playlist Url: </b>
+      <b id="filter_list">Filter/Playlist Url: </b>
       <input type="text" id="filter" name="filter" value="" size="45">
       <button type="button" onclick="loadPlayList()">Load PlayList</button> 
       <button type="button" onclick="addPlayListToQueList()">Que PlayList</button>
@@ -219,6 +221,7 @@ body {
     </td>
     <td>
     <p>
+    <input type="text" id="pin" name="pin" value="0001" size="4"> 
     <input type="button" onclick="resetValues()" value="RESET"> 
     Console: <span id="messageText">Waiting for data ...</span>
     </p>
@@ -229,7 +232,9 @@ body {
     
     <!-- load script for socketio -->
     <!-- <script src="//cdnjs.cloudflare.com/ajax/libs/socket.io/2.2.0/socket.io.js" integrity="sha256-yr4fRk/GU1ehYJPAs8P4JlTgu0Hdsp4ZKrx8bDEDC3I=" crossorigin="anonymous"></script> -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js" integrity="sha512-q/dWJ3kcmjBLU4Qc47E4A9kTB4m3wuTY7vkFJDTZKjTs8jhyGQnaUrxa0Ytd0ssMZhbNua9hE+E7Qv1j+DyZwA==" crossorigin="anonymous"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js" integrity="sha512-q/dWJ3kcmjBLU4Qc47E4A9kTB4m3wuTY7vkFJDTZKjTs8jhyGQnaUrxa0Ytd0ssMZhbNua9hE+E7Qv1j+DyZwA==" crossorigin="anonymous">
+    </script>
+    
     <script>
       // 2. This code loads the IFrame Player API code asynchronously.
       var tag = document.createElement('script');
@@ -304,6 +309,7 @@ body {
           playListOutput.innerHTML = msg.playListHTML;
         }
       }
+      
       // process messages
       function processMessage(msg) {
         var msgText = msg.data;
@@ -319,8 +325,22 @@ body {
         } else if(msgText.includes("Speed Changed")) {  
           updatePlaybackSpeed(msg);
         } else {
-          console.log("Unhandeled event: " + msgText);
+          console.log("Unhandeled socket io message: " + msgText);
         }
+      }
+      
+      // function to restart the current video from the beginning
+      // update the players speed
+      function restartVideo(playerNum) {
+        var currentPlayer;
+          
+        if(playerNum == 1) {
+          currentPlayer = player1;
+        } else {
+          currentPlayer = player2;
+        }
+        
+        currentPlayer.seekTo(0);
       }
       
       // function to process a message to update the playback speed
@@ -353,7 +373,7 @@ body {
         var currentPlayer;
           
         if(playerNum == 1) {
-           currentPlayer = player1;
+          currentPlayer = player1;
         } else {
           currentPlayer = player2;
         }
@@ -367,6 +387,8 @@ body {
           currentPlayer.setPlaybackRate(1.10);
         } else if(playerSpeed == 3) {
           currentPlayer.setPlaybackRate(1.15);
+        } else if(playerSpeed == 4) {
+          currentPlayer.setPlaybackRate(1.20);
         } else {
           currentPlayer.setPlaybackRate(1.00);
         }
@@ -503,7 +525,11 @@ body {
                       ctime: currentTime}
           
           socket.emit('my event', jsonText)
-        }    
+        } else if(event.data == YT.PlayerState.PLAYING) {
+            videoId = player1.getVideoData()['video_id'];
+            currentTime = Math.floor(player1.getCurrentTime());
+            setCurrentVideoPlaying(1, videoId, currentTime);
+        }        
         
         console.log("Player1 State " + event.data + ", DJ: " + isDJ);
       }
@@ -522,9 +548,28 @@ body {
                       ctime: currentTime}
           
           socket.emit('my event', jsonText)
-        }    
+        } else if(event.data == YT.PlayerState.PLAYING) {
+            videoId = player2.getVideoData()['video_id'];
+            currentTime = Math.floor(player2.getCurrentTime());
+            setCurrentVideoPlaying(2, videoId, currentTime);
+        }   
         
         console.log("Player2 State " + event.data + ", DJ: " + isDJ);
+      }
+      
+      // function to set the current video that's playing
+      function setCurrentVideoPlaying(playerNum, videoId, currentTime) {
+        var pin = document.getElementById("pin").value;
+        
+        jsonText = {data: 'Current Video', 
+                    pin: pin,
+                    clientId: clientId,
+                    player: playerNum,
+                    videoId: videoId,
+                    ctime: currentTime}
+        socket.emit('my event', jsonText);
+        
+        console.log("Current Video, Player # " + playerNum + ", VideoID " + videoId);
       }
       
       // functon called by load video button
@@ -541,7 +586,7 @@ body {
         input.value = "";
       }
       
-      // functon called by load video button
+      // functon called by que video button
       function queVideo(playerNum) {
         var input;
         
@@ -580,6 +625,8 @@ body {
       function addPlayListToQueList() {
         var playlistUrl = document.getElementById("filter").value;
         addToQueList(playlistUrl);
+        
+        queListOutput.innerHTML = getLoadingText();
         document.getElementById("filter").value = "";
       }
       
@@ -593,6 +640,14 @@ body {
         console.log("Video Qued: " + videoId + " " + clientId);
       }      
       
+      // function to play the videos in the que list
+      function playQueList(queListString) {
+        var queList = queListString.split(",");
+        player1.loadPlaylist(queList);
+        
+        console.log("Playing qued videos: " + queListString + " / " + queList[0]); 
+      }
+      
       // function to clear videos on the que list
       function clearQueList() {
         jsonText = {data: 'Video Qued', 
@@ -601,7 +656,17 @@ body {
                         videoId: "0"}
         socket.emit('my event', jsonText);
         console.log("Clear Video Que: " + clientId);
-      } 
+      }
+
+      // function to get text to show to user when loading videos
+      function getLoadingText() {
+          var loadingText = "<div style=\"text-align: center\">" +
+                            "<h4>Loading Youtube Playlist ...</h4>" +
+                            "<img src=\"https://i.gifer.com/YCZH.gif\" align=\"center\">" +
+                            " </div>";
+          
+          return loadingText;
+      }
       
       // function to merge a playlist to the default playlist
       function mergePlayList() {
@@ -674,6 +739,7 @@ body {
         
         // if we loaded a youtube playlist clear filter input
         if(filter.startsWith("https")) {
+            playListOutput.innerHTML = getLoadingText();
             document.getElementById("filter").value = "";    
         }
         

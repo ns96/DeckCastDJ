@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+body {
+    background-color: #000000;
+}
+</style>
+
+</head>
+    <body>
+    <p style="color:#ffffff;">
+      <span id="videoInfo">
+      <b>No Video Playing ...</b>
+      </span>
+    </p>
+    
+    <!-- load script for socketio -->
+    <!-- <script src="//cdnjs.cloudflare.com/ajax/libs/socket.io/2.2.0/socket.io.js" integrity="sha256-yr4fRk/GU1ehYJPAs8P4JlTgu0Hdsp4ZKrx8bDEDC3I=" crossorigin="anonymous"></script> -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js" integrity="sha512-q/dWJ3kcmjBLU4Qc47E4A9kTB4m3wuTY7vkFJDTZKjTs8jhyGQnaUrxa0Ytd0ssMZhbNua9hE+E7Qv1j+DyZwA==" crossorigin="anonymous">
+    </script>
+    
+    <script>
+      var videoInfoOutput = document.getElementById("videoInfo");
+      var currentVideoId = "";
+      var videoTrack = 0;
+      var myTimer;
+      
+      /**
+       * Functions and variables here are for socketio
+       */
+      var socket = io('http://' + document.domain + ':' + location.port);
+      
+      socket.on('connect', function() {    
+                socket.emit('my event', {
+                data: 'User Connected',
+                uname: "Video Info Client"})
+                
+                clientId = socket.io.engine.id;
+      })
+        
+      socket.on('my response', function(msg) {
+        processMessage(msg);
+        console.log(msg);
+      })
+
+      // process messages
+      function processMessage(msg) {
+        var msgText = msg.data;
+        var videoId = msg.videoId;
+        
+        if("videoInfoHTML" in msg) {
+          videoInfoOutput.innerHTML = msg.videoInfoHTML;
+          
+          if(videoId != currentVideoId) {
+            currentVideoId = videoId;
+            videoTrack++;
+          }
+          
+          trackOutput = document.getElementById("track");
+          trackOutput.innerHTML = "Track # " + videoTrack;
+          
+          // remove any old timer and start a new one
+          if(videoTrack != 0) {
+            clearInterval(myTimer);
+          }
+          startCount(msg.videoTime, msg.ctime);
+        } else {
+          console.log("Unhandeled socket io message: " + msgText);
+        }
+      }
+      
+      // start a timer to keep track of the video playing
+      function startCount(totalSeconds, currentTime) {
+        timerOutput = document.getElementById("timer");
+        var currentSeconds = currentTime; 
+        
+        var hour = Math.floor(currentTime / 3600);
+        currentTime %= 3600;
+        var mins = Math.floor(currentTime / 60);
+        var secs = currentTime % 60;
+        
+        myTimer = setInterval(count, 1000);
+        
+        function count() {  
+          secs++;
+          currentSeconds++;
+          
+          if(secs == 60){
+            secs = 0;
+            mins = mins + 1;
+          } 
+            
+          if(mins == 60){
+            mins = 0;
+            hour = hour + 1;
+          }
+            
+          if(hour == 24){
+            hour = 1;
+          }
+          
+          if(currentSeconds <= totalSeconds) {
+            timerOutput.innerHTML = plz(hour) + ":" + plz(mins) + ":" + plz(secs);
+          } else {
+            timerOutput.innerHTML = "track done ...";
+          }
+        }
+      }
+ 
+      function plz(digit) {
+        var zpad = digit + '';
+        
+        if (digit < 10) {
+          zpad = "0" + zpad;
+        }
+        
+        return zpad;
+      }
+    </script>
+  </body>
+</html>

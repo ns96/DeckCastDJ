@@ -6,18 +6,20 @@ A simple flask/SocketIO for building very simple youtube DJ application that
 can be shared by other users
 
 @author: Nathan
-@version: 1.1.0 (06/28/2021)
+@version: 1.2.7 (09/06/2021)
 """
 import os.path
+from datetime import datetime, timedelta
 from urllib.request import urlopen
 from urllib.error import HTTPError
 #import urllib
 import json
 import pafy
+import qrcode
 
 # set the youtube api key. 
 # !!!change this before pushing code to public repo!!!
-pafy.set_api_key('YourAPIKey')
+pafy.set_api_key('YouAPIKey')
 
 from flask import Flask, render_template
 from flask_socketio import SocketIO
@@ -27,10 +29,14 @@ app.config['SECRET_KEY'] = 'secret12345#'
 socketio = SocketIO(app)
 
 playListFile = 'playlist.json'
+userPlayListFile = 'userPlaylist.json'
 playList = dict()
 userPlayList = dict()
-youtubePlayList = dict();
+youtubePlayListUrls = dict();
 invalidVideos = list()
+
+# key for playlist that holds all the videoIds stored
+mergedPlayListKey = ''
 
 # keep track of the number of connected users
 userCount = 0
@@ -57,8 +63,7 @@ def upgradeGuestPlayListInfo():
             print("\n\nUnable to Upgrade: ", videoId, "\n")
             print(exp, "\n\n")
             
-    # clean up the playlist so we dont have records for videos that no longer
-    # exists
+    # clean up the playlist so we dont have records for videos that no longer exists
     for videoId in unv_videos:
         playList.pop(videoId)
     
@@ -106,6 +111,13 @@ def savePlayList():
     with open(playListFile, 'w') as fp:
         json.dump(playList, fp, indent=2)
 
+# save the youtube playlist as json
+def saveUserPlayList():
+    global userPlayList
+    
+    with open(userPlayListFile, 'w') as fp:
+        json.dump(userPlayList, fp, indent=2)
+
 # function to load the default playlist from file
 def loadPlayList():
     global playList
@@ -123,9 +135,19 @@ def loadPlayList():
         playList[videoId] = [title, thumbnail]
     '''
 
+# function to load the default playlist from file
+def loadBackupUserPlayList():
+    global userPlayList
+    
+    if os.path.isfile(userPlayListFile):
+        with open(userPlayListFile) as json_file: 
+            userPlayList = json.load(json_file)
+            for playlistKey in userPlayList.keys():
+                youtubePlayListUrls[playlistKey.title()] = 'N/A -- Disk Backup'    
+
 # function to load a playlist 
 def loadYouTubePlayList(username, url, forQue=False):
-    global userPlayList, youtubePlayList
+    global userPlayList, youtubePlayListUrls
     
     try:
         playlistKey = username.title()
@@ -141,7 +163,7 @@ def loadYouTubePlayList(username, url, forQue=False):
         userPlayList[username] = playlist
         
         if not forQue:
-            youtubePlayList[playlistKey] = url
+            youtubePlayListUrls[playlistKey] = url
         
         #checkPlayList(playlist)
     
@@ -149,7 +171,7 @@ def loadYouTubePlayList(username, url, forQue=False):
     except Exception as e:
         print("Error loading YouTube playlist ...\n", url, "\n" , e)
 
-# function to merge two playlist
+# function to merge two youtube playlist
 def mergeYouTubePlayList(username, url):
     global playList
     
@@ -180,7 +202,7 @@ def mergeYouTubePlayList(username, url):
 
 # function to merge all the playlist into a single one
 def mergeAllPlayList():
-    global playList, userPlayList, youtubePlayList
+    global playList, userPlayList, youtubePlayListUrls, mergedPlayListKey
     
     mergePlaylist = dict()
     duplicates = 0
@@ -193,7 +215,7 @@ def mergeAllPlayList():
             print("Duplicate video Id: " + videoId)
             duplicates += 1
     
-    # load the user playlist
+    # load the user playlist videos
     for username in userPlayList.keys():
         playlist = userPlayList.get(username)
         for videoId in playlist.keys():
@@ -205,14 +227,15 @@ def mergeAllPlayList():
     
     listSize = str(len(mergePlaylist))
     key = 'ALL MERGED (' + listSize + ')'
-    userPlayList[key.lower()] = mergePlaylist
-    youtubePlayList[key] = 'N/A'
+    mergedPlayListKey = key.lower()
+    userPlayList[mergedPlayListKey] = mergePlaylist
+    youtubePlayListUrls[key] = 'N/A'
     
     print("\nMerged playlist: Duplicates -> " + str(duplicates) + " | Size -> " + listSize)
     
 # function to load a users playlist from a file
 def loadUserPlayList(username):
-    global userPlayList
+    global userPlayList, youtubePlayListUrls
     username = username.lower()
     
     filename = 'likes_' + username + '.json'
@@ -222,9 +245,9 @@ def loadUserPlayList(username):
             userPlayList[username] = playlist
             #checkPlayList(playlist)
     
-    # add it to the youtube playlist
+    # add it to the youtube playlist urls so we can display it
     playlistKey = username.title()
-    youtubePlayList[playlistKey] = "dummy url"
+    youtubePlayListUrls[playlistKey] = "N/A"
     
     print("User playlist loaded: " + str(len(userPlayList)))
 
@@ -255,7 +278,7 @@ def cleanDate(publishTS):
     
 # function to create an html table consisting of the playList
 def getHTMLTable(username = "", filter_text = "", que_list = False, sort = True):
-    global playList, userPlayList, invalidVideos, youtubePlayList 
+    global playList, userPlayList, invalidVideos, youtubePlayListUrls 
     
     if sort:
         sortedList = sortPlayList(playList)
@@ -275,16 +298,18 @@ def getHTMLTable(username = "", filter_text = "", que_list = False, sort = True)
     tableHtml = ""
     
     if not que_list:
-        tableHtml += '<b>YouTube Playlist: </b>'
+        tableHtml += '<b>YouTube Playlist (<a href="#filter_list"> Filter </a>): </b>'
         tableHtml += '<input type="button" onclick="loadPlayListForUser(\'Guest\', \' \', true)" value="Guest"> '
         
-        for playlistName in youtubePlayList.keys():
+        for playlistName in youtubePlayListUrls.keys():
             tableHtml += '<input type="button" onclick="loadPlayListForUser(\'' + playlistName + '\', \' \', true)" value="' + playlistName + '"> '
     else:
+        queListString, totalTime = getQueListString(sortedList)
+        
         qsize = len(sortedList)
         tableHtml += '<b>Qued Video(s): ' + str(qsize) + '</b> '
-        tableHtml += '<input type="button" onclick="clearQueList()" value="Clear Que">'
-        
+        tableHtml += '<input type="button" onclick="clearQueList()" value="Clear Que"> '
+        tableHtml += '<input type="button" onclick="playQueList(\'' + queListString + '\')" value="Play All ( ' + totalTime + ' )"> '
     tableHtml += '<br><br><table cellpadding="2" cellspacing="0" border="0" width="100%">'
     
     i = 1
@@ -304,35 +329,15 @@ def getHTMLTable(username = "", filter_text = "", que_list = False, sort = True)
         
         meta_info = videoId + " / " + published
         
-        if filter_text == "" or filter_text in title_lower:
-            # if odd, add new row tag
-            if i % 2 == 0:
-                rowHtml = ' '
-            else:
-                rowHtml = '<tr>'
+        if '+' in filter_text:
+            # we doing an "and" search so all terms must match
+            matches = [s.strip() for s in filter_text.split('+')]
             
-            rowHtml += '<td>'
-            rowHtml += '<input type="button" onclick="loadVideoForPlayer(1,\'' + videoId + '\')" value="<"> <br>'
-            rowHtml += '<input type="button" onclick="loadVideoForPlayer(2,\'' + videoId + '\')" value=">"> <br>'
-            rowHtml += '<input type="button" onclick="removeVideoFromList(\'' + videoId + '\')" value="X">'
-            
-            if not que_list:
-                rowHtml += '<br><input type="button" onclick="addToQueList(\'' + videoId + '\')" value="Q">'    
-                
-            rowHtml += '</td>'
-            rowHtml += '<td><b>' + str(i) + '.</b></td>'
-            rowHtml += '<td width="25%"><b>' + title + '</b><br>[' + meta_info + ']</td>'
-            rowHtml += '<td><b>' + videoInfo[2] + '</b></td>'
-            rowHtml += '<td><img src="' + videoInfo[1] + '" alt="Video Thumbnail" width="120" height="90"></td>'
-            #rowHtml += '<td><img src="' + videoInfo[1] + '" alt="Video Thumbnail"></td>'
-            rowHtml += '<td>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</td>'
-            
-            # if even, add close row tag
-            if i % 2 == 0:
-                rowHtml += '</tr>'
-            
-            tableHtml += rowHtml
-        
+            if all(match in title_lower for match in matches):
+                tableHtml += getHTMLTableRow(i, que_list, videoId, title, meta_info, videoInfo)        
+                i += 1
+        elif filter_text == "" or filter_text in title_lower:
+            tableHtml += getHTMLTableRow(i, que_list, videoId, title, meta_info, videoInfo)        
             i += 1
     
     # check to see if to add the end row tag
@@ -343,7 +348,63 @@ def getHTMLTable(username = "", filter_text = "", que_list = False, sort = True)
     
     #print(tableHtml)
     return(tableHtml)
+
+# get the row for the html table containing 
+def getHTMLTableRow(i, que_list, videoId, title, meta_info, videoInfo):
+    # if odd, add new row tag
+    if i % 2 == 0:
+        rowHtml = ' '
+    else:
+        rowHtml = '<tr>'
+            
+    rowHtml += '<td>'
+    rowHtml += '<input type="button" onclick="loadVideoForPlayer(1,\'' + videoId + '\')" value="<"> <br>'
+    rowHtml += '<input type="button" onclick="loadVideoForPlayer(2,\'' + videoId + '\')" value=">"> <br>'
+    rowHtml += '<input type="button" onclick="removeVideoFromList(\'' + videoId + '\')" value="X">'
+            
+    if not que_list:
+        rowHtml += '<br><input type="button" onclick="addToQueList(\'' + videoId + '\')" value="Q">'    
+                
+    rowHtml += '</td>'
+    rowHtml += '<td><b>' + str(i) + '.</b></td>'
+    rowHtml += '<td width="25%"><b>' + title + '</b><br>[' + meta_info + '] (<a href="#pageTop"> Top </a>)</td>'
+    rowHtml += '<td><b>' + videoInfo[2] + '</b></td>'
+    rowHtml += '<td><img src="' + videoInfo[1] + '" alt="Video Thumbnail" width="120" height="90"></td>'
+        
+    #rowHtml += '<td><img src="' + videoInfo[1] + '" alt="Video Thumbnail"></td>'
+    rowHtml += '<td>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</td>'
+            
+    # if even, add close row tag
+    if i % 2 == 0:
+        rowHtml += '</tr>'
+            
+    return(rowHtml)   
+
+#function to return a json array given a sorted list of videos
+def getQueListString(sortedList):
+    listString = ''
+    totalSeconds = 0
     
+    for video in sortedList:
+        videoId = video[0]
+        videoInfo = video[1]
+        videoTime = videoInfo[2]
+        
+        pt = datetime.strptime(videoTime,'%H:%M:%S')
+        totalSeconds += pt.second + pt.minute*60 + pt.hour*3600
+        
+        listString += videoId + ','
+    
+    # get the total time in hours minutes seconds
+    totalTime = str(timedelta(seconds=totalSeconds))
+    
+    # remove the last "," character
+    listString = listString[:-1]
+    
+    print("JSON Que List String: ", listString, totalTime)
+    
+    return (listString, totalTime)
+   
 # get the title and thumbnail image for the video
 # https://stackoverflow.com/questions/59627108/retrieve-youtube-video-title-using-api-python
 def getVideoInfo(videoId, username):
@@ -399,6 +460,42 @@ def clearQueList(username):
         userPlayList.pop(username)
     
     return ""
+
+# generate a qrcode for the video. Should really create qrcode image 
+def createQRCode(videoId):
+    ytUrl = "https://www.youtube.com/watch?v=" + videoId 
+    
+    #Creating an instance of qrcode
+    qr = qrcode.QRCode(version = 1, box_size = 10, border = 5)
+    qr.add_data(ytUrl)
+    qr.make(fit=True)
+    
+    img = qr.make_image(fill='black', back_color='white')
+    imgName = 'static/videoQR_' + videoId + '.png'
+    img.save(imgName)
+    
+    return imgName        
+
+# get the current information for the video being played
+def getCurrentVideoInfo(videoId, videoInfo):
+    qrImg = createQRCode(videoId)
+    soundBarImg = 'https://i.pinimg.com/originals/31/12/81/31128181420688cf4eda6579ef7dfcc9.gif'
+    
+    
+    tableHtml = '<font size="+7">' + videoInfo[0] + ' | ' + videoInfo[2] + '</font><br>'
+    tableHtml += '<table cellpadding="2" cellspacing="0" border="0" width="100%">'
+    tableHtml += '<tr>'
+    tableHtml += '<td><font size="+5"><span id="track">Track # 1</span></td>'
+    tableHtml += '<td><font size="+5"><span id="timer">0000</span></td>'
+    tableHtml += '</tr>'
+    tableHtml += '<tr>'
+    tableHtml += '<td style="text-align: center;"><img src="' + videoInfo[1] + '" alt="Video Thumbnail" width="360" height="270"><br>' 
+    tableHtml += '<img src="' + soundBarImg + '" alt="Video Thumbnail" width="360" height="270">'
+    tableHtml += '</td>'
+    tableHtml += '<td bgcolor="white" style="text-align: center;"><img src="' + qrImg + '" alt="QRCode"></td>'
+    tableHtml += '</tr></table>'
+    
+    return tableHtml
 
 def processMessage(json):
     global playList, userCount, player1Video, player2Video
@@ -481,10 +578,29 @@ def processMessage(json):
         if (videoId not in playList) and (username == "guest0"):
             json['playListHTML'] = addToPlayList(json['videoId'], "guest")
     
+    # see if to broadcast the video that currently playing
+    # see if to save the video to the playlist
+    if 'Current Video' in msgTitle:
+        videoId = json['videoId']
+        pin = json['pin']
+        clientId = json['clientId'].lower().strip()
+                
+        # only save videos for the secret guest0 to prevent anyone from making a 
+        # mess of the playlist. A better way would be to use seperate pin variable
+        if pin == "0001":
+            videoInfo = getVideoInfo(videoId, "N/A")
+            pt = datetime.strptime(videoInfo[2],'%H:%M:%S')
+            totalSeconds = pt.second + pt.minute*60 + pt.hour*3600
+            
+            json['videoInfoHTML'] = getCurrentVideoInfo(videoId, videoInfo)
+            json['videoTime'] = totalSeconds
+    
     # delete a video from the playlist.
     if 'Delete Video' in msgTitle:
         videoId = json['videoId']
         username = json['uname'].lower().strip()
+        clientId = json['clientId'].lower().strip()
+        
         # TO-DO Delete video from playlist and reload it
         print("Deleted video:", videoId, "from playlist:", username)
     
@@ -500,6 +616,10 @@ def processMessage(json):
 def sessions():
     return render_template('index.html')
 
+@app.route('/playing')
+def current():
+    return render_template('playing.html')
+
 def messageReceived(methods=['GET', 'POST']):
     print('message was received!!!')
 
@@ -512,19 +632,33 @@ if __name__ == '__main__':
     #upgradeGuestPlayListInfo()
     #upgradeUserPlayListInfo('Nathan')
     
-    print("Loading user/youtube playlist ...\n\n")
+    # used for loading playlist from youtube. If false, a backup is load from disk
+    useYouTube = True 
+                      
+    print("Loading local playlist ...\n")
     loadPlayList()
     loadUserPlayList('Nathan')
     
-    # Load youtube playlist for various users
-    loadYouTubePlayList('Denvers Favorite', 'https://www.youtube.com/playlist?list=PLgASkX6vGzmBGM1RYaiS2Ga2vcz-C1AZQ')
-    loadYouTubePlayList('trinidad soca 2020', 'https://www.youtube.com/playlist?list=PLtytcEbClKCyqQ6wl_0H4a1ZuzjaFGlVi')
-    loadYouTubePlayList('Soca 400+ Videos', 'https://www.youtube.com/playlist?list=PLFD51ECAD4E496954')
+    if(useYouTube):
+        # Load youtube playlist for various users
+        print("Loading youtube playlist ...\n")
     
-    print("\nDone loading user playlist ...")
+        loadYouTubePlayList('Denvers Favorite', 'https://www.youtube.com/playlist?list=PLgASkX6vGzmBGM1RYaiS2Ga2vcz-C1AZQ')
+        loadYouTubePlayList('trinidad soca 2020', 'https://www.youtube.com/playlist?list=PLtytcEbClKCyqQ6wl_0H4a1ZuzjaFGlVi')
+        loadYouTubePlayList('Soca 400+ Videos', 'https://www.youtube.com/playlist?list=PLFD51ECAD4E496954')
+        loadYouTubePlayList('GJ List', 'https://www.youtube.com/playlist?list=PL9nM-OJA81WAT93_H0uRb36kecpoQoF94')
     
-    print("\nMerging playlist records ...")
-    mergeAllPlayList();
-    print("Merging done ...")
+        print("\nDone loading youtube playlist ...\n")
+    
+        print("\nMerging all playlist records ...")
+    
+        mergeAllPlayList()
+        saveUserPlayList()
+        
+        print("Merging done ...")
+    else:
+        print("Loading backup playlist ...\n")
+        loadBackupUserPlayList();
+        print("Done loading backup ...\n")
     
     socketio.run(app, host = '0.0.0.0', debug = False, port = 5054)
