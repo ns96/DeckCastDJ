@@ -113,7 +113,7 @@ body {
 
 </head>
     <body>
-    <h2>DeckCastDJ v1.2.7 (09/06/2021) -- Simple YouTube DJ "Casting"</h2>
+    <h2>DeckCastDJ v1.3.2 (01/02/2022) -- Simple YouTube DJ "Casting"</h2>
     
     <label class="container"><b>I am the DJ (cast what you are playing to other users)</b>
       <!-- <input type="checkbox" id="isDJ" checked="checked"> -->
@@ -153,7 +153,7 @@ body {
     <td>
     <div id="player1"></div>
     
-    <div style="text-align:center"><b>
+    <div><b>
     <button type="button" onclick="restartVideo(1)"><<</button>
     <input type="radio" id="speedA0" name="speedA" onclick="onChangeSpeed(1, this);" value="0">
     <label for="speedA0">0% (Normal)</label> 
@@ -162,7 +162,8 @@ body {
     <input type="radio" id="speedA2" name="speedA" onclick="onChangeSpeed(1, this);" value="2">
     <label for="speedA2">10% Faster</label> 
     <input type="radio" id="speedA3" name="speedA" onclick="onChangeSpeed(1, this);" value="3">
-    <label for="speedA3">15% Faster</label> 
+    <label for="speedA3">15% Faster</label>
+    <button type="button" onclick="addTrackList(1)">TL</button>
     </b></div>
     
     </td>
@@ -171,7 +172,7 @@ body {
     <td>
     <div id="player2"></div>
     
-    <div style="text-align:center"><b>
+    <div><b>
     <button type="button" onclick="restartVideo(2)"><<</button>
     <input type="radio" id="speedB0" name="speedB" onclick="onChangeSpeed(2, this);" value="0">
     <label for="speedB0">0% (Normal)</label> 
@@ -181,6 +182,7 @@ body {
     <label for="speedB2">10% Faster</label> 
     <input type="radio" id="speedB3" name="speedB" onclick="onChangeSpeed(2, this);" value="3">
     <label for="speedB3">15% Faster</label>
+    <button type="button" onclick="addTrackList(2)">TL</button>
     </b></div>
     
     </td>
@@ -621,6 +623,40 @@ body {
         console.log(playerNum + " Save Video ID: " + videoId);
       }
       
+      // functon to add a tracklist to the loaded video
+      function addTrackList(playerNum) {
+        var pin = document.getElementById("pin").value;
+        var videoId;
+        var title;
+        
+        if(playerNum == 1) {
+          videoId = player1.getVideoData()['video_id'];
+          title = player1.getVideoData()['title'];
+        } else {
+          videoId = player2.getVideoData()['video_id'];
+          title = player2.getVideoData()['title'];
+        }
+        
+        var myWindow = window.open("", "TrackListWindow", "width=400,height=625");
+        myWindow.document.write("<h4>Track List: "+ title + "</h4>");
+        myWindow.document.write("<textarea id=\"tracklist\" name=\"tracklist\" rows=\"35\" cols=\"50\"></textarea>")
+        
+        // before window close grab the text in the text area
+        myWindow.onbeforeunload = function() {
+            var tracklist = myWindow.document.getElementById("tracklist").value;
+            
+            jsonText = {data: 'Add TrackList', 
+                    pin: pin,
+                    videoId: videoId,
+                    tracklist: tracklist}
+            socket.emit('my event', jsonText);
+            
+            console.log("Window closed: " + videoId + "\n" + tracklist);
+        }
+        
+        console.log(playerNum + " Track List For Video ID: " + videoId + "\n" + title);
+      }
+      
       // function to add a youtube playlist to the que.
       function addPlayListToQueList() {
         var playlistUrl = document.getElementById("filter").value;
@@ -763,6 +799,19 @@ body {
         } else {
           console.log('Deletion cancelled ... ' + videoId);
         }
+      }
+      
+      // function to remove a video from the que playlist
+      function removeVideoFromQueList(videoId) {
+        username = document.getElementById("uname").value;
+          
+        jsonText = {data: 'Delete Qued Video', 
+                      player: 0,
+                      clientId: clientId,
+                      videoId: videoId }
+                      
+        socket.emit('my event', jsonText);
+        console.log('Delete From Que List: ' + videoId);
       }
       
       // return if a person is the DJ or not
