@@ -113,7 +113,7 @@ body {
 
 </head>
     <body>
-    <h2>DeckCastDJ v1.3.2 (01/02/2022) -- Simple YouTube DJ "Casting"</h2>
+    <h2>DeckCastDJ v1.4.3 (12/20/2022) -- Simple YouTube DJ "Casting"</h2>
     
     <label class="container"><b>I am the DJ (cast what you are playing to other users)</b>
       <!-- <input type="checkbox" id="isDJ" checked="checked"> -->
@@ -234,7 +234,8 @@ body {
     
     <!-- load script for socketio -->
     <!-- <script src="//cdnjs.cloudflare.com/ajax/libs/socket.io/2.2.0/socket.io.js" integrity="sha256-yr4fRk/GU1ehYJPAs8P4JlTgu0Hdsp4ZKrx8bDEDC3I=" crossorigin="anonymous"></script> -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js" integrity="sha512-q/dWJ3kcmjBLU4Qc47E4A9kTB4m3wuTY7vkFJDTZKjTs8jhyGQnaUrxa0Ytd0ssMZhbNua9hE+E7Qv1j+DyZwA==" crossorigin="anonymous">
+    <!-- <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js" integrity="sha512-q/dWJ3kcmjBLU4Qc47E4A9kTB4m3wuTY7vkFJDTZKjTs8jhyGQnaUrxa0Ytd0ssMZhbNua9hE+E7Qv1j+DyZwA==" crossorigin="anonymous"> -->
+    <script src="https://cdn.socket.io/4.5.3/socket.io.min.js" integrity="sha384-WPFUvHkB1aHA5TDSZi6xtDgkF0wXJcIIxXhC6h8OT8EH3fC5PWro5pWJ1THjcfEi" crossorigin="anonymous"></script>
     </script>
     
     <script>
@@ -668,8 +669,11 @@ body {
       
       // function to send a video id to be added to the que list
       function addToQueList(videoId) {
+        var pin = document.getElementById("pin").value;
+        
         jsonText = {data: 'Video Qued', 
                         player: 0,
+                        pin: pin,
                         clientId: clientId,
                         videoId: videoId}
         socket.emit('my event', jsonText);
@@ -686,8 +690,11 @@ body {
       
       // function to clear videos on the que list
       function clearQueList() {
+        var pin = document.getElementById("pin").value;
+        
         jsonText = {data: 'Video Qued', 
                         player: 0,
+                        pin: pin,
                         clientId: clientId,
                         videoId: "0"}
         socket.emit('my event', jsonText);
@@ -803,10 +810,12 @@ body {
       
       // function to remove a video from the que playlist
       function removeVideoFromQueList(videoId) {
+        var pin = document.getElementById("pin").value;
         username = document.getElementById("uname").value;
           
         jsonText = {data: 'Delete Qued Video', 
                       player: 0,
+                      pin: pin,
                       clientId: clientId,
                       videoId: videoId }
                       

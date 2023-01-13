@@ -6,7 +6,7 @@ A simple flask/SocketIO for building very simple youtube DJ application that
 can be shared by other users
 
 @author: Nathan
-@version: 1.3.2 (01/02/2022)
+@version: 1.4.3 (12/20/2022)
 """
 import os.path
 from datetime import datetime, timedelta
@@ -19,10 +19,10 @@ import qrcode
 
 # set the youtube api key. 
 # !!!change this before pushing code to public repo!!!
-youtubeApiKey = 'YOUTUBEKEYHERE'
+youtubeApiKey = 'YourApiKey'
 pafy.set_api_key(youtubeApiKey)
 
-from flask import Flask, render_template
+from flask import Flask, render_template, request
 from flask_socketio import SocketIO
 
 app = Flask(__name__)
@@ -71,7 +71,7 @@ def upgradeGuestPlayListInfo():
             print("\n\nUnable to Upgrade: ", videoId, "\n")
             print(exp, "\n\n")
             
-    # clean up the playlist so we dont have records for videos that no longer exists
+    # clean up the playlist so we don't have records for videos that no longer exists
     for videoId in unv_videos:
         playList.pop(videoId)
     
@@ -166,7 +166,7 @@ def loadYouTubePlayList(username, url, forQue=False):
     
         for video in youtubeList:
             playlist[video.videoid] = [video.title, video.thumb, video.duration, video.published, username]
-            #print(video.videoid, video.title, video.thumb, video.duration, "\n")
+            print(video.videoid, video.title, video.thumb, video.duration, "\n")
     
         userPlayList[username] = playlist
         
@@ -302,7 +302,7 @@ def cleanPlayList(videoList):
     return cleanedList
 
 def checkVideoExists(videoId):
-    '''Check to see if video is playable and embadle'''
+    '''Check to see if video is playable and embedable'''
     url = 'https://www.googleapis.com/youtube/v3/videos?part=contentDetails&id=' + videoId + '&key=' + youtubeApiKey        
     results = urlopen(url).read()
     output = results.decode('utf-8')
@@ -332,6 +332,7 @@ def getHTMLTable(username = "", filter_text = "", que_list = False, sort = True)
         sortedList = playList.items()
     
     if (username != "") and (username in userPlayList):
+        print('\nGetting user play list: ' + username)
         userlist = userPlayList[username]
         if sort:
             sortedList = sortPlayList(userlist)
@@ -431,7 +432,7 @@ def getHTMLTableRow(i, que_list, videoId, title, meta_info, videoInfo):
             
     return(rowHtml)   
 
-#function to return a json array given a sorted list of videos
+#function to return a csv string given a sorted list of videos
 def getQueListString(sortedList):
     listString = ''
     totalSeconds = 0
@@ -455,6 +456,35 @@ def getQueListString(sortedList):
     print("JSON Que List String: ", listString, totalTime)
     
     return (listString, totalTime)
+
+#function to return an array given username
+def getQueListData(username):
+    global userPlayList
+    
+    print('\nGetting Que Data For: ', username)
+    
+    # get the playlist for the user
+    userList = userPlayList[username]
+    
+    queData = list();
+    
+    for video in userList.items():
+        videoId = video[0]
+        videoInfo = video[1]
+        videoTitle = videoInfo[0]
+        videoTime = videoInfo[2]
+        
+        pt = datetime.strptime(videoTime,'%H:%M:%S')
+        videoSeconds = pt.second + pt.minute*60 + pt.hour*3600
+        
+        # concat the values with a <:> seperator so we easily split it
+        # might make mosre sense to just return son array
+        queData.append(videoId + '\t' + videoTitle + '\t' + str(videoSeconds))
+    
+    
+    #print("JSON Que Data List String: ", queData)
+    
+    return queData
    
 # get the title and thumbnail image for the video
 # https://stackoverflow.com/questions/59627108/retrieve-youtube-video-title-using-api-python
@@ -535,7 +565,7 @@ def addTrackListForVideo(videoId, tracklist):
     # save the tracklist dictionary
     saveTrackLists()
     
-# generate a qrcode for the video. Should really create qrcode image 
+# generate a qrcode for the video and save the image
 def createQRCode(videoId):
     ytUrl = "https://www.youtube.com/watch?v=" + videoId 
     
@@ -547,11 +577,12 @@ def createQRCode(videoId):
     img = qr.make_image(fill='black', back_color='white')
     imgName = 'static/videoQR_' + videoId + '.png'
     img.save(imgName)
-    
-    return imgName        
+    imgUrl = request.base_url.replace('/socket.io', '') + imgName
+    #print('Image URL', imgUrl)
+    return imgUrl        
 
 # get the current information for the video being played
-def getCurrentVideoInfo(videoId, videoInfo):
+def getCurrentVideoInfoHTML(videoId, videoInfo):
     qrImg = createQRCode(videoId)
     soundBarImg = 'https://i.pinimg.com/originals/31/12/81/31128181420688cf4eda6579ef7dfcc9.gif'
     
@@ -561,13 +592,26 @@ def getCurrentVideoInfo(videoId, videoInfo):
     tableHtml += '<table cellpadding="2" cellspacing="0" border="0" width="100%">'
     tableHtml += '<tr>'
     tableHtml += '<td><font size="+5"><span id="track">Track # 1</span></font></td>'
-    tableHtml += '<td><font size="+5"><span id="timer">0000</span></font></td>'
+    tableHtml += '<td><font size="+5"><span id="timer"></span></font></td>'
     tableHtml += '</tr>'
     tableHtml += '<tr>'
     tableHtml += '<td style="text-align: center;"><img src="' + videoInfo[1] + '" alt="Video Thumbnail" width="360" height="270"><br>' 
     tableHtml += '<img src="' + soundBarImg + '" alt="Video Thumbnail" width="360" height="270">'
     tableHtml += '</td>'
     tableHtml += '<td bgcolor="white" style="text-align: center;"><img src="' + qrImg + '" alt="QRCode"></td>'
+    tableHtml += '</tr></table>'
+    
+    return tableHtml
+
+# get the current information for the video being played
+def getLiteCurrentVideoInfoHTML(videoId, videoInfo):
+    qrImg = createQRCode(videoId)
+    
+    tableHtml = '<font size="+5">' + videoInfo[0] + ' | ' + videoInfo[2] + '</font><br>'
+    tableHtml += '<table cellpadding="2" cellspacing="0" border="0" width="100%">'
+    tableHtml += '<tr>'
+    tableHtml += '<td style="text-align: center;"><img src="' + videoInfo[1] + '" alt="Video Thumbnail" width="360" height="270"></td>' 
+    tableHtml += '<td bgcolor="white" style="text-align: center;"><img src="' + qrImg + '" alt="QRCode" width="215" height="215"></td>'
     tableHtml += '</tr></table>'
     
     return tableHtml
@@ -638,8 +682,10 @@ def processMessage(json):
         if 'https://www.youtube.com/playlist' in videoId:
             loadYouTubePlayList(username, videoId, True)
             json['queListHTML'] = getHTMLTable(username, "", True, False)
+            json['queListData'] = getQueListData(username)
         elif videoId != "0":
             json['queListHTML'] = addToQueList(videoId, username)
+            json['queListData'] = getQueListData(username)
         else:
             json['queListHTML'] = clearQueList(username)
     
@@ -654,34 +700,31 @@ def processMessage(json):
             json['playListHTML'] = addToPlayList(json['videoId'], "guest")
     
     # see if to broadcast the video that currently playing
-    # see if to save the video to the playlist
     if 'Current Video' in msgTitle:
         videoId = json['videoId']
         pin = json['pin']
-        #clientId = json['clientId'].lower().strip()
+        # clientId = json['clientId'].lower().strip()
                 
-        # only save videos for the secret guest0 to prevent anyone from making a 
-        # mess of the playlist. A better way would be to use seperate pin variable
-        if pin == adminPin:
-            videoInfo = getVideoInfo(videoId, "N/A")
-            pt = datetime.strptime(videoInfo[2],'%H:%M:%S')
-            totalSeconds = pt.second + pt.minute*60 + pt.hour*3600
-            
-            json['videoInfoHTML'] = getCurrentVideoInfo(videoId, videoInfo)
-            json['videoTime'] = totalSeconds
-            
-            if videoId in videoTrackLists:
-                json['trackList'] = videoTrackLists[videoId]
-                
-    # see if to broadcast the video that currently playing
-    # see if to save the video to the playlist
+        # return information on current video
+        videoInfo = getVideoInfo(videoId, "N/A")
+        pt = datetime.strptime(videoInfo[2], '%H:%M:%S')
+        totalSeconds = pt.second + pt.minute*60 + pt.hour*3600
+        
+        json['videoTitle'] = videoInfo[0] + ' | ' + videoInfo[2]
+        json['videoInfoHTML'] = getCurrentVideoInfoHTML(videoId, videoInfo)
+        json['videoInfoLiteHTML'] = getLiteCurrentVideoInfoHTML(videoId, videoInfo)
+        json['videoTime'] = totalSeconds
+
+        if videoId in videoTrackLists:
+            json['trackList'] = videoTrackLists[videoId]
+
+    # see if to add the tracklist for a particular video
     if 'Add TrackList' in msgTitle:
         videoId = json['videoId']
         pin = json['pin']
         tracklist = json['tracklist'].strip()
                 
-        # only save videos for the secret guest0 to prevent anyone from making a 
-        # mess of the playlist. A better way would be to use seperate pin variable
+        # only add tracklist for admin pin
         if pin == adminPin:
             if len(tracklist) != 0:
                 addTrackListForVideo(videoId, tracklist)
@@ -700,6 +743,7 @@ def processMessage(json):
         username = json['clientId'].lower().strip()
         
         json['queListHTML'] = deleteFromQueList(videoId, username)
+        json['queListData'] = getQueListData(username)
         
     # reset the stored values
     if 'RESET' in msgTitle:
