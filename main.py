@@ -6,7 +6,7 @@ A simple flask/SocketIO for building very simple youtube DJ application that
 can be shared by other users
 
 @author: Nathan
-@version: 1.4.3 (12/20/2022)
+@version: 1.4.4 (05/02/2023)
 """
 import os.path
 from datetime import datetime, timedelta
@@ -373,6 +373,7 @@ def getHTMLTable(username = "", filter_text = "", que_list = False, sort = True)
         published = cleanDate(videoInfo[3])
         
         title = videoInfo[0] + " (-" + published.split('-')[0] + "-)"
+        title = title.replace(',',', ')
         title_lower = title.lower()
         
         meta_info = videoId + " / " + published
