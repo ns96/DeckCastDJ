@@ -113,7 +113,7 @@ body {
 
 </head>
     <body>
-    <h2>DeckCastDJ v1.4.4 (05/02/2023) -- Simple YouTube DJ "Casting"</h2>
+    <h2>DeckCastDJ v1.5.0 (02/22/2024) -- Simple YouTube DJ "Casting"</h2>
     
     <label class="container"><b>I am the DJ (cast what you are playing to other users)</b>
       <!-- <input type="checkbox" id="isDJ" checked="checked"> -->
@@ -213,6 +213,7 @@ body {
       <button type="button" onclick="loadPlayList()">Load PlayList</button> 
       <button type="button" onclick="addPlayListToQueList()">Que PlayList</button>
       <button type="button" onclick="mergePlayList()">Merge PlayList</button>
+	  <button type="button" onclick="clearPlayList()">Clear</button>
     </p>
     </td>
     </tr>
@@ -311,7 +312,17 @@ body {
         if("playListHTML" in msg) {
           playListOutput.innerHTML = msg.playListHTML;
         }
+		
+		// see if to alert the user that the video was saved
+		if("savedVideo" in msg) {
+		  alert(msg.savedVideo);
+        }
       }
+	  
+	  // clear the playList
+	  function clearPlayList() {
+		playListOutput.innerHTML = "";
+	  }
       
       // process messages
       function processMessage(msg) {

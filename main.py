@@ -6,7 +6,7 @@ A simple flask/SocketIO for building very simple youtube DJ application that
 can be shared by other users
 
 @author: Nathan
-@version: 1.4.4 (05/02/2023)
+@version: 1.5.0 (02/22/2024)
 """
 import os.path
 from datetime import datetime, timedelta
@@ -16,10 +16,9 @@ from urllib.error import HTTPError
 import json
 import pafy
 import qrcode
+from config import youtubeApiKey
 
 # set the youtube api key. 
-# !!!change this before pushing code to public repo!!!
-youtubeApiKey = 'YourApiKey'
 pafy.set_api_key(youtubeApiKey)
 
 from flask import Flask, render_template, request
@@ -350,6 +349,9 @@ def getHTMLTable(username = "", filter_text = "", que_list = False, sort = True)
         
         for playlistName in youtubePlayListUrls.keys():
             tableHtml += '<input type="button" onclick="loadPlayListForUser(\'' + playlistName + '\', \' \', true)" value="' + playlistName + '"> '
+        
+        # add button to clear playlist
+        tableHtml += '<input type="button" onclick="clearPlayList()" value="Clear"> '
     else:
         #sortedList = cleanPlayList(sortedList)
         queListString, totalTime = getQueListString(sortedList)
@@ -673,6 +675,7 @@ def processMessage(json):
         # mess of the playlist. A better way would be to use seperate pin variable
         if (videoId not in playList) and (username == "guest0"):
             json['playListHTML'] = addToPlayList(json['videoId'], "guest")
+            json['saved'] = True
     
     # see if to add the video to the que list for the client
     if 'Video Qued' in msgTitle:
@@ -697,8 +700,12 @@ def processMessage(json):
                 
         # only save videos for the secret guest0 to prevent anyone from making a 
         # mess of the playlist. A better way would be to use seperate pin variable
-        if (videoId not in playList) and (username == "guest0"):
-            json['playListHTML'] = addToPlayList(json['videoId'], "guest")
+        if username == "guest0":
+            if videoId not in playList:
+                json['playListHTML'] = addToPlayList(json['videoId'], "guest")
+                json['savedVideo'] = "Video Saved To Playlist ..."
+            else:
+                json['savedVideo'] = "Video Already in Playlist ..."
     
     # see if to broadcast the video that currently playing
     if 'Current Video' in msgTitle:
@@ -779,7 +786,7 @@ if __name__ == '__main__':
     
     # used for loading playlist from youtube. 
     # If false, a backup is loaded from disk
-    useYouTube = False 
+    useYouTube = True 
                       
     print("Loading local playlist ...\n")
     loadPlayList()
@@ -789,12 +796,10 @@ if __name__ == '__main__':
         # Load youtube playlist for various users
         print("Loading youtube playlist ...\n")
         
-        # change these url to your own playlist
+        # change these url to your own youtube playlist
         loadYouTubePlayList('Denvers Favorite', 'https://www.youtube.com/playlist?list=PLgASkX6vGzmBGM1RYaiS2Ga2vcz-C1AZQ')
-        loadYouTubePlayList('trinidad soca 2020', 'https://www.youtube.com/playlist?list=PLtytcEbClKCyqQ6wl_0H4a1ZuzjaFGlVi')
-        loadYouTubePlayList('Soca 400+ Videos', 'https://www.youtube.com/playlist?list=PLFD51ECAD4E496954')
-        loadYouTubePlayList('GJ List', 'https://www.youtube.com/playlist?list=PL9nM-OJA81WAT93_H0uRb36kecpoQoF94')
-    
+        loadYouTubePlayList('80s Hits', 'https://www.youtube.com/playlist?list=PLmXxqSJJq-yXrCPGIT2gn8b34JjOrl4Xf')
+        
         print("\nDone loading youtube playlist ...\n")
     
         print("\nMerging all playlist records ...")
@@ -814,4 +819,4 @@ if __name__ == '__main__':
     # Test code here
     #checkVideoExists('YTdxdr9pNnw')
     
-    socketio.run(app, host = '0.0.0.0', debug = False, port = 5054)
+    socketio.run(app, host = '0.0.0.0', debug = False, port = 5054, allow_unsafe_werkzeug=True)
