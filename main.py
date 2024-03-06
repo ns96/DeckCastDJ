@@ -6,13 +6,12 @@ A simple flask/SocketIO for building very simple youtube DJ application that
 can be shared by other users
 
 @author: Nathan
-@version: 1.5.0 (02/22/2024)
+@version: 1.5.1 (03/05/2024)
 """
 import os.path
 from datetime import datetime, timedelta
 from urllib.request import urlopen
 from urllib.error import HTTPError
-#import urllib
 import json
 import pafy
 import qrcode
@@ -30,10 +29,12 @@ socketio = SocketIO(app)
 
 playListFile = 'playlist.json'
 userPlayListFile = 'userPlaylist.json'
-playList = dict()
+invalidVideosFile = 'invalidVideos.json'
+
+playList = dict() # default playlist for "guest"
 userPlayList = dict()
 youtubePlayListUrls = dict();
-invalidVideos = list()
+invalidVideosList = list()
 
 # dictionary to store the tracklist for a video
 trackListsFile = 'tracklists.json'
@@ -125,7 +126,15 @@ def saveUserPlayList():
     with open(userPlayListFile, 'w') as fp:
         json.dump(userPlayList, fp, indent=2)
 
-# function to load the default playlist from file
+# funtion to load the invalid video list
+def loadInvalidVideosList():
+    global invalidVideosList
+    
+    if os.path.isfile(invalidVideosFile):
+        with open(invalidVideosFile) as json_file: 
+            invalidVideosList = json.load(json_file)
+
+# function to load the default playlist i.e. guest from file
 def loadPlayList():
     global playList
     
@@ -142,7 +151,7 @@ def loadPlayList():
         playList[videoId] = [title, thumbnail]
     '''
 
-# function to load the default playlist from file
+# function to load the user playlist from file instead of reading from youtube
 def loadBackupUserPlayList():
     global userPlayList
     
@@ -152,7 +161,7 @@ def loadBackupUserPlayList():
             for playlistKey in userPlayList.keys():
                 youtubePlayListUrls[playlistKey.title()] = 'N/A -- Disk Backup'    
 
-# function to load a playlist 
+# function to load a youtube playlist 
 def loadYouTubePlayList(username, url, forQue=False):
     global userPlayList, youtubePlayListUrls
     
@@ -276,7 +285,7 @@ def loadUserPlayList(username):
 # function to check if the playlist has any videos which were deleted
 # from youtube
 def checkPlayList(videoList):
-    global invalidList
+    global invalidVideos
     
     print("Skipping video check ...")
     
@@ -287,7 +296,11 @@ def checkPlayList(videoList):
             print("Video Exist:\t", key, urlopen(videoInfo[1]).getcode())        
         except HTTPError as err:
             print("Video Deleted:\t", key, err.code)
-            invalidVideos.append(key)
+            invalidVideosList.append(key)
+    
+    # save the invalid video list
+    with open(invalidVideosFile, 'w', encoding='utf-8') as f:
+        json.dump(invalidVideosList, f, ensure_ascii=False, indent=4)
 
 # remove any videos which are not accessable from a videoList
 def cleanPlayList(videoList):
@@ -323,7 +336,7 @@ def cleanDate(publishTS):
     
 # function to create an html table consisting of the playList
 def getHTMLTable(username = "", filter_text = "", que_list = False, sort = True):
-    global playList, userPlayList, invalidVideos, youtubePlayListUrls 
+    global playList, userPlayList, invalidVideosList, youtubePlayListUrls 
     
     if sort:
         sortedList = sortPlayList(playList)
@@ -368,7 +381,7 @@ def getHTMLTable(username = "", filter_text = "", que_list = False, sort = True)
         videoInfo = video[1]
         
         # check to see if this video is in the invalid list
-        if videoId in invalidVideos:
+        if videoId in invalidVideosList:
             print("Invalid Video -- Deleted:\t", videoId)
             continue
         
@@ -483,10 +496,7 @@ def getQueListData(username):
         # concat the values with a <:> seperator so we easily split it
         # might make mosre sense to just return son array
         queData.append(videoId + '\t' + videoTitle + '\t' + str(videoSeconds))
-    
-    
-    #print("JSON Que Data List String: ", queData)
-    
+
     return queData
    
 # get the title and thumbnail image for the video
@@ -504,15 +514,10 @@ def getVideoInfo(videoId, username):
         
     return ([data['title'], data['thumbnail_url'], "--:--:--", username])
     '''
-    
-    # 10/30/2020 -- Pafy library is now broken becuause yt-dl no longer works
-    # will eventual need to go to using the youtube api since duration is not 
-    # available from above code
-    # 11/6/2020 -- pafy is now working again
-    
+        
     url = "http://www.youtube.com/watch?v=" + videoId
     video = pafy.new(url)            
-    return([video.title, video.thumb, video.duration, video.published, username])
+    return [video.title, video.thumb, video.duration, video.published, username]
     
 def addToPlayList(videoId, username):
     global playList
@@ -521,6 +526,24 @@ def addToPlayList(videoId, username):
     savePlayList()
     
     return getHTMLTable()
+
+def deleteFromPlayList(videoId, username):
+    global playList, userPlayList, invalidVideosList
+    
+    # see if it's a user playlist or the default guest list
+    videolist = userPlayList.get(username);
+    if videolist == None:
+        videolist = playList
+        
+    if videoId in videolist:
+        videolist.pop(videoId)
+        invalidVideosList.append(videoId)
+    
+        # save the invalid video list now
+        with open(invalidVideosFile, 'w', encoding='utf-8') as f:
+            json.dump(invalidVideosList, f, ensure_ascii=False, indent=4)
+    
+    return getHTMLTable(username)
 
 def addToQueList(videoId, username):
     global userPlayList
@@ -554,6 +577,20 @@ def clearQueList(username):
         userPlayList.pop(username)
     
     return ""
+
+# function to return a unique name when saving youtube playlist
+def getUniquePlayListName(playListName):
+    global userPlayList
+    count = 0
+    
+    if '_' not in playListName:
+        playListName = playListName + "_" + str(count)
+    
+    while playListName in userPlayList:
+        count += 1
+        playListName = playListName.split('_')[0] + "_" + str(count)
+    
+    return playListName
 
 # add a tracklist for a video
 def addTrackListForVideo(videoId, tracklist):
@@ -638,15 +675,16 @@ def processMessage(json):
     
     # if we loaded a playlist indicate as much
     if 'Load PlayList' in msgTitle:
-        username = json['uname'].lower().strip()
+        playListUser = json['uname'].lower().strip()
         f_text = json['filter'].strip()
         
         # check to see if to to load a youtube playlist
         if 'https://www.youtube.com/playlist' in f_text:
-            loadYouTubePlayList(username, f_text)
+            playListUser = getUniquePlayListName(playListUser)
+            loadYouTubePlayList(playListUser, f_text)
             f_text = ""
             
-        json['playListHTML'] = getHTMLTable(username = username, filter_text = f_text.lower())
+        json['playListHTML'] = getHTMLTable(username = playListUser, filter_text = f_text.lower())
     
     # merge a youtube playlist to the save playlist
     if 'Merge PlayList' in msgTitle:
@@ -670,13 +708,7 @@ def processMessage(json):
             player1Video = videoId
         else:
             player2Video = videoId
-        
-        # only save videos for the secret guest0 to prevent anyone from making a 
-        # mess of the playlist. A better way would be to use seperate pin variable
-        if (videoId not in playList) and (username == "guest0"):
-            json['playListHTML'] = addToPlayList(json['videoId'], "guest")
-            json['saved'] = True
-    
+            
     # see if to add the video to the que list for the client
     if 'Video Qued' in msgTitle:
         videoId = json['videoId']
@@ -742,9 +774,9 @@ def processMessage(json):
         videoId = json['videoId']
         username = json['uname'].lower().strip()
         
-        # TO-DO Delete video from playlist and reload it
-        print("Deleted video:", videoId, "from playlist:", username)
-    
+        # add this video to the ivalid video list
+        json['playListHTML'] = deleteFromPlayList(videoId, username)
+            
     # delete a video from the que list for the client
     if 'Delete Qued Video' in msgTitle:
         videoId = json['videoId']
@@ -786,9 +818,10 @@ if __name__ == '__main__':
     
     # used for loading playlist from youtube. 
     # If false, a backup is loaded from disk
-    useYouTube = True 
+    useYouTube = False 
                       
     print("Loading local playlist ...\n")
+    loadInvalidVideosList()
     loadPlayList()
     loadUserPlayList('Nathan')
     

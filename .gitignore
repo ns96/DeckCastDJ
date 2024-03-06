@@ -164,3 +164,9 @@ config.py
 
 # ignore flask settings
 .flaskenv
+
+# ignore the invalidVideos.json
+invalidVideos.json
+
+# ignore image files in static folder
+static/*.png
