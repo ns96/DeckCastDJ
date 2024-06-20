@@ -6,7 +6,7 @@ A simple flask/SocketIO for building very simple youtube DJ application that
 can be shared by other users
 
 @author: Nathan
-@version: 1.5.1 (03/05/2024)
+@version: 1.6.0 (06/14/2024)
 """
 import os.path
 from datetime import datetime, timedelta
@@ -153,12 +153,17 @@ def loadPlayList():
 
 # function to load the user playlist from file instead of reading from youtube
 def loadBackupUserPlayList():
-    global userPlayList
+    global userPlayList, mergedPlayListKey
     
     if os.path.isfile(userPlayListFile):
         with open(userPlayListFile) as json_file: 
             userPlayList = json.load(json_file)
             for playlistKey in userPlayList.keys():
+                # we need to store the merge playlist key 
+                if 'all merged' in playlistKey:
+                    print("Merged Playlist Key:", playlistKey)
+                    mergedPlayListKey = playlistKey
+                
                 youtubePlayListUrls[playlistKey.title()] = 'N/A -- Disk Backup'    
 
 # function to load a youtube playlist 
@@ -235,10 +240,17 @@ def mergeYouTubePlayList(username, url):
 def mergeAllPlayList():
     global playList, userPlayList, youtubePlayListUrls, mergedPlayListKey
     
+    # first delete the current merged playlist
+    print("Removing Old Merged Playlist:", mergedPlayListKey)
+    if mergedPlayListKey in userPlayList:
+        del userPlayList[mergedPlayListKey]
+        del youtubePlayListUrls[mergedPlayListKey.title()]
+        print("Done ...")
+    
     mergePlaylist = dict()
     duplicates = 0
     
-    # load the defualt playlist videos
+    # load the default playlist videos
     for videoId in playList.keys():
         if videoId not in mergePlaylist.keys():
             mergePlaylist[videoId] = playList[videoId]
@@ -257,7 +269,7 @@ def mergeAllPlayList():
                 duplicates += 1
     
     listSize = str(len(mergePlaylist))
-    key = 'ALL MERGED (' + listSize + ')'
+    key = 'All Merged (' + listSize + ')'
     mergedPlayListKey = key.lower()
     userPlayList[mergedPlayListKey] = mergePlaylist
     youtubePlayListUrls[key] = 'N/A'
@@ -313,6 +325,7 @@ def cleanPlayList(videoList):
         
     return cleanedList
 
+# check to see if video exist, doesn't always work
 def checkVideoExists(videoId):
     '''Check to see if video is playable and embedable'''
     url = 'https://www.googleapis.com/youtube/v3/videos?part=contentDetails&id=' + videoId + '&key=' + youtubeApiKey        
@@ -682,6 +695,7 @@ def processMessage(json):
         if 'https://www.youtube.com/playlist' in f_text:
             playListUser = getUniquePlayListName(playListUser)
             loadYouTubePlayList(playListUser, f_text)
+            mergeAllPlayList() # create a new merge playlist
             f_text = ""
             
         json['playListHTML'] = getHTMLTable(username = playListUser, filter_text = f_text.lower())
@@ -848,8 +862,5 @@ if __name__ == '__main__':
     
     # load the video track list
     loadTrackLists()
-    
-    # Test code here
-    #checkVideoExists('YTdxdr9pNnw')
     
     socketio.run(app, host = '0.0.0.0', debug = False, port = 5054, allow_unsafe_werkzeug=True)
