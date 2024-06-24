@@ -6,7 +6,7 @@ A simple flask/SocketIO for building very simple youtube DJ application that
 can be shared by other users
 
 @author: Nathan
-@version: 1.6.0 (06/14/2024)
+@version: 1.6.1 (06/24/2024)
 """
 import os.path
 from datetime import datetime, timedelta

@@ -1,5 +1,6 @@
  /*
-  * Controller script to manage playback control of the youtube iframe players
+  * Controller script to manage playback control of the YouTube 
+  * iframe players.
   */
  
  // 2. This code loads the IFrame Player API code asynchronously.
