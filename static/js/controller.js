@@ -484,21 +484,30 @@ function playQueList(queListString) {
 async function mixQueList(queListString, queListTimesString) {
   var queList = queListString.split(",");
   var timeList = queListTimesString.split(",");
+  var startVideo = document.getElementById("startMixAt").value - 1;
   var overlap = document.getElementById("mixOverlap").value;
   var playPercent = document.getElementById("mixPlayPercent").value;
   var startTime = 0;
   var endTime = 0;
   stopMix = false;
 
-  for (let i = 0; i < queList.length; i++) {
+  // check the start video value is valid
+  if(startVideo < 0 || startVideo == queList.length) {
+    startVideo = 0;
+  }
+
+  for (let i = startVideo; i < queList.length; i++) {
     var endTime = Math.round(timeList[i] * (playPercent / 100));
     var delay = endTime - overlap;
 
-    console.log("Playing qued video: " + queList[i] + " / " + " : " + timeList[i]);
+    // check to make sure we at least play 30 seconds of video
+    if (delay < 30) delay = 30;
+
+    console.log("Mix video: " + (queList[i] + 1) + " / " + " : " + timeList[i]);
     console.log("Delay: " + delay + " : Endtime: " + endTime);
 
     // if it's not the first video set the start time to the overlap
-    if (i != 0) {
+    if (i != startVideo) {
       startTime = overlap;
     }
 
@@ -531,7 +540,7 @@ async function mixQueList(queListString, queListTimesString) {
   console.log("Mix Play Done ...");
 }
 
-// function to wait a certian timeout doing something
+// function to wait a certian time before doing something
 function wait(timeout) {
   return new Promise((resolve) => setTimeout(resolve, timeout));
 }

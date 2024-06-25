@@ -6,7 +6,7 @@ A simple flask/SocketIO for building very simple youtube DJ application that
 can be shared by other users
 
 @author: Nathan
-@version: 1.6.1 (06/25/2024)
+@version: 1.6.4 (06/25/2024)
 """
 import os.path
 from datetime import datetime, timedelta
@@ -394,8 +394,9 @@ def getHTMLTable(username = "", filter_text = "", que_list = False, sort = True)
         tableHtml += '<input type="button" onclick="clearQueList()" value="Clear Que"> '
         tableHtml += '<input type="button" onclick="playQueList(\'' + queListString + '\')" value="Play All ( ' + totalTime + ' )"> '
         tableHtml += '<input type="button" onclick="mixQueList(\'' + queListString + '\',\'' + queListTimesString + '\')" value="Play Mix"> '
-        tableHtml += 'Video Overlap: <input type="text" id="mixOverlap" name="mixOverlap" value="20" size="3"> Seconds || '
-        tableHtml += 'Video Play Percent: <input type="text" id="mixPlayPercent" name="mixPlayPercent" value="60" size="3"> '
+        tableHtml += 'Start @ Video: <input type="text" id="startMixAt" name="startMixAt" value="1" size="1"> '
+        tableHtml += 'Overlap: <input type="text" id="mixOverlap" name="mixOverlap" value="20" size="2"> Seconds || '
+        tableHtml += 'Play Percent: <input type="text" id="mixPlayPercent" name="mixPlayPercent" value="60" size="2"> '
         tableHtml += '<input type="button" onclick="stopMixPlay()" value="Stop Mix"> '
     
     tableHtml += '<br><br><table cellpadding="2" cellspacing="0" border="0" width="100%">'
