@@ -33,8 +33,9 @@ invalidVideosFile = 'invalidVideos.json'
 
 playList = dict() # default playlist for "guest"
 userPlayList = dict()
-youtubePlayListUrls = dict();
+youtubePlayListUrls = dict()
 invalidVideosList = list()
+pafyCache = dict()
 
 # dictionary to store the tracklist for a video
 trackListsFile = 'tracklists.json'
@@ -174,7 +175,13 @@ def loadYouTubePlayList(username, url, forQue=False):
         playlistKey = username.title()
         username = username.lower()
         
-        youtubeList = pafy.get_playlist2(url)
+        if url in pafyCache.keys():
+            youtubeList = pafyCache[url]
+        else:
+            youtubeList = pafy.get_playlist2(url)
+            pafyCache[url] = youtubeList
+
+        # store information about the videos in playlist
         playlist = dict()
     
         for video in youtubeList:
@@ -380,12 +387,17 @@ def getHTMLTable(username = "", filter_text = "", que_list = False, sort = True)
         tableHtml += '<input type="button" onclick="clearPlayList()" value="Clear"> '
     else:
         #sortedList = cleanPlayList(sortedList)
-        queListString, totalTime = getQueListString(sortedList)
+        queListString, totalTime, queListTimesString = getQueListString(sortedList)
         
         qsize = len(sortedList)
         tableHtml += '<b>Qued Video(s): ' + str(qsize) + '</b> '
         tableHtml += '<input type="button" onclick="clearQueList()" value="Clear Que"> '
         tableHtml += '<input type="button" onclick="playQueList(\'' + queListString + '\')" value="Play All ( ' + totalTime + ' )"> '
+        tableHtml += '<input type="button" onclick="mixQueList(\'' + queListString + '\',\'' + queListTimesString + '\')" value="Play Mix"> '
+        tableHtml += 'Overlap: <input type="text" id="mixOverlap" name="mixOverlap" value="20" size="5"> Seconds || '
+        tableHtml += 'Play Percent: <input type="text" id="mixPlayPercent" name="mixPlayPercent" value="60" size="5"> '
+        tableHtml += '<input type="button" onclick="stopMixPlay()" value="Stop Mix"> '
+    
     tableHtml += '<br><br><table cellpadding="2" cellspacing="0" border="0" width="100%">'
     
     i = 1
@@ -463,7 +475,8 @@ def getHTMLTableRow(i, que_list, videoId, title, meta_info, videoInfo):
 
 #function to return a csv string given a sorted list of videos
 def getQueListString(sortedList):
-    listString = ''
+    videoListString = ''
+    videoTimeString = ''
     totalSeconds = 0
     
     for video in sortedList:
@@ -472,19 +485,22 @@ def getQueListString(sortedList):
         videoTime = videoInfo[2]
         
         pt = datetime.strptime(videoTime,'%H:%M:%S')
-        totalSeconds += pt.second + pt.minute*60 + pt.hour*3600
+        videoSeconds = pt.second + pt.minute*60 + pt.hour*3600
+        totalSeconds += videoSeconds
         
-        listString += videoId + ','
+        videoListString += videoId + ','
+        videoTimeString += str(videoSeconds) + ',' 
     
     # get the total time in hours minutes seconds
     totalTime = str(timedelta(seconds=totalSeconds))
     
     # remove the last "," character
-    listString = listString[:-1]
+    videoListString = videoListString[:-1]
+    videoTimeString = videoTimeString[:-1]
+
+    print("JSON Que List String: ", videoListString, totalTime)
     
-    print("JSON Que List String: ", listString, totalTime)
-    
-    return (listString, totalTime)
+    return (videoListString, totalTime, videoTimeString)
 
 #function to return an array given username
 def getQueListData(username):

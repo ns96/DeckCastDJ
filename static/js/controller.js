@@ -28,6 +28,9 @@
  var currentVideoId1 = "";
  var currentVideoId2 = "";
  var clientId = "N/A";
+
+ // variable to see if to stop the mix
+ var stopMix = false;
  
  /**
   * Functions and variables here are for socketio
@@ -462,6 +465,62 @@
    console.log("Playing qued videos: " + queListString + " / " + queList[0]); 
  }
  
+ // function to mix the que list
+ async function mixQueList(queListString, queListTimesString) {
+  var queList = queListString.split(",");
+  var timeList = queListTimesString.split(",");
+  var overlap = document.getElementById("mixOverlap").value;
+  var playPercent = document.getElementById("mixPlayPercent").value;
+  var startTime = 0;
+  var endTime = 0;
+  stopMix = false;
+
+  for(let i = 0; i < queList.length; i++) {
+    var endTime =  Math.round(timeList[i]*(playPercent/100)); 
+    var delay = endTime - overlap;
+
+    console.log("Playing qued video: " + queList[i] + " / " + " : " + timeList[i]);
+    console.log("Delay: " + delay + " : Endtime: " + endTime);
+        
+    // if it's not the first video set the start time to the overlap
+    if(i != 0) {
+      startTime = overlap;
+    }
+
+    // see which player to use
+    if(i % 2 == 0) { 
+      console.log("Player 1 ...");
+      // move the slide to player 1
+      moveSlideTo(1);
+
+      player1.loadVideoById(queList[i], startTime);
+      player1.playVideo();
+      
+    } else {
+      console.log("Player 2 ...");
+      moveSlideTo(2);
+
+      player2.loadVideoById(queList[i], startTime);
+      player2.playVideo();
+    }
+
+    // delay a specified number of seconds before next video is played  
+    await wait(delay * 1000);
+
+    // check to see if to top the mix
+    if(stopMix) {
+      break;
+    }
+  }
+
+  console.log("Mix Play Done ...");
+ }
+
+ // function to wait a certian timeout doing something
+ function wait(timeout) {
+  return new Promise((resolve) => setTimeout(resolve, timeout));
+ }
+
  // function to clear videos on the que list
  function clearQueList() {
    var pin = document.getElementById("pin").value;
@@ -473,6 +532,15 @@
                    videoId: "0"}
    socket.emit('my event', jsonText);
    console.log("Clear Video Que: " + clientId);
+
+  stopMixPlay();
+ }
+
+ // function to stop a mix
+ function stopMixPlay() {
+  player1.pauseVideo();
+  player2.pauseVideo();
+  stopMix = true;
  }
 
  // function to get text to show to user when loading videos
