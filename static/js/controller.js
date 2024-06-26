@@ -564,9 +564,13 @@ function clearQueList() {
 
 // function to stop a mix
 function stopMixPlay() {
+  stopMix = true;
+
   player1.pauseVideo();
   player2.pauseVideo();
-  stopMix = true;
+
+  slider.value = 50;
+  changePlayerVolume(50);
 }
 
 // function to get text to show to user when loading videos
