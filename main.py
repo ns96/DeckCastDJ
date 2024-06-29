@@ -6,7 +6,7 @@ A simple flask/SocketIO for building very simple youtube DJ application that
 can be shared by other users
 
 @author: Nathan
-@version: 1.6.4 (06/26/2024)
+@version: 1.6.6 (06/29/2024)
 """
 import os.path
 from datetime import datetime, timedelta
@@ -27,9 +27,9 @@ app = Flask(__name__)
 app.config['SECRET_KEY'] = 'secret12345#'
 socketio = SocketIO(app)
 
-playListFile = 'playlist.json'
-userPlayListFile = 'userPlaylist.json'
-invalidVideosFile = 'invalidVideos.json'
+playListFile = 'data/playlist.json'
+userPlayListFile = 'data/userPlaylist.json'
+invalidVideosFile = 'data/invalidVideos.json'
 
 playList = dict() # default playlist for "guest"
 userPlayList = dict()
@@ -38,7 +38,7 @@ invalidVideosList = list()
 pafyCache = dict()
 
 # dictionary to store the tracklist for a video
-trackListsFile = 'tracklists.json'
+trackListsFile = 'data/tracklists.json'
 videoTrackLists = dict()
 
 # key for playlist that holds all the videoIds stored
@@ -104,8 +104,7 @@ def upgradeUserPlayListInfo(username):
                 print("\n\nUnable to Upgrade: ", videoId, "\n")
                 print(exp, "\n\n")
             
-        # clean up the playlist so we dont have records for videos that no longer
-        # exists
+        # clean up the playlist so we dont have records for videos that no longer exists
         for videoId in unv_videos:
             playlist.pop(videoId)
     
@@ -114,16 +113,12 @@ def upgradeUserPlayListInfo(username):
             json.dump(playlist, fp, indent=2)
         
 # save the playlist as json
-def savePlayList():
-    global playList
-    
+def savePlayList():    
     with open(playListFile, 'w') as fp:
         json.dump(playList, fp, indent=2)
 
 # save the youtube playlist as json
-def saveUserPlayList():
-    global userPlayList
-    
+def saveUserPlayList():    
     with open(userPlayListFile, 'w') as fp:
         json.dump(userPlayList, fp, indent=2)
 
@@ -332,7 +327,7 @@ def cleanPlayList(videoList):
         
     return cleanedList
 
-# check to see if video exist, doesn't always work
+# check to see if video exist. Doesn't always work
 def checkVideoExists(videoId):
     '''Check to see if video is playable and embedable'''
     url = 'https://www.googleapis.com/youtube/v3/videos?part=contentDetails&id=' + videoId + '&key=' + youtubeApiKey        
@@ -397,8 +392,10 @@ def getHTMLTable(username = "", filter_text = "", que_list = False, sort = True)
         tableHtml += 'Start @ Video: <input type="text" id="startMixAt" name="startMixAt" value="1" size="1"> '
         tableHtml += 'Overlap: <input type="text" id="mixOverlap" name="mixOverlap" value="20" size="2"> Seconds || '
         tableHtml += 'Play Percent: <input type="text" id="mixPlayPercent" name="mixPlayPercent" value="60" size="2"> '
-        tableHtml += '<input type="button" onclick="stopMixPlay()" value="Stop Mix"> '
+        tableHtml += '<input type="button" onclick="stopMixPlay()" value="Stop Mix"><br>'
+        tableHtml += '<span id="queMixMessage">Curent Mix Track: 0 / Playtime: 0000 seconds</span>'
     
+    # add the main table for tracks here
     tableHtml += '<br><br><table cellpadding="2" cellspacing="0" border="0" width="100%">'
     
     i = 1
@@ -854,7 +851,8 @@ if __name__ == '__main__':
     print("Loading local playlist ...\n")
     loadInvalidVideosList()
     loadPlayList()
-    loadUserPlayList('Nathan')
+    # No longer loading likes videos from json file, just load from youtube playlist
+    #loadUserPlayList('Nathan')
     
     if(useYouTube):
         # Load youtube playlist for various users
@@ -863,7 +861,8 @@ if __name__ == '__main__':
         # change these url to your own youtube playlist
         loadYouTubePlayList('Denvers Favorite', 'https://www.youtube.com/playlist?list=PLgASkX6vGzmBGM1RYaiS2Ga2vcz-C1AZQ')
         loadYouTubePlayList('80s Hits', 'https://www.youtube.com/playlist?list=PLmXxqSJJq-yXrCPGIT2gn8b34JjOrl4Xf')
-        
+        loadYouTubePlayList('Nathan Likes', 'https://www.youtube.com/playlist?list=PL9nM-OJA81WAhh0jaDiT228tPzJeSS-OP')
+
         print("\nDone loading youtube playlist ...\n")
     
         print("\nMerging all playlist records ...")

@@ -498,13 +498,18 @@ async function mixQueList(queListString, queListTimesString) {
 
   for (let i = startVideo; i < queList.length; i++) {
     var endTime = Math.round(timeList[i] * (playPercent / 100));
-    var delay = endTime - overlap;
+    var playTime = endTime - overlap;
+    var trackNum = i + 1
 
     // check to make sure we at least play 30 seconds of video
-    if (delay < 30) delay = 30;
+    if (playTime < 30) playTime = 30;
 
-    console.log("Mix video: " + (queList[i] + 1) + " / " + " : " + timeList[i]);
-    console.log("Delay: " + delay + " : Endtime: " + endTime);
+    console.log("Mix Video: " + trackNum + " / " + " : " + timeList[i]);
+    console.log("Play Time: " + playTime + " : Endtime: " + endTime);
+
+    // display current mixing information
+    var message = "Curent Mix Track: " + trackNum + " / Playtime: " + toHHMMSS(playTime);
+    document.getElementById("queMixMessage").innerHTML = message;
 
     // if it's not the first video set the start time to the overlap
     if (i != startVideo) {
@@ -528,8 +533,8 @@ async function mixQueList(queListString, queListTimesString) {
       player2.playVideo();
     }
 
-    // delay a specified number of seconds before next video is played  
-    await wait(delay * 1000);
+    // delay a specified number of seconds, playtime, before next video is played  
+    await wait(playTime * 1000);
 
     // check to see if to top the mix
     if (stopMix) {
@@ -571,6 +576,14 @@ function stopMixPlay() {
 
   slider.value = 50;
   changePlayerVolume(50);
+}
+
+// function to return time as hh:mm:ss given seconds
+// https://stackoverflow.com/questions/1322732/convert-seconds-to-hh-mm-ss-with-javascript
+function toHHMMSS(seconds) {
+  const date = new Date(null);
+  date.setSeconds(seconds);
+  return date.toISOString().slice(11, 19);
 }
 
 // function to get text to show to user when loading videos
@@ -732,7 +745,7 @@ function resetValues() {
 
 // add function to "smoothly" move the slider using a timer function
 function moveSlideTo(playerNum) {
-  var steps = 100;
+  var steps = 150;
   var mixStart = Number(slider.value);
   var mixStep = 0;
   var mixRatio = 0;
