@@ -23,3 +23,4 @@ Based on the requirements, a workable webapp was built using the YouTube Player 
 * Implement "rooms" to allow multiple people to use the service.
 * Improve Automixng functionality
 * Clean up Python code 
+* Move away from using pafy which as issues working with the current YouTube API (https://stackoverflow.com/questions/70344739/backend-youtube-dl-py-line-54-in-fetch-basic-self-dislikes-self-ydl-info)

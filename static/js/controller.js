@@ -30,7 +30,8 @@ var currentVideoId2 = "";
 var clientId = "N/A";
 
 // variable to see if to stop the mix
-var stopMix = false;
+var stopMix = new Array();
+var stopMixIndex = 0;
 
 /**
  * Functions and variables here are for socketio
@@ -492,8 +493,11 @@ async function mixQueList(queListString, queListTimesString) {
   var playPercent = document.getElementById("mixPlayPercent").value;
   var startTime = 0;
   var endTime = 0;
-  stopMix = false;
 
+  // set the stop mix index my makeing a copy of global variable so we don't have 2 mixes going at once
+  let stopIndex = stopMixIndex;
+  stopMix[stopIndex] = false;
+  
   // check the start video value is valid
   if(startVideo < 0 || startVideo == queList.length) {
     startVideo = 0;
@@ -540,7 +544,8 @@ async function mixQueList(queListString, queListTimesString) {
     await wait(playTime * 1000);
 
     // check to see if to top the mix
-    if (stopMix) {
+    if (stopMix[stopIndex]) {
+      console.log("Stopping Mix @ " + i);
       break;
     }
   }
@@ -572,7 +577,8 @@ function clearQueList() {
 
 // function to stop a mix
 function stopMixPlay() {
-  stopMix = true;
+  stopMix[stopMixIndex] = true;
+  stopMixIndex++;
 
   player1.pauseVideo();
   player2.pauseVideo();
