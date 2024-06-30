@@ -6,7 +6,7 @@ A simple flask/SocketIO for building very simple youtube DJ application that
 can be shared by other users
 
 @author: Nathan
-@version: 1.6.6 (06/29/2024)
+@version: 1.6.6 (06/30/2024)
 """
 import os.path
 from datetime import datetime, timedelta
@@ -851,7 +851,9 @@ if __name__ == '__main__':
     print("Loading local playlist ...\n")
     loadInvalidVideosList()
     loadPlayList()
-    # No longer loading likes videos from json file, just load from youtube playlist
+
+    # No longer loading likes videos from json file, just load from youtube 
+    # playlist. Make it easier to update
     #loadUserPlayList('Nathan')
     
     if(useYouTube):

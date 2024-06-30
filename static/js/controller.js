@@ -56,6 +56,11 @@ socket.on('my response', function (msg) {
     processMessage(msg);
   }
 
+  // see if to update the user count
+  if (msg.data.includes("User Connected")) {
+    updateConnectedUsers(msg);
+  } 
+
   console.log(msg);
   messageText.innerHTML = msg.data + " (Users: " + connectedUsers + ")";
 })
@@ -101,8 +106,6 @@ function processMessage(msg) {
     updateVideo(msg);
   } else if (msgText.includes("State Changed")) {
     updatePlayerState(msg);
-  } else if (msgText.includes("User Connected")) {
-    updateConnectedUsers(msg);
   } else if (msgText.includes("Speed Changed")) {
     updatePlaybackSpeed(msg);
   } else {
@@ -745,7 +748,7 @@ function resetValues() {
 
 // add function to "smoothly" move the slider using a timer function
 function moveSlideTo(playerNum) {
-  var steps = 150;
+  var steps = 200;
   var mixStart = Number(slider.value);
   var mixStep = 0;
   var mixRatio = 0;
@@ -769,7 +772,7 @@ function moveSlideTo(playerNum) {
       changePlayerVolume(mixRatio);
 
       //console.log(i + ": delay for " + playerNum + " mixer: " + mixStart + " / " + mixStep + " / " + mixRatio);
-    }, i * 100);
+    }, i * 20);
   }
 }
 
