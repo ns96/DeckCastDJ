@@ -30,6 +30,7 @@ var currentVideoId2 = "";
 var clientId = "N/A";
 
 // variable to see if to stop the mix
+var playMix = false;
 var stopMix = new Array();
 var stopMixIndex = 0;
 
@@ -455,10 +456,14 @@ function addTrackList(playerNum) {
 // function to add a youtube playlist to the que.
 function addPlayListToQueList() {
   var playlistUrl = document.getElementById("filter").value;
-  addToQueList(playlistUrl);
 
-  queListOutput.innerHTML = getLoadingText();
-  document.getElementById("filter").value = "";
+  if(playlistUrl.includes('https://www.youtube.com/playlist?list=')) {
+    addToQueList(playlistUrl);
+    queListOutput.innerHTML = getLoadingText();
+    document.getElementById("filter").value = "";
+  } else {
+    alert("Invalid YouTube Playlist Url: " + playlistUrl);
+  }
 }
 
 // function to send a video id to be added to the que list
@@ -474,6 +479,27 @@ function addToQueList(videoId) {
   }
   socket.emit('my event', jsonText);
   console.log("Video Qued: " + videoId + " " + clientId);
+}
+
+// function to add a saved playlist to the que
+function queSavedPlayList() {
+  var pin = document.getElementById("pin").value;
+  username = document.getElementById("uname").value;
+  var savedList = 'savedList:' + username;
+
+  jsonText = {
+    data: 'Video Qued',
+    player: 0,
+    pin: pin,
+    clientId: clientId,
+    videoId: savedList 
+  }
+  socket.emit('my event', jsonText);
+
+  // clear the playlist stream line interface
+  clearPlayList()
+
+  console.log("Saved Playlist Qued: " + savedList + " " + clientId);
 }
 
 // function to play the videos in the que list
@@ -494,10 +520,11 @@ async function mixQueList(queListString, queListTimesString) {
   var startTime = 0;
   var endTime = 0;
 
-  // set the stop mix index my makeing a copy of global variable so we don't have 2 mixes going at once
+  // set the stop mix index by making a copy of global variable so we don't have 2 mixes going at once
   let stopIndex = stopMixIndex;
   stopMix[stopIndex] = false;
-  
+  playMix = true;
+
   // check the start video value is valid
   if(startVideo < 0 || startVideo == queList.length) {
     startVideo = 0;
@@ -550,6 +577,7 @@ async function mixQueList(queListString, queListTimesString) {
     }
   }
 
+  playMix = false;
   console.log("Mix Play Done ...");
 }
 
@@ -572,10 +600,12 @@ function clearQueList() {
   socket.emit('my event', jsonText);
   console.log("Clear Video Que: " + clientId);
 
-  stopMixPlay();
+  if(playMix) {
+    stopMixPlay();
+  }
 }
 
-// function to stop a mix
+// function to stop a playing mix
 function stopMixPlay() {
   stopMix[stopMixIndex] = true;
   stopMixIndex++;
@@ -610,17 +640,20 @@ function mergePlayList() {
   username = document.getElementById("uname").value;
   var playlistUrl = document.getElementById("filter").value;
 
-  jsonText = {
-    data: 'Merge PlayList',
-    uname: username,
-    filter: playlistUrl
+  if(playlistUrl.includes('https://www.youtube.com/playlist?list=')) {
+    jsonText = {
+      data: 'Merge PlayList',
+      uname: username,
+      filter: playlistUrl
+    }
+    socket.emit('my event', jsonText);
+
+    // clear the filter text input
+    document.getElementById("filter").value = "";
+    console.log("Merged YouTube PlayList: " + playlistUrl);
+  } else {
+    alert("Invalid YouTube Playlist Url: " + playlistUrl);
   }
-  socket.emit('my event', jsonText);
-
-  // clear the filter text input
-  document.getElementById("filter").value = "";
-
-  console.log("Merged YouTube PlayList: " + playlistUrl);
 }
 
 // extract the youtube ID from url

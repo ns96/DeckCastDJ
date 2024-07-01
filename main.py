@@ -6,7 +6,7 @@ A simple flask/SocketIO for building very simple youtube DJ application that
 can be shared by other users
 
 @author: Nathan
-@version: 1.6.7 (06/30/2024)
+@version: 1.6.8 (07/01/2024)
 """
 import os.path
 from datetime import datetime, timedelta
@@ -27,11 +27,11 @@ app = Flask(__name__)
 app.config['SECRET_KEY'] = 'secret12345#'
 socketio = SocketIO(app)
 
-playListFile = 'data/playlist.json'
+defaultPlayListFile = 'data/playlist.json'
 userPlayListFile = 'data/userPlaylist.json'
 invalidVideosFile = 'data/invalidVideos.json'
 
-playList = dict() # default playlist for "guest"
+defaultPlayList = dict() # default playlist for "guest"
 userPlayList = dict()
 youtubePlayListUrls = dict()
 invalidVideosList = list()
@@ -54,18 +54,18 @@ adminPin = "0001"
 
 # function to upgrade the guest playlist. Only called when additional information
 # needs to be added to playList records
-def upgradeGuestPlayListInfo():
-    global playList
+def upgradeDefaultPlayListInfo():
+    global defaultPlayList
     
     loadPlayList()
     
     # keep track of bad videos
     unv_videos = list()
     
-    for videoId in playList.keys():
+    for videoId in defaultPlayList.keys():
         try:
             videoInfo = getVideoInfo(videoId, "Guest")
-            playList[videoId] = videoInfo
+            defaultPlayList[videoId] = videoInfo
             print("Updated: " + videoId + " " + str(videoInfo))
         except Exception as exp:
             unv_videos.append(videoId)
@@ -74,11 +74,11 @@ def upgradeGuestPlayListInfo():
             
     # clean up the playlist so we don't have records for videos that no longer exists
     for videoId in unv_videos:
-        playList.pop(videoId)
+        defaultPlayList.pop(videoId)
     
     # save the new playlist
-    with open(playListFile, 'w') as fp:
-        json.dump(playList, fp, indent=2)
+    with open(defaultPlayListFile, 'w') as fp:
+        json.dump(defaultPlayList, fp, indent=2)
 
 # function to upgrade a users like playlist
 def upgradeUserPlayListInfo(username):
@@ -114,8 +114,8 @@ def upgradeUserPlayListInfo(username):
         
 # save the playlist as json
 def savePlayList():    
-    with open(playListFile, 'w') as fp:
-        json.dump(playList, fp, indent=2)
+    with open(defaultPlayListFile, 'w') as fp:
+        json.dump(defaultPlayList, fp, indent=2)
 
 # save the youtube playlist as json
 def saveUserPlayList():    
@@ -132,11 +132,11 @@ def loadInvalidVideosList():
 
 # function to load the default playlist i.e. guest from file
 def loadPlayList():
-    global playList
+    global defaultPlayList
     
-    if os.path.isfile(playListFile):
-        with open(playListFile) as json_file: 
-            playList = json.load(json_file)
+    if os.path.isfile(defaultPlayListFile):
+        with open(defaultPlayListFile) as json_file: 
+            defaultPlayList = json.load(json_file)
             #checkPlayList(playList)
     
     '''
@@ -211,20 +211,20 @@ def loadTrackLists():
 
 # function to merge two youtube playlist
 def mergeYouTubePlayList(username, url):
-    global playList
+    global defaultPlayList
     
     try:
         username = username.lower()
         
         youtubeList = pafy.get_playlist2(url)
-        oldSize = str(len(playList))
+        oldSize = str(len(defaultPlayList))
         
         # go through the youtube playlist and merge any new videos
         for video in youtubeList:
             videoId = video.videoid
             
-            if videoId not in playList.keys():
-                playList[videoId] = [video.title, video.thumb, video.duration, video.published, username]
+            if videoId not in defaultPlayList.keys():
+                defaultPlayList[videoId] = [video.title, video.thumb, video.duration, video.published, username]
                 print("Merge:", video.videoid, video.title, video.thumb, video.duration, "\n")
             else:
                 print("Duplicate video Id: ", videoId, "not merged ...")
@@ -234,13 +234,13 @@ def mergeYouTubePlayList(username, url):
         # save the playlist
         savePlayList();
         
-        print("YouTube playlist merged: " + youtubeList.title + " / " + oldSize + " | " + str(len(playList)))
+        print("YouTube playlist merged: " + youtubeList.title + " / " + oldSize + " | " + str(len(defaultPlayList)))
     except Exception as e:
         print("Error loading YouTube playlist ...\n", url, "\n" , e)
 
 # function to merge all the playlist into a single one
 def mergeAllPlayList():
-    global playList, userPlayList, youtubePlayListUrls, mergedPlayListKey
+    global defaultPlayList, userPlayList, youtubePlayListUrls, mergedPlayListKey
     
     # first delete the current merged playlist
     print("Removing Old Merged Playlist:", mergedPlayListKey)
@@ -253,9 +253,9 @@ def mergeAllPlayList():
     duplicates = 0
     
     # load the default playlist videos
-    for videoId in playList.keys():
+    for videoId in defaultPlayList.keys():
         if videoId not in mergePlaylist.keys():
-            mergePlaylist[videoId] = playList[videoId]
+            mergePlaylist[videoId] = defaultPlayList[videoId]
         else:
             print("Duplicate video Id: " + videoId)
             duplicates += 1
@@ -277,7 +277,24 @@ def mergeAllPlayList():
     youtubePlayListUrls[key] = 'N/A'
     
     print("\nMerged playlist: Duplicates -> " + str(duplicates) + " | Size -> " + listSize)
+
+# function to copy a user playlist to the que list
+def copyPlayListToQue(username, playlistKey):
+    global userPlayList
+
+    duplicatePlaylist = dict()
     
+    if playlistKey in userPlayList.keys():
+        playlist = userPlayList.get(playlistKey)
+    else:
+        playlist = defaultPlayList
+
+    for videoId in playlist.keys():
+        duplicatePlaylist[videoId] = playlist[videoId]
+
+    userPlayList[username] = duplicatePlaylist
+    print("Playlist duplicated", playlistKey, '->', username)
+
 # function to load a users playlist from a file
 def loadUserPlayList(username):
     global userPlayList, youtubePlayListUrls
@@ -351,12 +368,12 @@ def cleanDate(publishTS):
     
 # function to create an html table consisting of the playList
 def getHTMLTable(username = "", filter_text = "", que_list = False, sort = True):
-    global playList, userPlayList, invalidVideosList, youtubePlayListUrls 
+    global defaultPlayList, userPlayList, invalidVideosList, youtubePlayListUrls 
     
     if sort:
-        sortedList = sortPlayList(playList)
+        sortedList = sortPlayList(defaultPlayList)
     else:
-        sortedList = playList.items()
+        sortedList = defaultPlayList.items()
     
     if (username != "") and (username in userPlayList):
         print('\nGetting user play list: ' + username)
@@ -378,6 +395,9 @@ def getHTMLTable(username = "", filter_text = "", que_list = False, sort = True)
         for playlistName in youtubePlayListUrls.keys():
             tableHtml += '<input type="button" onclick="loadPlayListForUser(\'' + playlistName + '\', \' \', true)" value="' + playlistName + '"> '
         
+        # add button to allow moving playlist to que
+        tableHtml += '<input type="button" onclick="queSavedPlayList()" value="Q"> '
+
         # add button to clear playlist
         tableHtml += '<input type="button" onclick="clearPlayList()" value="Clear"> '
     else:
@@ -547,20 +567,20 @@ def getVideoInfo(videoId, username):
     return [video.title, video.thumb, video.duration, video.published, username]
     
 def addToPlayList(videoId, username):
-    global playList
+    global defaultPlayList
     
-    playList[videoId] = getVideoInfo(videoId, username)
+    defaultPlayList[videoId] = getVideoInfo(videoId, username)
     savePlayList()
     
     return getHTMLTable()
 
 def deleteFromPlayList(videoId, username):
-    global playList, userPlayList, invalidVideosList
+    global defaultPlayList, userPlayList, invalidVideosList
     
     # see if it's a user playlist or the default guest list
     videolist = userPlayList.get(username);
     if videolist == None:
-        videolist = playList
+        videolist = defaultPlayList
         
     if videoId in videolist:
         videolist.pop(videoId)
@@ -684,7 +704,7 @@ def getLiteCurrentVideoInfoHTML(videoId, videoInfo):
     return tableHtml
 
 def processMessage(json):
-    global playList, userCount, player1Video, player2Video
+    global defaultPlayList, userCount, player1Video, player2Video
     
     print("Processing msg: " + str(json));
     msgTitle = json['data']
@@ -747,6 +767,11 @@ def processMessage(json):
             loadYouTubePlayList(username, videoId, True)
             json['queListHTML'] = getHTMLTable(username, "", True, False)
             json['queListData'] = getQueListData(username)
+        elif 'savedList:' in videoId:
+            savedList = videoId.split(":")[1]
+            copyPlayListToQue(username.lower(), savedList.lower())
+            json['queListHTML'] = getHTMLTable(username, "", True, False)
+            json['queListData'] = getQueListData(username)
         elif videoId != "0":
             json['queListHTML'] = addToQueList(videoId, username)
             json['queListData'] = getQueListData(username)
@@ -761,7 +786,7 @@ def processMessage(json):
         # only save videos for the secret guest0 to prevent anyone from making a 
         # mess of the playlist. A better way would be to use seperate pin variable
         if username == "guest0":
-            if videoId not in playList:
+            if videoId not in defaultPlayList:
                 json['playListHTML'] = addToPlayList(json['videoId'], "guest")
                 json['savedVideo'] = "Video Saved To Playlist ..."
             else:
