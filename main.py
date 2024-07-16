@@ -6,7 +6,7 @@ A simple flask/SocketIO for building very simple youtube DJ application that
 can be shared by other users
 
 @author: Nathan
-@version: 1.6.8 (07/01/2024)
+@version: 1.7.0 (07/13/2024)
 """
 import os.path
 from datetime import datetime, timedelta
@@ -456,7 +456,7 @@ def getHTMLTable(username = "", filter_text = "", que_list = False, sort = True)
     #print(tableHtml)
     return(tableHtml)
 
-# get the row for the html table containing 
+# get the row for the html table containing videos
 def getHTMLTableRow(i, que_list, videoId, title, meta_info, videoInfo):
     # if odd, add new row tag
     if i % 2 == 0:
@@ -480,9 +480,12 @@ def getHTMLTableRow(i, que_list, videoId, title, meta_info, videoInfo):
     rowHtml += '<td><b>' + str(i) + '.</b></td>'
     rowHtml += '<td width="25%"><b>' + title + '</b><br>[' + meta_info + '] (<a href="#pageTop"> Top </a>)</td>'
     rowHtml += '<td><b>' + videoInfo[2] + '</b></td>'
-    rowHtml += '<td><img src="' + videoInfo[1] + '" alt="Video Thumbnail" width="120" height="90"></td>'
-        
-    #rowHtml += '<td><img src="' + videoInfo[1] + '" alt="Video Thumbnail"></td>'
+
+    if i % 2 == 0:
+        rowHtml += '<td><img src="' + videoInfo[1] + '" alt="Video Thumbnail" width="120" height="90" onclick="loadVideoForPlayer(2,\'' + videoId + '\')"></td>'
+    else:
+        rowHtml += '<td><img src="' + videoInfo[1] + '" alt="Video Thumbnail" width="120" height="90" onclick="loadVideoForPlayer(1,\'' + videoId + '\')"></td>'
+
     rowHtml += '<td>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</td>'
             
     # if even, add close row tag
