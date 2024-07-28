@@ -22,6 +22,7 @@ mixerOutput.innerHTML = slider.value;
 
 var playListOutput = document.getElementById("playList");
 var queListOutput = document.getElementById("queList");
+var vumeterOutput = document.getElementById("vumeter");
 
 var connectedUsers = 0;
 
@@ -567,6 +568,11 @@ async function mixQueList(queListString, queListTimesString) {
       player2.playVideo();
     }
 
+    // load the vumeter gif
+    //vumeterOutput.innerHTML = "<img src=\"https://u-he.com/products/satin/assets/images/uhe-satin-animation-vumeters.gif\" alt=\"VU Meter\">";
+    //vumeterOutput.innerHTML = "<img src=\"https://shopjustaudio.com/cdn/shop/products/VU-Digital-x300.gif?v=1671301051&width=300\" alt=\"VU Meter\">";
+    vumeterOutput.innerHTML = "<img src=\"https://i.pinimg.com/originals/f7/20/df/f720df37ff3964df6e4b92146a1fe97e.gif\" alt=\"VU Meter\"  width=\"550\" height=\"384\">";
+
     // delay a specified number of seconds, playtime, before next video is played  
     await wait(playTime * 1000);
 
@@ -578,6 +584,7 @@ async function mixQueList(queListString, queListTimesString) {
   }
 
   playMix = false;
+  vumeterOutput.innerHTML = "";
   console.log("Mix Play Done ...");
 }
 
@@ -612,6 +619,9 @@ function stopMixPlay() {
 
   player1.pauseVideo();
   player2.pauseVideo();
+
+  // hide the vumeter
+  vumeterOutput.innerHTML = "";
 
   slider.value = 50;
   changePlayerVolume(50);
