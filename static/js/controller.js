@@ -568,10 +568,11 @@ async function mixQueList(queListString, queListTimesString) {
       player2.playVideo();
     }
 
-    // load the vumeter gif
+    // load the animated vumeter or tape gif
     //vumeterOutput.innerHTML = "<img src=\"https://u-he.com/products/satin/assets/images/uhe-satin-animation-vumeters.gif\" alt=\"VU Meter\">";
     //vumeterOutput.innerHTML = "<img src=\"https://shopjustaudio.com/cdn/shop/products/VU-Digital-x300.gif?v=1671301051&width=300\" alt=\"VU Meter\">";
-    vumeterOutput.innerHTML = "<img src=\"https://i.pinimg.com/originals/f7/20/df/f720df37ff3964df6e4b92146a1fe97e.gif\" alt=\"VU Meter\"  width=\"550\" height=\"384\">";
+    vumeterOutput.innerHTML = "<img src=\"https://i.pinimg.com/originals/f7/20/df/f720df37ff3964df6e4b92146a1fe97e.gif\" alt=\"VU Meter\"  width=\"440\" height=\"307\">";
+    //vumeterOutput.innerHTML = "<img src=\"https://bestgifsdotnet.wordpress.com/wp-content/uploads/2013/12/cassette.gif\" alt=\"VU Meter\">";
 
     // delay a specified number of seconds, playtime, before next video is played  
     await wait(playTime * 1000);
