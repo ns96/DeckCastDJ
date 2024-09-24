@@ -27,6 +27,7 @@ body {
       var videoTrack = 0;
       var myTimer;
       var tracklist;
+      var totalPlayTime = 0;
       
       /**
        * Functions and variables here are for socketio
@@ -88,12 +89,7 @@ body {
         
         var startTime = currentTime; 
         var currentSeconds = currentTime; 
-        
-        var hour = Math.floor(currentTime / 3600);
-        currentTime %= 3600;
-        var mins = Math.floor(currentTime / 60);
-        var secs = currentTime % 60;
-        
+                
         // reset the index
         index = 0;
         
@@ -101,23 +97,7 @@ body {
         
         // this function is called every second
         function count() {  
-          secs++;
           currentSeconds++;
-          
-          if(secs == 60){
-            secs = 0;
-            mins = mins + 1;
-          } 
-            
-          if(mins == 60){
-            mins = 0;
-            hour = hour + 1;
-          }
-            
-          if(hour == 24){
-            hour = 1;
-          }
-          
           
           // check to see if to display tracklist information
           if(trackList) {
@@ -128,7 +108,8 @@ body {
           }
           
           if(currentSeconds <= totalSeconds) {
-            timerOutput.innerHTML = plz(hour) + ":" + plz(mins) + ":" + plz(secs);
+            totalPlayTime++;
+            timerOutput.innerHTML = toTime(currentSeconds) + " || Play Time @ " + toTime(totalPlayTime);
           } else {
             timerOutput.innerHTML = "TRACK DONE ...";
           }
@@ -172,6 +153,7 @@ body {
         return "";
       }
       
+      // function to zero pad to left for time. No longer used as of 9/24/2024
       function plz(digit) {
         var zpad = digit + '';
         
@@ -180,6 +162,14 @@ body {
         }
         
         return zpad;
+      }
+
+      // return the hours /min/seconds
+      // https://stackoverflow.com/questions/37096367/how-to-convert-seconds-to-minutes-and-hours-in-javascript
+      function toTime(seconds) {
+        var date = new Date(null);
+        date.setSeconds(seconds);
+        return date.toISOString().substr(11, 8);
       }
     </script>
   </body>

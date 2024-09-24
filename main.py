@@ -31,7 +31,7 @@ defaultPlayListFile = 'data/playlist.json'
 userPlayListFile = 'data/userPlaylist.json'
 invalidVideosFile = 'data/invalidVideos.json'
 
-defaultPlayList = dict() # default playlist for "guest"
+defaultPlayList = dict() # the default playlist for "guest"
 userPlayList = dict()
 youtubePlayListUrls = dict()
 invalidVideosList = list()
