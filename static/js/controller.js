@@ -796,6 +796,19 @@ function resetValues() {
   console.log('Reseting server values ...' + uname);
 }
 
+// reload the playing html page
+function reloadPlaying() {
+  var pin = document.getElementById("pin").value;
+
+  jsonText = {
+    data: 'RELOAD_PLAYING',
+    uname: username,
+    pin: pin,
+    clientId: clientId
+  }
+  socket.emit('my event', jsonText);
+}
+
 // add function to "smoothly" move the slider using a timer function
 function moveSlideTo(playerNum) {
   var steps = 200;

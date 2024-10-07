@@ -22,6 +22,8 @@ body {
     </script>
     
     <script>
+      var clientId = "";
+      var playerClientId = null;
       var videoInfoOutput = document.getElementById("videoInfo");
       var currentVideoId = "";
       var videoTrack = 0;
@@ -43,8 +45,21 @@ body {
       })
         
       socket.on('my response', function(msg) {
-        processMessage(msg);
         console.log(msg);
+        
+        // we need to set the client id the first time to prevent other clients
+        // from updating the playing html while it's already tracking playing videos from
+        // another player
+        if("clientId" in msg) {
+          if(playerClientId === null) {
+            playerClientId = msg.clientId;
+            console.log("Setting Player ClientId " + playerClientId);
+          }
+          
+          if(msg.clientId == playerClientId) {
+            processMessage(msg);
+          }
+        }
       })
 
       // process messages
@@ -70,6 +85,8 @@ body {
           }
           
           startCount(msg.videoTime, msg.ctime, trackList);
+        } else if(msgText === "RELOAD_PLAYING") { 
+          location.reload();  
         } else {
           console.log("Unhandeled socket io message: " + msgText);
         }

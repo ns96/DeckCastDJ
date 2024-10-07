@@ -6,7 +6,7 @@ A simple flask/SocketIO for building very simple youtube DJ application that
 can be shared by other users
 
 @author: Nathan
-@version: 1.7.3 (09/30/2024)
+@version: 1.7.6 (10/07/2024)
 """
 import os.path
 from datetime import datetime, timedelta
@@ -671,12 +671,12 @@ def createQRCode(videoId):
     #print('Image URL', imgUrl)
     return imgUrl        
 
-# get the current information for the video being played
+# get the current information for the video being played html
 def getCurrentVideoInfoHTML(videoId, videoInfo):
     qrImg = createQRCode(videoId)
     #soundBarImg = 'https://i.pinimg.com/originals/31/12/81/31128181420688cf4eda6579ef7dfcc9.gif'
-    soundBarImg = 'https://shopjustaudio.com/cdn/shop/products/VU-Digital-x300.gif'
-    
+    soundBarImg = 'static/img/bar_vu.gif'
+
     tableHtml = '<font size="+7">' + videoInfo[0] + ' | ' + videoInfo[2] + '</font><br>'
     tableHtml += '<font size="+3"><span align="center" id="tracklist"></span></font>'
     tableHtml += '<table cellpadding="2" cellspacing="0" border="0" width="100%">'
@@ -688,14 +688,18 @@ def getCurrentVideoInfoHTML(videoId, videoInfo):
     tableHtml += '<td style="text-align: center;"><img src="' + videoInfo[1] + '" alt="Video Thumbnail" width="360" height="270"><br>' 
     tableHtml += '<img src="' + soundBarImg + '" alt="Soundbar Gif" width="360" height="270">'
     tableHtml += '</td>'
-    #tableHtml += '<td bgcolor="white" style="text-align: center;"><img src="' + qrImg + '" alt="QRCode"></td>'
+
+    # show the QR code for video on youtube
+    tableHtml += '<td bgcolor="white" style="text-align: center;"><img src="' + qrImg + '" alt="QRCode"></td>'
     
+    '''
+    # show video of PCM data encoded onto VHS tape 
     tableHtml += '<td bgcolor="white" style="text-align: center;">'
     tableHtml += '<video width="720" height="480" autoplay loop muted>'
     tableHtml += '<source src="static/video/PCM.mp4" type="video/mp4">'
     tableHtml += 'Your browser does not support the video tag. </video>'
-    
     tableHtml += '</td>'
+    '''
     tableHtml += '</tr></table>'
     
     return tableHtml
