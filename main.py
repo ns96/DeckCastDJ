@@ -180,8 +180,11 @@ def loadYouTubePlayList(username, url, forQue=False):
         playlist = dict()
     
         for video in youtubeList:
-            playlist[video.videoid] = [video.title, video.thumb, video.duration, video.published, username]
-            print(video.videoid, video.title, video.thumb, video.duration, "\n")
+            if video.videoid not in invalidVideosList:
+                playlist[video.videoid] = [video.title, video.thumb, video.duration, video.published, username]
+                print(video.videoid, video.title, video.thumb, video.duration, "\n")
+            else:
+                print("Deleted video:", video.videoid)
     
         userPlayList[username] = playlist
         
@@ -587,13 +590,18 @@ def deleteFromPlayList(videoId, username):
         
     if videoId in videolist:
         videolist.pop(videoId)
-        invalidVideosList.append(videoId)
-    
-        # save the invalid video list now
-        with open(invalidVideosFile, 'w', encoding='utf-8') as f:
-            json.dump(invalidVideosList, f, ensure_ascii=False, indent=4)
+        addToInvalidVideoList(videoId)
     
     return getHTMLTable(username)
+
+def addToInvalidVideoList(videoId):
+    global invalidVideosList
+    
+    invalidVideosList.append(videoId)
+    
+    # save the invalid video list to json file now
+    with open(invalidVideosFile, 'w', encoding='utf-8') as f:
+        json.dump(invalidVideosList, f, ensure_ascii=False, indent=4)
 
 def addToQueList(videoId, username):
     global userPlayList
@@ -806,7 +814,7 @@ def processMessage(json):
             else:
                 json['savedVideo'] = "Video Already in Playlist ..."
     
-    # see if to broadcast the video that currently playing
+    # see if to broadcast the video that's currently playing
     if 'Current Video' in msgTitle:
         videoId = json['videoId']
         pin = json['pin']
@@ -841,17 +849,23 @@ def processMessage(json):
         videoId = json['videoId']
         username = json['uname'].lower().strip()
         
-        # add this video to the ivalid video list
+        # add this video to the invalid video list
         json['playListHTML'] = deleteFromPlayList(videoId, username)
             
-    # delete a video from the que list for the client
+    # delete a video from the que list for the client and if perminet add to invalid video list
     if 'Delete Qued Video' in msgTitle:
         videoId = json['videoId']
         username = json['clientId'].lower().strip()
+        perminent = json['perminent']
         
         json['queListHTML'] = deleteFromQueList(videoId, username)
         json['queListData'] = getQueListData(username)
-        
+
+        # see if to perminately remove the video so it never show up again
+        if perminent:
+            print('Deleting Video:', videoId)
+            addToInvalidVideoList(videoId)
+            
     # reset the stored values
     if 'RESET' in msgTitle:
         userCount = 1

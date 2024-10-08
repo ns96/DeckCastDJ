@@ -15,7 +15,12 @@ firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
 var player1;
 var player2;
 
-// variable handel the mixer slider
+// keep track of the player state to see if video actually played
+var player1State = -2;
+var player2State = -2;
+var notPlayedCount = 0;
+
+// variables to handel the mixer slider
 var slider = document.getElementById("mixer");
 var mixerOutput = document.getElementById("mixerValue");
 mixerOutput.innerHTML = slider.value;
@@ -322,7 +327,8 @@ function onPlayer1StateChange(event) {
     setCurrentVideoPlaying(1, videoId, currentTime);
   }
 
-  console.log("Player1 State " + event.data + ", DJ: " + isDJ);
+  player1State = event.data;
+  console.log("Player1 State " + player1State + ", DJ: " + isDJ);
 }
 
 // 5. The API calls this function when the player's state changes.
@@ -347,7 +353,8 @@ function onPlayer2StateChange(event) {
     setCurrentVideoPlaying(2, videoId, currentTime);
   }
 
-  console.log("Player2 State " + event.data + ", DJ: " + isDJ);
+  player2State = event.data;
+  console.log("Player2 State " + player2State + ", DJ: " + isDJ);
 }
 
 // function to set the current video that's playing
@@ -532,18 +539,29 @@ async function mixQueList(queListString, queListTimesString) {
   }
 
   for (let i = startVideo; i < queList.length; i++) {
+    var videoId = queList[i];
     var endTime = Math.round(timeList[i] * (playPercent / 100));
     var playTime = endTime - overlap;
     var trackNum = i + 1
 
-    // check to make sure we at least play 30 seconds of video
-    if (playTime < 30) playTime = 30;
+    // check to make sure we at least play 30 seconds of video 
+    // or 5 seconds if doing play testing by setting play percent to -1 
+    if(playPercent == -1) {
+      playTime = 5;
+    } else if (playTime < 30) {
+      playTime = 30;
+    }
 
     console.log("Mix Video: " + trackNum + " / " + " : " + timeList[i]);
     console.log("Play Time: " + playTime + " : Endtime: " + endTime);
 
     // display current mixing information
     var message = "Curent Mix Track: " + trackNum + " / Playtime: " + toHHMMSS(playTime);
+    
+    if(playPercent == -1) {
+      message = message + " || Testing (Invalid Videos: " + notPlayedCount + ")";
+    }
+
     document.getElementById("queMixMessage").innerHTML = message;
 
     // if it's not the first video set the start time to the overlap
@@ -557,14 +575,14 @@ async function mixQueList(queListString, queListTimesString) {
       // move the slide to player 1
       moveSlideTo(1);
 
-      player1.loadVideoById(queList[i], startTime);
+      player1.loadVideoById(videoId, startTime);
       player1.playVideo();
 
     } else {
       console.log("Player 2 ...");
       moveSlideTo(2);
 
-      player2.loadVideoById(queList[i], startTime);
+      player2.loadVideoById(videoId, startTime);
       player2.playVideo();
     }
 
@@ -576,6 +594,15 @@ async function mixQueList(queListString, queListTimesString) {
 
     // delay a specified number of seconds, playtime, before next video is played  
     await wait(playTime * 1000);
+
+    // if we doing playing test on video check the player state
+    if(playPercent == -1) {
+      if (i % 2 == 0) {
+        setVideoPlayed(player1State, videoId);    
+      } else {
+        setVideoPlayed(player2State, videoId);
+      }
+    }
 
     // check to see if to top the mix
     if (stopMix[stopIndex]) {
@@ -592,6 +619,16 @@ async function mixQueList(queListString, queListTimesString) {
 // function to wait a certian time before doing something
 function wait(timeout) {
   return new Promise((resolve) => setTimeout(resolve, timeout));
+}
+
+// function to store if video played or not
+function setVideoPlayed(playerState, videoId) {
+  if(playerState != 1) {
+    notPlayedCount++;
+
+    console.log("Video Not Played: " + videoId + " / " + playerState + " Total Count: " + notPlayedCount);
+    removeVideoFromQueList(videoId, true);
+  }
 }
 
 // function to clear videos on the que list
@@ -757,7 +794,7 @@ function removeVideoFromList(videoId) {
 }
 
 // function to remove a video from the que playlist
-function removeVideoFromQueList(videoId) {
+function removeVideoFromQueList(videoId, perminent=false) {
   var pin = document.getElementById("pin").value;
   username = document.getElementById("uname").value;
 
@@ -766,7 +803,8 @@ function removeVideoFromQueList(videoId) {
     player: 0,
     pin: pin,
     clientId: clientId,
-    videoId: videoId
+    videoId: videoId,
+    perminent: perminent
   }
 
   socket.emit('my event', jsonText);
