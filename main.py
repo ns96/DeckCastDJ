@@ -6,7 +6,7 @@ A simple flask/SocketIO for building very simple youtube DJ application that
 can be shared by other users
 
 @author: Nathan
-@version: 1.8.0 (10/10/2024)
+@version: 1.8.1 (10/10/2024)
 """
 import os.path
 from datetime import datetime, timedelta
@@ -710,7 +710,9 @@ def getCurrentVideoInfoHTML(videoId, videoInfo):
     tableHtml += '<table cellpadding="2" cellspacing="0" border="0" width="100%">'
     tableHtml += '<tr>'
     tableHtml += '<td><font size="+5"><span id="track">Track # 1</span></font></td>'
-    tableHtml += '<td><font size="+5"><span id="timer"></span></font></td>'
+    tableHtml += '<td><font size="+5"><span id="timer">'
+    tableHtml += '&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;'
+    tableHtml += '</span></font></td>'
     tableHtml += '</tr>'
     tableHtml += '<tr>'
     tableHtml += '<td style="text-align: center;"><img src="' + videoImg + '" alt="Video Thumbnail" width="360" height="270"><br>' 
@@ -782,7 +784,7 @@ def getMixTracksHTML(mixId):
     # add the title
     html_string = html_string.replace('MIX_ID', mixId)
 
-    # add the video titles and thumnails now
+    # add the video titles and thumbnails now
     bodyHtml = ''
     
     if mixId in mixTracks:
@@ -804,7 +806,7 @@ def getMixTracksHTML(mixId):
 def processMessage(json):
     global defaultPlayList, userCount, player1Video, player2Video
     
-    print("Processing msg: " + str(json));
+    #print("Processing msg: " + str(json));
     msgTitle = json['data']
     
     # update the number of connected users
