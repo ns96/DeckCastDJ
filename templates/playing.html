@@ -12,7 +12,7 @@ body {
     <body>
     <p style="color:#ffffff;">
       <span id="videoInfo">
-      <b>No Video Playing (DeckCastDJ v1.7.x) ...</b>
+      <b>No Video Playing (DeckCastDJ v1.8.x) ...</b>
       </span>
     </p>
     
@@ -21,6 +21,9 @@ body {
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js" integrity="sha512-q/dWJ3kcmjBLU4Qc47E4A9kTB4m3wuTY7vkFJDTZKjTs8jhyGQnaUrxa0Ytd0ssMZhbNua9hE+E7Qv1j+DyZwA==" crossorigin="anonymous">
     </script>
     
+    <!-- load script for generating qrcode on client side -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+
     <script>
       var clientId = "";
       var playerClientId = null;
@@ -34,14 +37,15 @@ body {
       /**
        * Functions and variables here are for socketio
        */
-      var socket = io('http://' + document.domain + ':' + location.port);
+      var serverUrl = 'http://' + document.domain + ':' + location.port;
+      var socket = io(serverUrl);
       
-      socket.on('connect', function() {    
+      socket.on('connect', function() { 
+                clientId = socket.io.engine.id; 
+
                 socket.emit('my event', {
-                data: 'User Connected',
-                uname: "Video Info Client"})
-                
-                clientId = socket.io.engine.id;
+                data: 'Video Info Client Connected',
+                uname: clientId})
       })
         
       socket.on('my response', function(msg) {
@@ -71,9 +75,31 @@ body {
         if("videoInfoHTML" in msg) {
           videoInfoOutput.innerHTML = msg.videoInfoHTML;
           
+          // add the qrcode code now
+          //var qrURL = "https://www.youtube.com/watch?v=" + videoId;  
+          var qrURL = serverUrl + "/mix/" + clientId;
+          var qrcode = new QRCode("qrcode", {
+            text: qrURL,
+            width: 400,
+            height: 400,
+            colorDark : "#000000",
+            colorLight : "#ffffff",
+            correctLevel : QRCode.CorrectLevel.H});
+
           if(videoId != currentVideoId) {
             currentVideoId = videoId;
             videoTrack++;
+
+            // set the track information back to the server for storing
+            jsonText = {
+              data: 'New Video Track',
+              track: videoTrack,
+              clientId: clientId,
+              videoId: currentVideoId,
+              trackAt: toTime(totalPlayTime),
+              videoTitle: msg.videoTitle
+            }
+            socket.emit('my event', jsonText);
           }
           
           var trackOutput = document.getElementById("track");

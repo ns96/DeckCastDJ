@@ -6,7 +6,7 @@ A simple flask/SocketIO for building very simple youtube DJ application that
 can be shared by other users
 
 @author: Nathan
-@version: 1.7.6 (10/07/2024)
+@version: 1.8.0 (10/10/2024)
 """
 import os.path
 from datetime import datetime, timedelta
@@ -40,6 +40,10 @@ pafyCache = dict()
 # dictionary to store the tracklist for a video
 trackListsFile = 'data/tracklists.json'
 videoTrackLists = dict()
+
+# dictionary to hold tracks being displayed on /playing html page
+mixTracks = dict()
+mixTracksFile = 'data/mixTrack.json' 
 
 # key for playlist that holds all the videoIds stored
 mergedPlayListKey = ''
@@ -315,6 +319,19 @@ def loadUserPlayList(username):
     youtubePlayListUrls[playlistKey] = "N/A"
     
     print("User playlist loaded: " + str(len(userPlayList)))
+
+# function to load the mix track videos
+def loadMixVideoTracks():
+    global mixTracks
+
+    if os.path.isfile(mixTracksFile):
+        with open(mixTracksFile) as json_file: 
+            mts = json.load(json_file)
+            
+            # only add none empty list
+            for mixId in mts.keys():
+                if mts[mixId]:
+                    mixTracks[mixId] = mts[mixId]                     
 
 # function to check if the playlist has any videos which were deleted
 # from youtube
@@ -681,9 +698,12 @@ def createQRCode(videoId):
 
 # get the current information for the video being played html
 def getCurrentVideoInfoHTML(videoId, videoInfo):
-    qrImg = createQRCode(videoId)
     #soundBarImg = 'https://i.pinimg.com/originals/31/12/81/31128181420688cf4eda6579ef7dfcc9.gif'
     soundBarImg = 'static/img/bar_vu.gif'
+
+    # get the biggest video thumnail
+    #https://stackoverflow.com/questions/16222407/url-of-large-image-of-a-youtube-video
+    videoImg = 'https://img.youtube.com/vi/' + videoId + '/0.jpg'
 
     tableHtml = '<font size="+7">' + videoInfo[0] + ' | ' + videoInfo[2] + '</font><br>'
     tableHtml += '<font size="+3"><span align="center" id="tracklist"></span></font>'
@@ -693,13 +713,13 @@ def getCurrentVideoInfoHTML(videoId, videoInfo):
     tableHtml += '<td><font size="+5"><span id="timer"></span></font></td>'
     tableHtml += '</tr>'
     tableHtml += '<tr>'
-    tableHtml += '<td style="text-align: center;"><img src="' + videoInfo[1] + '" alt="Video Thumbnail" width="360" height="270"><br>' 
+    tableHtml += '<td style="text-align: center;"><img src="' + videoImg + '" alt="Video Thumbnail" width="360" height="270"><br>' 
     tableHtml += '<img src="' + soundBarImg + '" alt="Soundbar Gif" width="360" height="270">'
     tableHtml += '</td>'
 
-    # show the QR code for video on youtube
-    tableHtml += '<td bgcolor="white" style="text-align: center;"><img src="' + qrImg + '" alt="QRCode"></td>'
-    
+    # show the QR code for video on youtube or playlist here
+    tableHtml += '<td bgcolor="white"><div id="qrcode" style="width: 50%; margin: 0 auto;"></div></td>'
+
     '''
     # show video of PCM data encoded onto VHS tape 
     tableHtml += '<td bgcolor="white" style="text-align: center;">'
@@ -715,15 +735,71 @@ def getCurrentVideoInfoHTML(videoId, videoInfo):
 # get the current information for the video being played
 def getLiteCurrentVideoInfoHTML(videoId, videoInfo):
     qrImg = createQRCode(videoId)
+    videoImg = 'https://img.youtube.com/vi/' + videoId + '/0.jpg'
     
     tableHtml = '<font size="+5">' + videoInfo[0] + ' | ' + videoInfo[2] + '</font><br>'
     tableHtml += '<table cellpadding="2" cellspacing="0" border="0" width="100%">'
     tableHtml += '<tr>'
-    tableHtml += '<td style="text-align: center;"><img src="' + videoInfo[1] + '" alt="Video Thumbnail" width="360" height="270"></td>' 
+    tableHtml += '<td style="text-align: center;"><img src="' + videoImg + '" alt="Video Thumbnail" width="360" height="270"></td>' 
     tableHtml += '<td bgcolor="white" style="text-align: center;"><img src="' + qrImg + '" alt="QRCode" width="215" height="215"></td>'
     tableHtml += '</tr></table>'
     
     return tableHtml
+
+# add video track from playing html to playmix dictionary
+def addToMixTracksDictionary(jsonData):
+    print("\nPlay Mix Track Data:", jsonData)
+    clientId = jsonData['clientId']
+    videoId = jsonData['videoId']
+    track = jsonData['track']
+    trackAt = jsonData['trackAt']
+    title = jsonData['videoTitle']
+
+    mixTracks[clientId].append([track, videoId, trackAt, title])
+
+    # save out to json
+    with open(mixTracksFile, 'w', encoding='utf-8') as f:
+        json.dump(mixTracks, f, ensure_ascii=False, indent=4)
+
+# return basic html with video tracks
+def getMixTracksHTML(mixId):
+    html_string = """
+        <!DOCTYPE html>
+        <html>
+        <head>
+        <title>Video Mix( MIX_ID )</title>
+        <style>
+            body {
+                background-color: #000000;
+            }
+        </style>
+        </head>
+        <body>
+            TRACKS
+        </body>
+        </html>
+        """
+    # add the title
+    html_string = html_string.replace('MIX_ID', mixId)
+
+    # add the video titles and thumnails now
+    bodyHtml = ''
+    
+    if mixId in mixTracks:
+        mixVideos = mixTracks[mixId]
+
+        for videoInfo in mixVideos:
+            ytUrl = "https://www.youtube.com/watch?v=" + videoInfo[1]
+            videoImg = 'https://img.youtube.com/vi/' + videoInfo[1] + '/0.jpg'
+
+            bodyHtml += '<div><a href="' + ytUrl + '" target="_blank"><img src="' + videoImg + '" alt="Video Thumbnail"></a></div>'
+            bodyHtml += '<p style="color:#ffffff;"><b>Track # ' + str(videoInfo[0])  + ' Start @ ' + videoInfo[2] + ' || ' + videoInfo[3]  + '</b></p>'
+
+        html_string = html_string.replace('TRACKS', bodyHtml)
+    else:
+        html_string = html_string.replace('TRACKS', '<p style="color:#ffffff;">INVALID MIX ID: ' + mixId + '</p>')
+
+    return html_string
 
 def processMessage(json):
     global defaultPlayList, userCount, player1Video, player2Video
@@ -865,7 +941,17 @@ def processMessage(json):
         if perminent:
             print('Deleting Video:', videoId)
             addToInvalidVideoList(videoId)
-            
+
+    # get client information from the playing html client
+    if 'Video Info Client Connected' in msgTitle:
+        clientId = json['uname']
+        mixTracks[clientId] = list() # add an entry in the mix track dictionary
+        print('Video Info Client Connected:', clientId)
+        
+    # a new video track was loaded into the playing html client
+    if 'New Video Track' in msgTitle:
+        addToMixTracksDictionary(json)
+
     # reset the stored values
     if 'RESET' in msgTitle:
         userCount = 1
@@ -879,8 +965,12 @@ def sessions():
     return render_template('index.html')
 
 @app.route('/playing')
-def current():
+def currentVideo():
     return render_template('playing.html')
+
+@app.route('/mix/<mixId>')
+def getMixTracks(mixId):
+    return getMixTracksHTML(mixId) 
 
 def messageReceived(methods=['GET', 'POST']):
     print('message was received!!!')
@@ -904,6 +994,7 @@ if __name__ == '__main__':
     print("Loading local playlist ...\n")
     loadInvalidVideosList()
     loadPlayList()
+    loadMixVideoTracks()
 
     # No longer loading likes videos from json file, just load from youtube 
     # playlist. Make it easier to update

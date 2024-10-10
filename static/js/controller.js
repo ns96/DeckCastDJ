@@ -604,7 +604,7 @@ async function mixQueList(queListString, queListTimesString) {
       }
     }
 
-    // check to see if to top the mix
+    // check to see if to stop the mix
     if (stopMix[stopIndex]) {
       console.log("Stopping Mix @ " + i);
       break;
@@ -613,6 +613,7 @@ async function mixQueList(queListString, queListTimesString) {
 
   playMix = false;
   vumeterOutput.innerHTML = "";
+  notPlayedCount = 0;   // reset this variable
   console.log("Mix Play Done ...");
 }
 
