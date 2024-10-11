@@ -6,7 +6,7 @@ A simple flask/SocketIO for building very simple youtube DJ application that
 can be shared by other users
 
 @author: Nathan
-@version: 1.8.1 (10/10/2024)
+@version: 1.8.2 (10/11/2024)
 """
 import os.path
 from datetime import datetime, timedelta
@@ -15,6 +15,7 @@ from urllib.error import HTTPError
 import json
 import pafy
 import qrcode
+import pickle
 from config import youtubeApiKey
 
 # set the youtube api key. 
@@ -30,6 +31,7 @@ socketio = SocketIO(app)
 defaultPlayListFile = 'data/playlist.json'
 userPlayListFile = 'data/userPlaylist.json'
 invalidVideosFile = 'data/invalidVideos.json'
+pafyCacheFile = 'data/pafyCache.pkl'
 
 defaultPlayList = dict() # the default playlist for "guest"
 userPlayList = dict()
@@ -196,7 +198,12 @@ def loadYouTubePlayList(username, url, forQue=False):
             youtubePlayListUrls[playlistKey] = url
         
         #checkPlayList(playlist)
-    
+
+        # save pafy cache dictionary as pickle file
+        with open(pafyCacheFile, 'wb') as fp:
+            pickle.dump(pafyCache, fp)
+            print("Pafy Cache Saved ...")
+
         print("YouTube playlist loaded: " + youtubeList.title + " / " + str(len(playlist)))
     except Exception as e:
         print("Error loading YouTube playlist ...\n", url, "\n" , e)
@@ -320,6 +327,15 @@ def loadUserPlayList(username):
     
     print("User playlist loaded: " + str(len(userPlayList)))
 
+# function to load the pickled pafy cache
+def loadPafyCache():
+    global pafyCache
+
+    if os.path.isfile(pafyCacheFile):
+        with open(pafyCacheFile, 'rb') as fp:
+            pafyCache = pickle.load(fp)
+            print("Loaded pafy cache file ...")
+
 # function to load the mix track videos
 def loadMixVideoTracks():
     global mixTracks
@@ -328,7 +344,7 @@ def loadMixVideoTracks():
         with open(mixTracksFile) as json_file: 
             mts = json.load(json_file)
             
-            # only add none empty list
+            # only add none empty to the list
             for mixId in mts.keys():
                 if mts[mixId]:
                     mixTracks[mixId] = mts[mixId]                     
@@ -763,9 +779,27 @@ def addToMixTracksDictionary(jsonData):
     with open(mixTracksFile, 'w', encoding='utf-8') as f:
         json.dump(mixTracks, f, ensure_ascii=False, indent=4)
 
+# return the body section for the mix tracks
+def getMixTracksBodyHTML(mixId):
+    bodyHtml = ''
+
+    if mixId in mixTracks:
+        mixVideos = mixTracks[mixId]
+
+        for videoInfo in mixVideos:
+            ytUrl = "https://www.youtube.com/watch?v=" + videoInfo[1]
+            videoImg = 'https://img.youtube.com/vi/' + videoInfo[1] + '/0.jpg'
+
+            bodyHtml += '<div><a href="' + ytUrl + '" target="_blank"><img src="' + videoImg + '" alt="Video Thumbnail"></a></div>'
+            bodyHtml += '<p style="color:#ffffff;"><b>Track # ' + str(videoInfo[0])  + ' Start @ ' + videoInfo[2] + ' || ' + videoInfo[3]  + '</b></p>'
+    else:
+        bodyHtml = '<p style="color:#ffffff;">INVALID MIX ID: ' + mixId + '</p>'
+
+    return bodyHtml    
+
 # return basic html with video tracks
 def getMixTracksHTML(mixId):
-    html_string = """
+    htmlString = """
         <!DOCTYPE html>
         <html>
         <head>
@@ -782,26 +816,22 @@ def getMixTracksHTML(mixId):
         </html>
         """
     # add the title
-    html_string = html_string.replace('MIX_ID', mixId)
-
-    # add the video titles and thumbnails now
-    bodyHtml = ''
+    htmlString = htmlString.replace('MIX_ID', mixId)
     
-    if mixId in mixTracks:
-        mixVideos = mixTracks[mixId]
-
-        for videoInfo in mixVideos:
-            ytUrl = "https://www.youtube.com/watch?v=" + videoInfo[1]
-            videoImg = 'https://img.youtube.com/vi/' + videoInfo[1] + '/0.jpg'
-
-            bodyHtml += '<div><a href="' + ytUrl + '" target="_blank"><img src="' + videoImg + '" alt="Video Thumbnail"></a></div>'
-            bodyHtml += '<p style="color:#ffffff;"><b>Track # ' + str(videoInfo[0])  + ' Start @ ' + videoInfo[2] + ' || ' + videoInfo[3]  + '</b></p>'
-
-        html_string = html_string.replace('TRACKS', bodyHtml)
+    if mixId != 'ALL':
+        htmlString = htmlString.replace('TRACKS', getMixTracksBodyHTML(mixId))
     else:
-        html_string = html_string.replace('TRACKS', '<p style="color:#ffffff;">INVALID MIX ID: ' + mixId + '</p>')
+        bodyHtml = ''
+        for key in mixTracks.keys():
+            trackCount = str(len(mixTracks[key]))
 
-    return html_string
+            bodyHtml += '<p style="color:#ffffff;"><b>Mix Tracks For (' + key + '): ' + trackCount + '</b></p>'
+            bodyHtml += getMixTracksBodyHTML(key)
+            bodyHtml +='<hr style="background-color: #ffffff; height: 4px;">'
+
+        htmlString = htmlString.replace('TRACKS', bodyHtml)    
+
+    return htmlString
 
 def processMessage(json):
     global defaultPlayList, userCount, player1Video, player2Video
@@ -996,6 +1026,7 @@ if __name__ == '__main__':
     print("Loading local playlist ...\n")
     loadInvalidVideosList()
     loadPlayList()
+    loadPafyCache()
     loadMixVideoTracks()
 
     # No longer loading likes videos from json file, just load from youtube 
