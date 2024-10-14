@@ -6,7 +6,7 @@ A simple flask/SocketIO for building very simple youtube DJ application that
 can be shared by other users
 
 @author: Nathan
-@version: 1.8.2 (10/11/2024)
+@version: 1.8.3 (10/14/2024)
 """
 import os.path
 from datetime import datetime, timedelta
@@ -587,20 +587,7 @@ def getQueListData(username):
    
 # get the title and thumbnail image for the video
 # https://stackoverflow.com/questions/59627108/retrieve-youtube-video-title-using-api-python
-def getVideoInfo(videoId, username):
-    '''
-    params = {"format": "json", "url": "https://www.youtube.com/watch?v=%s" % videoId}
-    url = "https://www.youtube.com/oembed"
-    query_string = urllib.parse.urlencode(params)
-    url = url + "?" + query_string
-
-    with urllib.request.urlopen(url) as response:
-        response_text = response.read()
-        data = json.loads(response_text.decode())
-        
-    return ([data['title'], data['thumbnail_url'], "--:--:--", username])
-    '''
-        
+def getVideoInfo(videoId, username):        
     url = "http://www.youtube.com/watch?v=" + videoId
     video = pafy.new(url)            
     return [video.title, video.thumb, video.duration, video.published, username]
@@ -772,8 +759,11 @@ def addToMixTracksDictionary(jsonData):
     track = jsonData['track']
     trackAt = jsonData['trackAt']
     title = jsonData['videoTitle']
+    format = jsonData['videoFormat']
+    videoUrl = jsonData['videoUrl']
+    videoImg = jsonData['videoImg']
 
-    mixTracks[clientId].append([track, videoId, trackAt, title])
+    mixTracks[clientId].append([track, videoId, trackAt, title, format, videoUrl, videoImg])
 
     # save out to json
     with open(mixTracksFile, 'w', encoding='utf-8') as f:
@@ -787,10 +777,14 @@ def getMixTracksBodyHTML(mixId):
         mixVideos = mixTracks[mixId]
 
         for videoInfo in mixVideos:
-            ytUrl = "https://www.youtube.com/watch?v=" + videoInfo[1]
-            videoImg = 'https://img.youtube.com/vi/' + videoInfo[1] + '/0.jpg'
+            if videoInfo[4] == 'youtube':
+                videoUrl = "https://www.youtube.com/watch?v=" + videoInfo[1]
+                videoImg = 'https://img.youtube.com/vi/' + videoInfo[1] + '/0.jpg'
+            else:
+                videoUrl = videoInfo[5]
+                videoImg = videoInfo[6]
 
-            bodyHtml += '<div><a href="' + ytUrl + '" target="_blank"><img src="' + videoImg + '" alt="Video Thumbnail"></a></div>'
+            bodyHtml += '<div><a href="' + videoUrl + '" target="_blank"><img src="' + videoImg + '" alt="Video Thumbnail" width="480" height="360"></a></div>'
             bodyHtml += '<p style="color:#ffffff;"><b>Track # ' + str(videoInfo[0])  + ' Start @ ' + videoInfo[2] + ' || ' + videoInfo[3]  + '</b></p>'
     else:
         bodyHtml = '<p style="color:#ffffff;">INVALID MIX ID: ' + mixId + '</p>'
@@ -937,6 +931,9 @@ def processMessage(json):
         json['videoInfoHTML'] = getCurrentVideoInfoHTML(videoId, videoInfo)
         json['videoInfoLiteHTML'] = getLiteCurrentVideoInfoHTML(videoId, videoInfo)
         json['videoTime'] = totalSeconds
+        json['videoFormat'] = 'youtube'
+        json['videoUrl'] = ''
+        json['videoImg'] = ''
 
         if videoId in videoTrackLists:
             json['trackList'] = videoTrackLists[videoId]

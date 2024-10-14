@@ -89,15 +89,18 @@ body {
           if(videoId != currentVideoId) {
             currentVideoId = videoId;
             videoTrack++;
-
-            // set the track information back to the server for storing
+            
+            // send the track information back to the server for storing
             jsonText = {
               data: 'New Video Track',
               track: videoTrack,
               clientId: clientId,
               videoId: currentVideoId,
               trackAt: toTime(totalPlayTime),
-              videoTitle: msg.videoTitle
+              videoTitle: msg.videoTitle,
+              videoFormat: msg.videoFormat,
+              videoUrl: msg.videoUrl,
+              videoImg: msg.videoImg
             }
             socket.emit('my event', jsonText);
           }
