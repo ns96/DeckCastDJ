@@ -651,6 +651,25 @@ function clearQueList() {
   }
 }
 
+// function to reload the que list
+function reloadQueList() {
+  var pin = document.getElementById("pin").value;
+
+  jsonText = {
+    data: 'Video Qued',
+    player: 0,
+    pin: pin,
+    clientId: clientId,
+    videoId: "-1"
+  }
+  socket.emit('my event', jsonText);
+  console.log("Reload Video Que: " + clientId);
+
+  if(playMix) {
+    stopMixPlay();
+  }
+}
+
 // function to stop a playing mix
 function stopMixPlay() {
   stopMix[stopMixIndex] = true;

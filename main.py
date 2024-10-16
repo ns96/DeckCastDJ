@@ -6,7 +6,7 @@ A simple flask/SocketIO for building very simple youtube DJ application that
 can be shared by other users
 
 @author: Nathan
-@version: 1.8.3 (10/14/2024)
+@version: 1.8.4 (10/15/2024)
 """
 import os.path
 from datetime import datetime, timedelta
@@ -341,13 +341,34 @@ def loadMixVideoTracks():
     global mixTracks
 
     if os.path.isfile(mixTracksFile):
+        print("\nLoading mix tracks list ...")
         with open(mixTracksFile) as json_file: 
             mts = json.load(json_file)
             
-            # only add none empty to the list
+            # only add none empty list to the dictionary and 
+            # with more than 5 min of play time
             for mixId in mts.keys():
-                if mts[mixId]:
-                    mixTracks[mixId] = mts[mixId]                     
+                if mts[mixId] and validMixPlayTime(mts[mixId]):
+                    mixTracks[mixId] = mts[mixId]
+
+        # now save out to disk after it's been cleaned up
+        with open(mixTracksFile, 'w', encoding='utf-8') as f:
+            json.dump(mixTracks, f, ensure_ascii=True, indent=4)                     
+
+# function to get the total time for mix tracks and if less than a certain value
+# return false
+def validMixPlayTime(tracks):
+    MIN_AVG_TIME = 45 # average playtime must be more than this to store it
+
+    lastTrack = tracks[-1] # last track as total playtime
+    timeString = lastTrack[2]
+    
+    hours, minutes, seconds = map(int, timeString.split(':'))
+    totalSeconds = hours * 3600 + minutes * 60 + seconds
+    avgSeconds = int(totalSeconds/len(tracks))
+
+    print("Mix Total Playtime Seconds", totalSeconds, "/", len(tracks), avgSeconds)
+    return (avgSeconds >= MIN_AVG_TIME)
 
 # function to check if the playlist has any videos which were deleted
 # from youtube
@@ -442,14 +463,15 @@ def getHTMLTable(username = "", filter_text = "", que_list = False, sort = True)
         
         qsize = len(sortedList)
         tableHtml += '<b>Qued Video(s): ' + str(qsize) + '</b> '
-        tableHtml += '<input type="button" onclick="clearQueList()" value="Clear Que"> '
+        tableHtml += '<input type="button" onclick="clearQueList()" value="Clear"> '
+        tableHtml += '<input type="button" onclick="reloadQueList()" value="RL"> '
         tableHtml += '<input type="button" onclick="playQueList(\'' + queListString + '\')" value="Play All ( ' + totalTime + ' )"> '
         tableHtml += '<input type="button" onclick="mixQueList(\'' + queListString + '\',\'' + queListTimesString + '\')" value="Play Mix"> '
         tableHtml += 'Start @ Video: <input type="text" id="startMixAt" name="startMixAt" value="1" size="1"> '
         tableHtml += 'Overlap: <input type="text" id="mixOverlap" name="mixOverlap" value="20" size="2"> Seconds || '
         tableHtml += 'Play Percent: <input type="text" id="mixPlayPercent" name="mixPlayPercent" value="60" size="2"> '
         tableHtml += '<input type="button" onclick="stopMixPlay()" value="Stop Mix"><br>'
-        tableHtml += '<span id="queMixMessage">Curent Mix Track: 0 / Playtime: 0000 seconds</span>'
+        tableHtml += '<span id="queMixMessage"><b>Curent Mix Track: 0 / Playtime: 0000 seconds</b></span>'
     
     # add the main table for tracks here
     tableHtml += '<br><br><table cellpadding="2" cellspacing="0" border="0" width="100%">'
@@ -767,7 +789,7 @@ def addToMixTracksDictionary(jsonData):
 
     # save out to json
     with open(mixTracksFile, 'w', encoding='utf-8') as f:
-        json.dump(mixTracks, f, ensure_ascii=False, indent=4)
+        json.dump(mixTracks, f, ensure_ascii=True, indent=4)
 
 # return the body section for the mix tracks
 def getMixTracksBodyHTML(mixId):
@@ -896,10 +918,15 @@ def processMessage(json):
             copyPlayListToQue(username.lower(), savedList.lower())
             json['queListHTML'] = getHTMLTable(username, "", True, False)
             json['queListData'] = getQueListData(username)
+        elif videoId == "-1":
+            # just reload the que list
+            json['queListHTML'] = getHTMLTable(username, "", True, False)
+            json['queListData'] = getQueListData(username)
         elif videoId != "0":
             json['queListHTML'] = addToQueList(videoId, username)
             json['queListData'] = getQueListData(username)
         else:
+            # videoId = 0 so clear cue list
             json['queListHTML'] = clearQueList(username)
     
     # see if to save the video to the playlist
@@ -1048,7 +1075,7 @@ if __name__ == '__main__':
         
         print("Merging done ...")
     else:
-        print("Loading backup playlist ...\n")
+        print("\nLoading backup playlist ...\n")
         loadBackupUserPlayList();
         print("Done loading backup ...\n")
     
