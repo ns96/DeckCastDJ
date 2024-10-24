@@ -60,7 +60,7 @@ socket.on('my response', function (msg) {
   // need to see if the message has a playlist?
   updatePlayList(msg);
 
-  if (!getIsDJ() && !getIsPrivate()) {
+  if (!getIsDJ() && !isPrivate()) {
     processMessage(msg);
   }
 
@@ -76,12 +76,13 @@ socket.on('my response', function (msg) {
 // update the que list or playList if needed
 function updatePlayList(msg) {
   console.log("Updating que/playlist: " + msg);
+  var msgClientId;
 
   // display the que list if needed
   if ("queListHTML" in msg) {
-    queClientId = msg.clientId;
+    msgClientId = msg.clientId;
 
-    if (queClientId === clientId) {
+    if (msgClientId === clientId) {
       queListOutput.innerHTML = msg.queListHTML;
     } else {
       console.log("Que Client Id doesn't match ...");
@@ -90,7 +91,10 @@ function updatePlayList(msg) {
 
   // display the playlist html if needed
   if ("playListHTML" in msg) {
-    playListOutput.innerHTML = msg.playListHTML;
+    msgClientId = msg.clientId;
+    if (msgClientId === clientId) {
+      playListOutput.innerHTML = msg.playListHTML;
+    }
   }
 
   // see if to alert the user that the video was saved
@@ -247,7 +251,7 @@ function updatePlayerState(msg) {
 }
 
 function updateConnectedUsers(msg) {
-  if (!getIsDJ()) {
+  if (!getIsDJ() && !isPrivate()) {
     if ("videoId1" in msg) {
       currentVideoId1 = msg.videoId1;
     }
@@ -386,6 +390,28 @@ function loadVideo(playerNum) {
   var videoId = getYouTubeID(input.value);
   loadVideoForPlayer(playerNum, videoId);
   input.value = "";
+}
+
+// function to start video after short delay. This is to allow playback even when screen is locked
+async function delayPlay(playerNum) {
+  var currentPlayer;
+  var currentVideoId;
+  var DELAY = 10;
+
+  if (playerNum == 1) {
+    currentPlayer = player1;
+    currentVideoId = currentVideoId1;
+  } else {
+    currentPlayer = player2;
+    currentVideoId = currentVideoId2;
+  }
+
+  // delay a specified number of seconds, playtime, before playing video  
+  await wait(DELAY * 1000);
+  currentPlayer.loadVideoById(currentVideoId, 0);
+  currentPlayer.playVideo();
+
+  console.log("Current Video, Player # " + playerNum + ", Started after " + DELAY + "s delay ...");
 }
 
 // functon called by que video button
@@ -548,6 +574,12 @@ async function mixQueList(queListString, queListTimesString) {
     // or 5 seconds if doing play testing by setting play percent to -1 
     if(playPercent == -1) {
       playTime = 5;
+    } else if (playPercent == -2) {
+      // we are playing audio to make animated gifs so 
+      // start 1.5 minutes in and only play 25 seconds
+      playTime = 25;
+      startTime = 90;
+      overlap = startTime;
     } else if (playTime < 30) {
       playTime = 30;
     }
@@ -578,12 +610,31 @@ async function mixQueList(queListString, queListTimesString) {
       player1.loadVideoById(videoId, startTime);
       player1.playVideo();
 
+      if (getIsDJ()) {
+        jsonText = {
+          data: 'Video Changed -- Player 1',
+          player: 1,
+          uname: username,
+          videoId: videoId
+        }
+        socket.emit('my event', jsonText);
+      }
     } else {
       console.log("Player 2 ...");
       moveSlideTo(2);
 
       player2.loadVideoById(videoId, startTime);
       player2.playVideo();
+
+      if (getIsDJ()) {
+        jsonText = {
+          data: 'Video Changed -- Player 2',
+          player: 2,
+          uname: username,
+          videoId: videoId
+        }
+        socket.emit('my event', jsonText);
+      }      
     }
 
     // load the animated vumeter or tape gif
@@ -741,6 +792,7 @@ function loadVideoForPlayer(playerNum, videoId) {
   username = document.getElementById("uname").value;
 
   if (playerNum == 1) {
+    currentVideoId1 = videoId;
     player1.loadVideoById(videoId, 0);
 
     if (getIsDJ()) {
@@ -753,6 +805,7 @@ function loadVideoForPlayer(playerNum, videoId) {
       socket.emit('my event', jsonText);
     }
   } else {
+    currentVideoId2 = videoId;
     player2.loadVideoById(videoId, 0);
 
     if (getIsDJ()) {
@@ -779,7 +832,8 @@ function loadPlayListForUser(username, filter, showUsername = false) {
   jsonText = {
     data: 'Load PlayList',
     uname: username,
-    filter: filter
+    filter: filter,
+    clientId: clientId
   }
   socket.emit('my event', jsonText);
 
@@ -805,7 +859,8 @@ function removeVideoFromList(videoId) {
     jsonText = {
       data: 'Delete Video',
       uname: username,
-      videoId: videoId
+      videoId: videoId,
+      clientId: clientId
     }
     socket.emit('my event', jsonText);
   } else {
@@ -837,7 +892,7 @@ function getIsDJ() {
 }
 
 // return if the person wants to be private
-function getIsPrivate() {
+function isPrivate() {
   return document.getElementById("isPrivate").checked;
 }
 

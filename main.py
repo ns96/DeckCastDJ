@@ -6,7 +6,7 @@ A simple flask/SocketIO for building very simple youtube DJ application that
 can be shared by other users
 
 @author: Nathan
-@version: 1.8.4 (10/15/2024)
+@version: 1.8.7 (10/24/2024)
 """
 import os.path
 from datetime import datetime, timedelta
@@ -765,6 +765,7 @@ def getLiteCurrentVideoInfoHTML(videoId, videoInfo):
     videoImg = 'https://img.youtube.com/vi/' + videoId + '/0.jpg'
     
     tableHtml = '<font size="+5">' + videoInfo[0] + ' | ' + videoInfo[2] + '</font><br>'
+    tableHtml += '<font size="+3"><span id="track">Track # 1</span> <span id="timer"></span></font><br>'
     tableHtml += '<table cellpadding="2" cellspacing="0" border="0" width="100%">'
     tableHtml += '<tr>'
     tableHtml += '<td style="text-align: center;"><img src="' + videoImg + '" alt="Video Thumbnail" width="360" height="270"></td>' 
@@ -1023,6 +1024,10 @@ def sessions():
 @app.route('/playing')
 def currentVideo():
     return render_template('playing.html')
+
+@app.route('/vu')
+def showVU():
+    return render_template('vu.html')
 
 @app.route('/mix/<mixId>')
 def getMixTracks(mixId):

@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Deck Cast VU Meter</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: black;
+            color: white;
+            font-size: 18px;
+            font-weight: bold;
+        }
+        .vu-meter-container {
+            display: flex;
+            flex-wrap: wrap;
+            flex-direction: column;
+        }
+        .channel-container {
+            display: flex;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        .channel-label {
+            width: 130px;
+            font-size: 18px;
+            font-weight: bold;
+        }
+        .channel-bars {
+            flex-grow: 1;
+            font-family: monospace;
+            font-size: 24px;
+            font-weight: bold;
+            background-color: #444;
+            color: white;
+            padding: 10px;
+            height: 30px;
+            white-space: pre;
+            overflow: hidden;
+        }
+
+        .break {
+            flex-basis: 100%;
+            height: 10;
+        }
+    </style>
+</head>
+<body>
+    <div>
+        <p><span id="videoInfo">
+            <b>No Video Playing (DeckCastDJ v1.8.x) ...</b>
+        </span></p>
+        <p>
+    </div>
+
+    <div class="vu-meter-container">
+        <div class="channel-container">
+            <div class="channel-label">L Channel:</div>
+            <div id="left-channel" class="channel-bars"></div>
+        </div>
+
+        <div class="channel-container">
+            <div class="channel-label">R Channel:</div>
+            <div id="right-channel" class="channel-bars"></div>
+        </div>
+    </div>
+
+    <!-- load script for socketio -->
+    <!-- <script src="//cdnjs.cloudflare.com/ajax/libs/socket.io/2.2.0/socket.io.js" integrity="sha256-yr4fRk/GU1ehYJPAs8P4JlTgu0Hdsp4ZKrx8bDEDC3I=" crossorigin="anonymous"></script> -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js" integrity="sha512-q/dWJ3kcmjBLU4Qc47E4A9kTB4m3wuTY7vkFJDTZKjTs8jhyGQnaUrxa0Ytd0ssMZhbNua9hE+E7Qv1j+DyZwA==" crossorigin="anonymous">
+    </script>
+    
+    <script>
+      var clientId = "";
+      var playerClientId = null;
+      var videoInfoOutput = document.getElementById("videoInfo");
+      var currentVideoId = "";
+      var videoTrack = 0;
+      var myTimer;
+      var tracklist;
+      var totalPlayTime = 0;
+      
+      /**
+       * Functions and variables here are for socketio
+       */
+      var serverUrl = 'http://' + document.domain + ':' + location.port;
+      var socket = io(serverUrl);
+      
+      socket.on('connect', function() { 
+                clientId = socket.io.engine.id; 
+
+                socket.emit('my event', {
+                data: 'Video Info Client Connected',
+                uname: clientId})
+      })
+        
+      socket.on('my response', function(msg) {
+        console.log(msg);
+        
+        // we need to set the client id the first time to prevent other clients
+        // from updating the playing html while it's already tracking playing videos from
+        // another player
+        if("clientId" in msg) {
+          if(playerClientId === null) {
+            playerClientId = msg.clientId;
+            console.log("Setting Player ClientId " + playerClientId);
+          }
+          
+          if(msg.clientId == playerClientId) {
+            processMessage(msg);
+          }
+        }
+      })
+
+      // process messages
+      function processMessage(msg) {
+        var msgText = msg.data;
+        var videoId = msg.videoId;
+        var trackList = msg.trackList
+        
+        if("videoInfoLiteHTML" in msg) {
+          videoInfoOutput.innerHTML = msg.videoInfoLiteHTML;
+          
+          if(videoId != currentVideoId) {
+            currentVideoId = videoId;
+            videoTrack++;
+            
+            // send the track information back to the server for storing
+            jsonText = {
+              data: 'New Video Track',
+              track: videoTrack,
+              clientId: clientId,
+              videoId: currentVideoId,
+              trackAt: toTime(totalPlayTime),
+              videoTitle: msg.videoTitle,
+              videoFormat: msg.videoFormat,
+              videoUrl: msg.videoUrl,
+              videoImg: msg.videoImg
+            }
+            socket.emit('my event', jsonText);
+          }
+          
+          var trackOutput = document.getElementById("track");
+          trackOutput.innerHTML = "Track # " + videoTrack;
+          
+          // remove any old timer and start a new one
+          if(videoTrack != 0) {
+            clearInterval(myTimer);
+          }
+          
+          startCount(msg.videoTime, msg.ctime, trackList);
+        } else if(msgText === "RELOAD_PLAYING") { 
+          location.reload();  
+        } else {
+          console.log("Unhandeled socket io message: " + msgText);
+        }
+      }
+      
+      var index = 0;
+      var step = 0;
+      
+      // start a timer to keep track of the video playing
+      function startCount(totalSeconds, currentTime, trackList) {
+        var timerOutput = document.getElementById("timer");
+        var tracklistOutput = document.getElementById("tracklist");
+        
+        if(trackList) {
+          step = parseInt(totalSeconds/trackList.length);
+        }
+        
+        var startTime = currentTime; 
+        var currentSeconds = currentTime; 
+                
+        // reset the index
+        index = 0;
+        
+        myTimer = setInterval(count, 1000);
+        
+        // this function is called every second
+        function count() {  
+          currentSeconds++;
+          
+          // check to see if to display tracklist information
+          if(trackList) {
+            var trackName  = getTrackName(totalSeconds, currentSeconds, startTime, trackList)
+            if(trackName !== "") {
+              tracklistOutput.innerHTML = trackName;
+            }
+          }
+          
+          if(currentSeconds <= totalSeconds) {
+            totalPlayTime++;
+            timerOutput.innerHTML = "(" + toTime(currentSeconds) + " || Play Time @ " + toTime(totalPlayTime) + ")";
+          } else {
+            timerOutput.innerHTML = "TRACK DONE ...";
+          }
+        }
+      }
+      
+      // return the track name base on where we are in the playback.
+      function getTrackName(totalSeconds, currentSeconds, startTime, trackList) {
+        var diff1 = currentSeconds - startTime;
+        var diff2 = (index*step + parseInt(step/2)) - currentSeconds;
+        
+        if(diff1 <= 1 && startTime != 0) {
+          for(i = 0; i < totalSeconds; i += step) {
+            if(i - currentSeconds >= 0) {
+              break;
+            }
+            index++;
+          }
+        }
+        
+        if(diff1 <= 1 || diff2 == 0) {
+          //var trackNameTest = trackList[index] + index + " > " + step + " > " + currentSeconds + "/" + //totalSeconds + " | " + startTime + " >> " + diff2;
+          var trackName = trackList[index];
+          
+          // show the previous song
+          if(index > 0) {
+            trackName = trackList[index - 1] + " | " + trackName;
+          }
+          
+          // show the next song as well
+          if(index < (trackList.length - 1)) {
+            trackName = trackName + " | " + trackList[index + 1]; 
+          }
+          
+          index++;
+          
+          return trackName;
+        }
+        
+        return "";
+      }
+      
+      // function to zero pad to left for time. No longer used as of 9/24/2024
+      function plz(digit) {
+        var zpad = digit + '';
+        
+        if (digit < 10) {
+          zpad = "0" + zpad;
+        }
+        
+        return zpad;
+      }
+
+      // return the hours /min/seconds
+      // https://stackoverflow.com/questions/37096367/how-to-convert-seconds-to-minutes-and-hours-in-javascript
+      function toTime(seconds) {
+        var date = new Date(null);
+        date.setSeconds(seconds);
+        return date.toISOString().substr(11, 8);
+      }
+    </script>
+
+    <!-- The script for VU meter -->
+    <script>
+        const leftChannelElement = document.getElementById('left-channel');
+        const rightChannelElement = document.getElementById('right-channel');
+
+        function getMicrophoneInput() {
+            navigator.mediaDevices.getUserMedia({ audio: true, video: false })
+                .then(stream => {
+                    const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                    const analyser = audioContext.createAnalyser();
+                    const microphone = audioContext.createMediaStreamSource(stream);
+                    const splitter = audioContext.createChannelSplitter(2);
+
+                    microphone.connect(splitter);
+                    splitter.connect(analyser, 0);  // Left channel
+                    splitter.connect(analyser, 1);  // Right channel
+
+                    analyser.fftSize = 256;
+                    const bufferLength = analyser.frequencyBinCount;
+                    const dataArray = new Uint8Array(bufferLength);
+
+                    function updateVUMeter() {
+                        analyser.getByteTimeDomainData(dataArray);
+                        
+                        // Get average volume for left and right channels
+                        let leftVolume = 0;
+                        let rightVolume = 0;
+
+                        for (let i = 0; i < bufferLength; i += 2) {  // Left channel data (even indexes)
+                            leftVolume += Math.abs(dataArray[i] - 128);
+                        }
+                        for (let i = 1; i < bufferLength; i += 2) {  // Right channel data (odd indexes)
+                            rightVolume += Math.abs(dataArray[i] - 128);
+                        }
+
+                        leftVolume = Math.min(100, Math.round(leftVolume / bufferLength));
+                        rightVolume = Math.min(100, Math.round(rightVolume / bufferLength));
+
+                        // Display volume using hash characters
+                        leftChannelElement.textContent = '#'.repeat(leftVolume);
+                        rightChannelElement.textContent = '#'.repeat(rightVolume);
+
+                        requestAnimationFrame(updateVUMeter);
+                    }
+
+                    updateVUMeter();
+                })
+                .catch(error => {
+                    console.error('Error accessing microphone: ', error);
+                });
+        }
+
+        getMicrophoneInput();
+    </script>
+</body>
+</html>
