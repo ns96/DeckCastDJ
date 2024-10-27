@@ -396,20 +396,29 @@ function loadVideo(playerNum) {
 async function delayPlay(playerNum) {
   var currentPlayer;
   var currentVideoId;
-  var DELAY = 10;
+  var DELAY = 6;
+  var button;
 
   if (playerNum == 1) {
     currentPlayer = player1;
     currentVideoId = currentVideoId1;
+    button = document.getElementById("dp1"); 
   } else {
     currentPlayer = player2;
     currentVideoId = currentVideoId2;
+    button = document.getElementById("dp2"); 
   }
+
+  // change button color to red
+  button.style.backgroundColor = "red"; 
 
   // delay a specified number of seconds, playtime, before playing video  
   await wait(DELAY * 1000);
   currentPlayer.loadVideoById(currentVideoId, 0);
   currentPlayer.playVideo();
+  
+  // change button color back to green
+  button.style.backgroundColor = "green"; 
 
   console.log("Current Video, Player # " + playerNum + ", Started after " + DELAY + "s delay ...");
 }
