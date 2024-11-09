@@ -6,7 +6,7 @@ A simple flask/SocketIO for building very simple youtube DJ application that
 can be shared by other users
 
 @author: Nathan
-@version: 1.8.7 (10/25/2024)
+@version: 1.8.8 (11/04/2024)
 """
 import os.path
 from datetime import datetime, timedelta
@@ -293,9 +293,8 @@ def mergeAllPlayList():
     print("\nMerged playlist: Duplicates -> " + str(duplicates) + " | Size -> " + listSize)
 
 # function to copy a user playlist to the que list
-def copyPlayListToQue(username, playlistKey):
+def copyPlayListToQue(username, playlistKey, filter_text = ''):
     global userPlayList
-
     duplicatePlaylist = dict()
     
     if playlistKey in userPlayList.keys():
@@ -304,10 +303,24 @@ def copyPlayListToQue(username, playlistKey):
         playlist = defaultPlayList
 
     for videoId in playlist.keys():
-        duplicatePlaylist[videoId] = playlist[videoId]
+        videoInfo = playlist[videoId]
+        published = cleanDate(videoInfo[3])
+       
+        title = videoInfo[0] + " (-" + published.split('-')[0] + "-)"
+        title = title.replace(',',', ')
+        title_lower = title.lower()
+        
+        if '+' in filter_text:
+            # we doing an "and" search so all terms must match
+            matches = [s.strip() for s in filter_text.split('+')]
+            
+            if all(match in title_lower for match in matches):
+                duplicatePlaylist[videoId] = videoInfo    
+        elif filter_text == "" or filter_text in title_lower:    
+            duplicatePlaylist[videoId] = videoInfo
 
-    userPlayList[username] = duplicatePlaylist
-    print("Playlist duplicated", playlistKey, '->', username)
+    userPlayList[username] = dict(sorted(duplicatePlaylist.items(), key=lambda item: item[1]))
+    print("Playlist duplicated", playlistKey, '->', username, len(duplicatePlaylist), ' videos')
 
 # function to load a users playlist from a file
 def loadUserPlayList(username):
@@ -602,7 +615,7 @@ def getQueListData(username):
         videoSeconds = pt.second + pt.minute*60 + pt.hour*3600
         
         # concat the values with a <:> seperator so we easily split it
-        # might make mosre sense to just return son array
+        # might make more sense to just return json array
         queData.append(videoId + '\t' + videoTitle + '\t' + str(videoSeconds))
 
     return queData
@@ -916,7 +929,9 @@ def processMessage(json):
             json['queListData'] = getQueListData(username)
         elif 'savedList:' in videoId:
             savedList = videoId.split(":")[1]
-            copyPlayListToQue(username.lower(), savedList.lower())
+            f_text = json['filter'].strip().lower()
+
+            copyPlayListToQue(username.lower(), savedList.lower(), f_text)
             json['queListHTML'] = getHTMLTable(username, "", True, False)
             json['queListData'] = getQueListData(username)
         elif videoId == "-1":
@@ -971,11 +986,22 @@ def processMessage(json):
         videoId = json['videoId']
         pin = json['pin']
         tracklist = json['tracklist'].strip()
-                
+
+        print("Adding/Editing TrackList", tracklist)
+
         # only add tracklist for admin pin
         if pin == adminPin:
             if len(tracklist) != 0:
                 addTrackListForVideo(videoId, tracklist)
+        
+    # see if to edit or add the tracklist
+    if 'Edit TrackList' in msgTitle:
+        videoId = json['videoId']
+
+        if videoId in videoTrackLists:
+            json['trackList'] = videoTrackLists[videoId]
+        else:
+            json['trackList'] = []
     
     # delete a video from the playlist.
     if 'Delete Video' in msgTitle:

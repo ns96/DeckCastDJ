@@ -69,6 +69,11 @@ socket.on('my response', function (msg) {
     updateConnectedUsers(msg);
   } 
 
+  // see if to show the tracklist edit dialog
+  if (msg.data.includes("Edit TrackList")) {
+    addOrEditTrackList(msg);
+  }
+
   console.log(msg);
   messageText.innerHTML = msg.data + " (Users: " + connectedUsers + ")";
 })
@@ -460,9 +465,37 @@ function saveVideo(playerNum) {
   console.log(playerNum + " Save Video ID: " + videoId);
 }
 
-// functon to add a tracklist to the loaded video
-function addTrackList(playerNum) {
+// function to show the track list dialog to add or edit the track lists 
+function addOrEditTrackList(msg) {
   var pin = document.getElementById("pin").value;
+  var trackListString = "";
+  var dialogTitle = msg.title;
+
+  if(msg.trackList.length != 0) {
+    trackListString = msg.trackList.join("\n");
+    dialogTitle = msg.title + " [" + msg.trackList.length + " Tracks]";
+  }
+
+  var myWindow = window.open("", "TrackListWindow", "width=400,height=625");
+  myWindow.document.write("<h4>Track List: " + dialogTitle + "</h4>");
+  myWindow.document.write("<textarea id=\"tracklist\" name=\"tracklist\" rows=\"35\" cols=\"50\">" + trackListString + "</textarea>")
+
+  // before window close grab the text in the textarea and send to server
+  myWindow.onbeforeunload = function () {
+    var tracklist = myWindow.document.getElementById("tracklist").value;
+
+    jsonText = {
+      data: 'Add TrackList',
+      pin: pin,
+      videoId: msg.videoId,
+      tracklist: tracklist
+    }
+    socket.emit('my event', jsonText);
+  }
+}
+
+// functon to kick of the process to add or edit a tracklist for a particular video
+function showTrackListDialog(playerNum) {
   var videoId;
   var title;
 
@@ -474,24 +507,12 @@ function addTrackList(playerNum) {
     title = player2.getVideoData()['title'];
   }
 
-  var myWindow = window.open("", "TrackListWindow", "width=400,height=625");
-  myWindow.document.write("<h4>Track List: " + title + "</h4>");
-  myWindow.document.write("<textarea id=\"tracklist\" name=\"tracklist\" rows=\"35\" cols=\"50\"></textarea>")
-
-  // before window close grab the text in the text area
-  myWindow.onbeforeunload = function () {
-    var tracklist = myWindow.document.getElementById("tracklist").value;
-
-    jsonText = {
-      data: 'Add TrackList',
-      pin: pin,
-      videoId: videoId,
-      tracklist: tracklist
-    }
-    socket.emit('my event', jsonText);
-
-    console.log("Window closed: " + videoId + "\n" + tracklist);
+  jsonText = {
+    data: 'Edit TrackList',
+    videoId: videoId,
+    title: title
   }
+  socket.emit('my event', jsonText);
 
   console.log(playerNum + " Track List For Video ID: " + videoId + "\n" + title);
 }
@@ -528,14 +549,17 @@ function addToQueList(videoId) {
 function queSavedPlayList() {
   var pin = document.getElementById("pin").value;
   username = document.getElementById("uname").value;
-  var savedList = 'savedList:' + username;
+  var filterText = document.getElementById("filter").value;
+
+  var savedList = 'savedList:' + username
 
   jsonText = {
     data: 'Video Qued',
     player: 0,
     pin: pin,
     clientId: clientId,
-    videoId: savedList 
+    videoId: savedList,
+    filter: filterText 
   }
   socket.emit('my event', jsonText);
 
@@ -728,6 +752,12 @@ function reloadQueList() {
   if(playMix) {
     stopMixPlay();
   }
+}
+
+// function to stop/pause video playback
+function stopAllPlay() {
+  player1.pauseVideo();
+  player2.pauseVideo();
 }
 
 // function to stop a playing mix

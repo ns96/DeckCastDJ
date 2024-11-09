@@ -118,7 +118,7 @@ body {
 
 </head>
     <body>
-    <h2>DeckCastDJ v1.8.7 (10/25/2024) -- Simple YouTube DJ "Casting"</h2>
+    <h2>DeckCastDJ v1.8.9 (11/09/2024) -- Simple YouTube DJ "Casting"</h2>
     
     <label class="container"><b>I am the DJ (cast what you are playing to other users)</b>
       <!-- <input type="checkbox" id="isDJ" checked="checked"> -->
@@ -167,7 +167,7 @@ body {
     <label for="speedA2">10% Faster</label> 
     <input type="radio" id="speedA3" name="speedA" onclick="onChangeSpeed(1, this);" value="3">
     <label for="speedA3">15% Faster</label>
-    <button type="button" onclick="addTrackList(1)">TL</button>
+    <button type="button" onclick="showTrackListDialog(1)">TL</button>
     <button id="dp1" class="dp_button" type="button" onclick="delayPlay(1)">DP</button>
     </b></div>
     
@@ -187,7 +187,7 @@ body {
     <label for="speedB2">10% Faster</label> 
     <input type="radio" id="speedB3" name="speedB" onclick="onChangeSpeed(2, this);" value="3">
     <label for="speedB3">15% Faster</label>
-    <button type="button" onclick="addTrackList(2)">TL</button>
+    <button type="button" onclick="showTrackListDialog(2)">TL</button>
     <button id="dp2" class="dp_button" type="button" onclick="delayPlay(2)">DP</button>
     </b></div>
     
@@ -205,6 +205,14 @@ body {
     </td>
     </tr>
     
+    <tr>
+      <td colspan="2">
+      <p align="center">
+        <button type="button" onclick="stopAllPlay()">Stop Play</button>
+      </p>
+      </td>
+    </tr>
+
     <tr>
       <td colspan="2">
       <p align="center">
