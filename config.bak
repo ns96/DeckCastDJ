@@ -1,0 +1,26 @@
+# -*- coding: utf-8 -*-
+"""
+Store the youtube api key and playlist.
+
+***This file should be renamed to config.py and saved with desired values***
+
+Created on Thu Feb 22 12:16:58 2024
+
+@author: Nathan
+"""
+
+# change to your youtube api key
+# https://www.youtube.com/watch?v=uz7dY8qTFJw 
+youtubeApiKey = 'yourAPIKeyHere'
+
+# used for loading playlist from youtube. 
+# If false, a backup is loaded from disk if previously loaded
+useYoutube = True
+
+# change/add urls to your own youtube playlist of interest
+youtubePL = dict()
+youtubePL['80s Hits'] = 'https://www.youtube.com/playlist?list=PLmXxqSJJq-yXrCPGIT2gn8b34JjOrl4Xf'
+youtubePL['90s Hits'] = 'https://www.youtube.com/playlist?list=PLmXxqSJJq-yUvMWKuZQAB_8yxnjZaOZUp'
+
+
+

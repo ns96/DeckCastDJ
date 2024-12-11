@@ -6,7 +6,7 @@ A simple flask/SocketIO for building very simple youtube DJ application that
 can be shared by other users
 
 @author: Nathan
-@version: 1.8.8 (11/04/2024)
+@version: 1.8.10 (12/09/2024)
 """
 import os.path
 from datetime import datetime, timedelta
@@ -16,13 +16,14 @@ import json
 import pafy
 import qrcode
 import pickle
-from config import youtubeApiKey
+from config import youtubeApiKey, useYoutube, youtubePL
+from flask import Flask, render_template, request
+from flask_socketio import SocketIO
+
+os.chdir(os.path.dirname(__file__))
 
 # set the youtube api key. 
 pafy.set_api_key(youtubeApiKey)
-
-from flask import Flask, render_template, request
-from flask_socketio import SocketIO
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'secret12345#'
@@ -57,66 +58,6 @@ player2Video = ''
 
 # the admin pin used for testing and other things
 adminPin = "0001"
-
-# function to upgrade the guest playlist. Only called when additional information
-# needs to be added to playList records
-def upgradeDefaultPlayListInfo():
-    global defaultPlayList
-    
-    loadPlayList()
-    
-    # keep track of bad videos
-    unv_videos = list()
-    
-    for videoId in defaultPlayList.keys():
-        try:
-            videoInfo = getVideoInfo(videoId, "Guest")
-            defaultPlayList[videoId] = videoInfo
-            print("Updated: " + videoId + " " + str(videoInfo))
-        except Exception as exp:
-            unv_videos.append(videoId)
-            print("\n\nUnable to Upgrade: ", videoId, "\n")
-            print(exp, "\n\n")
-            
-    # clean up the playlist so we don't have records for videos that no longer exists
-    for videoId in unv_videos:
-        defaultPlayList.pop(videoId)
-    
-    # save the new playlist
-    with open(defaultPlayListFile, 'w') as fp:
-        json.dump(defaultPlayList, fp, indent=2)
-
-# function to upgrade a users like playlist
-def upgradeUserPlayListInfo(username):
-    username = username.lower()
-    
-    filename = 'likes_' + username + '.json'
-    if os.path.isfile(filename):
-        print("Upgrading", username, "playlist information ...\n")
-        
-        with open(filename) as json_file: 
-            playlist = json.load(json_file)
-        
-        # keep track of bad videos
-        unv_videos = list()
-    
-        for videoId in playlist.keys():
-            try:
-                videoInfo = getVideoInfo(videoId, username)
-                playlist[videoId] = videoInfo
-                print("Updated: " + videoId + " " + str(videoInfo))
-            except Exception as exp:
-                unv_videos.append(videoId)
-                print("\n\nUnable to Upgrade: ", videoId, "\n")
-                print(exp, "\n\n")
-            
-        # clean up the playlist so we dont have records for videos that no longer exists
-        for videoId in unv_videos:
-            playlist.pop(videoId)
-    
-        # save the new playlist
-        with open(filename, 'w') as fp:
-            json.dump(playlist, fp, indent=2)
         
 # save the playlist as json
 def savePlayList():    
@@ -1070,33 +1011,21 @@ def handle_my_custom_event(json, methods=['GET', 'POST']):
 if __name__ == '__main__':
     app.config['TEMPLATES_AUTO_RELOAD'] = True
     app.config['SEND_FILE_MAX_AGE_DEFAULT'] = 0
-    
-    #upgradeGuestPlayListInfo()
-    #upgradeUserPlayListInfo('Nathan')
-    
-    # used for loading playlist from youtube. 
-    # If false, a backup is loaded from disk
-    useYouTube = False 
-                      
+                       
     print("Loading local playlist ...\n")
     loadInvalidVideosList()
     loadPlayList()
     loadPafyCache()
     loadMixVideoTracks()
 
-    # No longer loading likes videos from json file, just load from youtube 
-    # playlist. Make it easier to update
-    #loadUserPlayList('Nathan')
-    
-    if(useYouTube):
+    if(useYoutube):
         # Load youtube playlist for various users
-        print("Loading youtube playlist ...\n")
+        print("Loading saved youtube playlist ...\n")
         
-        # change these url to your own youtube playlist
-        loadYouTubePlayList('Denvers Favorite', 'https://www.youtube.com/playlist?list=PLgASkX6vGzmBGM1RYaiS2Ga2vcz-C1AZQ')
-        loadYouTubePlayList('80s Hits', 'https://www.youtube.com/playlist?list=PLmXxqSJJq-yXrCPGIT2gn8b34JjOrl4Xf')
-        loadYouTubePlayList('Nathan Likes', 'https://www.youtube.com/playlist?list=PL9nM-OJA81WAhh0jaDiT228tPzJeSS-OP')
-
+        # load up some youtube playlist
+        for key, playlistUrl in youtubePL.items():
+            loadYouTubePlayList(key, playlistUrl)
+        
         print("\nDone loading youtube playlist ...\n")
     
         print("\nMerging all playlist records ...")
