@@ -6,7 +6,7 @@ A simple flask/SocketIO for building very simple youtube DJ application that
 can be shared by other users
 
 @author: Nathan
-@version: 1.8.10 (12/09/2024)
+@version: 1.9.0 (12/12/2024)
 """
 import os.path
 from datetime import datetime, timedelta
@@ -48,13 +48,16 @@ videoTrackLists = dict()
 mixTracks = dict()
 mixTracksFile = 'data/mixTrack.json' 
 
-# key for playlist that holds all the videoIds stored
+# key for playlist that holds all the videoIds
 mergedPlayListKey = ''
 
 # keep track of the number of connected users
 userCount = 0
 player1Video = ''
 player2Video = ''
+
+# keep track of messages when loading a particular youtube playlist. It keys by url
+loadingMessages = dict()
 
 # the admin pin used for testing and other things
 adminPin = "0001"
@@ -125,11 +128,17 @@ def loadYouTubePlayList(username, url, forQue=False):
 
         # store information about the videos in playlist
         playlist = dict()
-    
+        playlistSize = youtubeList._len
+        videoCount = 0
+
         for video in youtubeList:
             if video.videoid not in invalidVideosList:
+                videoCount += 1
+                loadingText = f'Loading {videoCount} / {playlistSize} ...'
+                loadingMessages[url] = loadingText
+
                 playlist[video.videoid] = [video.title, video.thumb, video.duration, video.published, username]
-                print(video.videoid, video.title, video.thumb, video.duration, "\n")
+                print(loadingText, video.videoid, video.title, video.thumb, video.duration, "\n")
             else:
                 print("Deleted video:", video.videoid)
     
@@ -147,6 +156,7 @@ def loadYouTubePlayList(username, url, forQue=False):
 
         print("YouTube playlist loaded: " + youtubeList.title + " / " + str(len(playlist)))
     except Exception as e:
+        loadingMessages[url] = 'Error Loading YouTube Playlist ...'
         print("Error loading YouTube playlist ...\n", url, "\n" , e)
 
 # save the playlist as json
@@ -287,8 +297,11 @@ def loadPafyCache():
 
     if os.path.isfile(pafyCacheFile):
         with open(pafyCacheFile, 'rb') as fp:
-            pafyCache = pickle.load(fp)
-            print("Loaded pafy cache file ...")
+            try:
+                pafyCache = pickle.load(fp)
+                print("Loaded pafy cache file ...")
+            except:
+                print("An exception occurred loading pafy cache") 
 
 # function to load the mix track videos
 def loadMixVideoTracks():
@@ -400,11 +413,21 @@ def getHTMLTable(username = "", filter_text = "", que_list = False, sort = True)
     tableHtml = ""
     
     if not que_list:
+        videoCount = len(defaultPlayList)
+        displayName = 'Default (' + str(videoCount) + ')'
+
         tableHtml += '<b>YouTube Playlist (<a href="#filter_list"> Filter </a>): </b>'
-        tableHtml += '<input type="button" onclick="loadPlayListForUser(\'Guest\', \' \', true)" value="Guest"> '
+        tableHtml += '<input type="button" onclick="loadPlayListForUser(\'Guest\', \' \', true)" value="' + displayName + '"> '
         
         for playlistName in youtubePlayListUrls.keys():
-            tableHtml += '<input type="button" onclick="loadPlayListForUser(\'' + playlistName + '\', \' \', true)" value="' + playlistName + '"> '
+            displayName = playlistName
+
+            # add the number of videos in playlist in not dealing with merged playlist
+            if 'All Merged' not in playlistName:
+                videoCount = len(userPlayList[playlistName.lower()])
+                displayName = playlistName + ' (' + str(videoCount) + ')'
+
+            tableHtml += '<input type="button" onclick="loadPlayListForUser(\'' + playlistName + '\', \' \', true)" value="' + displayName + '"> '
         
         # add button to allow moving playlist to que
         tableHtml += '<input type="button" onclick="queSavedPlayList()" value="Q"> '
@@ -975,6 +998,11 @@ def processMessage(json):
     # a new video track was loaded into the playing html client
     if 'New Video Track' in msgTitle:
         addToMixTracksDictionary(json)
+
+    # a message asking loading progress has been received
+    if 'Get Progress' in msgTitle:
+        playlistUrl = json['url']
+        json['loadingText'] = loadingMessages[playlistUrl]
 
     # reset the stored values
     if 'RESET' in msgTitle:

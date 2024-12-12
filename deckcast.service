@@ -1,0 +1,17 @@
+# This file needs to be placed in the /etc/systemd/system directory
+# Enable it to run at boot with "systemctl enable deckcast" 
+# Start it with "systemctl start deckcast" 
+# Stop it with "systemctl stop deckcast"
+# Check status with "systemctl status deckcast"
+# Check output with "journalctl -u deckcast" or for real time "journalctl -f -u deckcast"
+
+[Unit]
+Description=Run the DeckcastDJ Python app at startup
+
+[Service]
+User=[username]
+Type=oneshot
+ExecStart=/usr/bin/python3.11 "/home/[username]/DeckCastDJ/main.py"
+
+[Install]
+WantedBy=multi-user.target

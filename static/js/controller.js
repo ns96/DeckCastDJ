@@ -40,6 +40,9 @@ var playMix = false;
 var stopMix = new Array();
 var stopMixIndex = 0;
 
+// used to indicate that a playlist is being loaded
+var loadingPlaylist = false;
+
 /**
  * Functions and variables here are for socketio
  */
@@ -74,6 +77,10 @@ socket.on('my response', function (msg) {
     addOrEditTrackList(msg);
   }
 
+  if (msg.data.includes("Get Progress")) {
+    updateLoadingProgress(msg);
+  }
+
   console.log(msg);
   messageText.innerHTML = msg.data + " (Users: " + connectedUsers + ")";
 })
@@ -85,6 +92,7 @@ function updatePlayList(msg) {
 
   // display the que list if needed
   if ("queListHTML" in msg) {
+    loadingPlaylist = false;
     msgClientId = msg.clientId;
 
     if (msgClientId === clientId) {
@@ -96,7 +104,9 @@ function updatePlayList(msg) {
 
   // display the playlist html if needed
   if ("playListHTML" in msg) {
+    loadingPlaylist = false;
     msgClientId = msg.clientId;
+
     if (msgClientId === clientId) {
       playListOutput.innerHTML = msg.playListHTML;
     }
@@ -525,6 +535,8 @@ function addPlayListToQueList() {
     addToQueList(playlistUrl);
     queListOutput.innerHTML = getLoadingText();
     document.getElementById("filter").value = "";
+
+    getLoadingProgress(playlistUrl, 2);
   } else {
     alert("Invalid YouTube Playlist Url: " + playlistUrl);
   }
@@ -787,11 +799,55 @@ function toHHMMSS(seconds) {
 function getLoadingText() {
   var loadingText = "<div style=\"text-align: center\">" +
     "<h4>Loading Youtube Playlist ...</h4>" +
-    "<img src=\"https://i.gifer.com/YCZH.gif\" align=\"center\">" +
-    " </div>";
-
+    "<img src=\"https://i.gifer.com/YCZH.gif\" align=\"center\"></div>" + 
+    "<div id=\"loadingMessage\" style=\"text-align: center\">Waiting On Backend ...</div>";
+  
   return loadingText;
 }
+
+// function to return the loading progress from backend 
+function getLoadingProgress(playListUrl, interval) {
+  loadingPlaylist = true;
+
+  let progress = 0; // Initialize progress to 0
+
+  const progressDisplay = document.getElementById("loadingMessage");
+  progressDisplay.style.fontSize = '16px';
+  progressDisplay.style.fontFamily = 'Arial, sans-serif';
+
+  // Update progress every n seconds
+  const loadingInterval = setInterval(() => {
+      progress += interval; // Increment progress by a random amount (1 to 10)
+      //console.log("Progress: " + progress + " Loading: " + loadingPlaylist);
+      
+      // only call backend after 4 or so seconds
+      if (progress > 2) {
+          jsonText = {
+            data: 'Get Progress',
+            url: playListUrl,
+            pin: pin,
+            clientId: clientId,
+          }
+          socket.emit('my event', jsonText);
+      } 
+      
+      if(!loadingPlaylist) {
+        clearInterval(loadingInterval);
+      }
+
+  }, interval * 1000);
+}
+
+// update loading progress text
+function updateLoadingProgress(msg) {
+  let msgClientId = msg.clientId;
+  
+  if (msgClientId === clientId && loadingPlaylist) {
+    const progressDisplay = document.getElementById("loadingMessage");
+    progressDisplay.textContent = msg.loadingText;
+  }
+}
+
 
 // function to merge a playlist to the default playlist
 function mergePlayList() {
@@ -878,8 +934,10 @@ function loadPlayListForUser(username, filter, showUsername = false) {
 
   // if we loaded a youtube playlist clear filter input
   if (filter.startsWith("https")) {
-    playListOutput.innerHTML = getLoadingText();
+    playListOutput.innerHTML = getLoadingText(filter);
     document.getElementById("filter").value = "";
+
+    getLoadingProgress(filter, 2);
   }
 
   // show the user name if we used one of the buttons to load a playList
