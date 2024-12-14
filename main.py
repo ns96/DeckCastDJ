@@ -6,7 +6,7 @@ A simple flask/SocketIO for building very simple youtube DJ application that
 can be shared by other users
 
 @author: Nathan
-@version: 1.9.0 (12/12/2024)
+@version: 1.9.1 (12/14/2024)
 """
 import os.path
 from datetime import datetime, timedelta
@@ -16,7 +16,7 @@ import json
 import pafy
 import qrcode
 import pickle
-from config import youtubeApiKey, useYoutube, youtubePL
+from config import app_port, youtubeApiKey, useYoutube, youtubePL
 from flask import Flask, render_template, request
 from flask_socketio import SocketIO
 
@@ -416,7 +416,7 @@ def getHTMLTable(username = "", filter_text = "", que_list = False, sort = True)
         videoCount = len(defaultPlayList)
         displayName = 'Default (' + str(videoCount) + ')'
 
-        tableHtml += '<b>YouTube Playlist (<a href="#filter_list"> Filter </a>): </b>'
+        tableHtml += '<b>YouTube Playlist (<a href="#filter_list"> Search </a>): </b>'
         tableHtml += '<input type="button" onclick="loadPlayListForUser(\'Guest\', \' \', true)" value="' + displayName + '"> '
         
         for playlistName in youtubePlayListUrls.keys():
@@ -513,7 +513,7 @@ def getHTMLTableRow(i, que_list, videoId, title, meta_info, videoInfo):
                 
     rowHtml += '</td>'
     rowHtml += '<td><b>' + str(i) + '.</b></td>'
-    rowHtml += '<td width="25%"><b>' + title + '</b><br>[' + meta_info + '] (<a href="#pageTop"> Top </a>)</td>'
+    rowHtml += '<td width="25%"><b>' + title + '</b><br>[' + meta_info + '] <b> (<a href="#pageTop"> &uArr; </a>) (<a href="#filter_list">  &dArr; </a>)</b></td>'
     rowHtml += '<td><b>' + videoInfo[2] + '</b></td>'
 
     if i % 2 == 0:
@@ -1070,4 +1070,4 @@ if __name__ == '__main__':
     # load the video track list
     loadTrackLists()
     
-    socketio.run(app, host = '0.0.0.0', debug = False, port = 5054, allow_unsafe_werkzeug=True)
+    socketio.run(app, host = '0.0.0.0', debug = False, port = app_port, allow_unsafe_werkzeug=True)

@@ -843,8 +843,13 @@ function updateLoadingProgress(msg) {
   let msgClientId = msg.clientId;
   
   if (msgClientId === clientId && loadingPlaylist) {
+    let loadingText =  msg.loadingText
     const progressDisplay = document.getElementById("loadingMessage");
-    progressDisplay.textContent = msg.loadingText;
+    progressDisplay.textContent =loadingText;
+
+    if(loadingText.contains('Error Loading')) {
+      loadingPlaylist = false;
+    }
   }
 }
 
