@@ -141,7 +141,6 @@ function processMessage(msg) {
 }
 
 // function to restart the current video from the beginning
-// update the players speed
 function restartVideo(playerNum) {
   var currentPlayer;
 

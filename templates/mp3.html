@@ -1,0 +1,1062 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  body {
+      background-color: #666699;
+  }
+
+  .slidecontainer {
+    width: 100%;
+  }
+
+  .slider {
+    -webkit-appearance: none;
+    width: 50%;
+    height: 25px;
+    background: #d3d3d3;
+    outline: none;
+    opacity: 0.7;
+    -webkit-transition: .2s;
+    transition: opacity .2s;
+  }
+
+  .slider:hover {
+    opacity: 1;
+  }
+
+  .slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 25px;
+    height: 25px;
+    background: #4CAF50;
+    cursor: pointer;
+  }
+
+  .slider::-moz-range-thumb {
+    width: 25px;
+    height: 25px;
+    background: #4CAF50;
+    cursor: pointer;
+  }
+
+  /* The container */
+  .container {
+    display: block;
+    position: relative;
+    padding-left: 35px;
+    margin-bottom: 12px;
+    cursor: pointer;
+    font-size: 18px;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+  }
+
+  /* Hide the browser's default checkbox */
+  .container input {
+    position: absolute;
+    opacity: 0;
+    cursor: pointer;
+    height: 0;
+    width: 0;
+  }
+
+  /* Create a custom checkbox */
+  .checkmark {
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 25px;
+    width: 25px;
+    background-color: #eee;
+  }
+
+  /* On mouse-over, add a grey background color */
+  .container:hover input ~ .checkmark {
+    background-color: #ccc;
+  }
+
+  /* When the checkbox is checked, add a blue background */
+  .container input:checked ~ .checkmark {
+    background-color: #2196F3;
+  }
+
+  /* Create the checkmark/indicator (hidden when not checked) */
+  .checkmark:after {
+    content: "";
+    position: absolute;
+    display: none;
+  }
+
+  /* Show the checkmark when checked */
+  .container input:checked ~ .checkmark:after {
+    display: block;
+  }
+
+  /* Style the checkmark/indicator */
+  .container .checkmark:after {
+    left: 9px;
+    top: 5px;
+    width: 5px;
+    height: 10px;
+    border: solid white;
+    border-width: 0 3px 3px 0;
+    -webkit-transform: rotate(45deg);
+    -ms-transform: rotate(45deg);
+    transform: rotate(45deg);
+  }
+
+  #playerTable td {
+      width: 50%;
+  }
+
+  ul {
+    list-style-type: none;
+    font-weight:bold;
+  }
+
+  ul li {
+    margin-bottom: 8px;
+  }
+</style>
+
+<link rel="stylesheet" href="https://cdn.plyr.io/3.7.8/plyr.css" />
+
+</head>
+    <body>
+    <h2>DeckCastDJ-MP3 v1.0.2 (01/10/2025) -- Simple DJ Player</h2>
+    
+    <p>
+      <label for="search"><b id="pageTop">Search For: </b></label>
+      <input type="text" id="search" name="search" value="" size="50">
+      <button type="button" onclick="searchMP3DB()">Search</button>
+    </p>
+
+    <p>
+      <span id="rootList"></span>
+    </p>
+    
+    <br><br>
+
+    <table style='border-spacing: 10px 1rem;' id="playerTable">
+    <tr>
+    
+    <td>
+    <label for="videoId1"><b id="pageTop">MP3 Url: </b></label>
+    <input type="text" id="videoId1" name="videoId1" value="" size="34">
+    <button type="button" onclick="loadMP3FromUrl(1)">Load</button>
+    <button type="button" onclick="queVideo(1)">Que</button>
+    </td>
+    
+    <td>
+    <label for="videoId2"><b>MP3 Url: </b></label>
+    <input type="text" id="videoId2" name="videoId2" value="" size="34">
+    <button type="button" onclick="loadMP3FromUrl(2)">Load</button>
+    <button type="button" onclick="queVideo(2)">Que</button>
+    </td>
+    
+    </tr>
+    
+    <tr>
+
+    <td>
+    <audio id="player1" crossorigin playsinline>
+      <source src="http://beebox.sytes.net:5080/music/Various_Artists-80s-90s_Songs_MP3/01-01-Annie_Lennox-No_More_I_Love_You_s-LLS.mp3" type="audio/mp3">
+    </audio>
+    
+    <div><b>
+    <button type="button" onclick="restartMP3(1)"><<</button>
+    <input type="radio" id="speedA0" name="speedA" onclick="onChangeSpeed(1, this);" value="0">
+    <label for="speedA0">0% (Normal)</label> 
+    <input type="radio" id="speedA1" name="speedA" onclick="onChangeSpeed(1, this);" value="1">
+    <label for="speedA1">5% Faster</label> 
+    <input type="radio" id="speedA2" name="speedA" onclick="onChangeSpeed(1, this);" value="2">
+    <label for="speedA2">10% Faster</label> 
+    <input type="radio" id="speedA3" name="speedA" onclick="onChangeSpeed(1, this);" value="3">
+    <label for="speedA3">15% Faster</label>
+    </b></div>
+    
+    </td>
+    
+    <td>
+    <audio id="player2" crossorigin playsinline>
+      <source src="http://beebox.sytes.net:5080/music/Various_Artists-80s-90s_Songs_MP3/01-01-Annie_Lennox-Why-LLS.mp3" type="audio/mp3">
+    </audio>
+    
+    <div><b>
+    <button type="button" onclick="restartMP3(2)"><<</button>
+    <input type="radio" id="speedB0" name="speedB" onclick="onChangeSpeed(2, this);" value="0">
+    <label for="speedB0">0% (Normal)</label> 
+    <input type="radio" id="speedB1" name="speedB" onclick="onChangeSpeed(2, this);" value="1">
+    <label for="speedB1">5% Faster</label> 
+    <input type="radio" id="speedB2" name="speedB" onclick="onChangeSpeed(2, this);" value="2">
+    <label for="speedB2">10% Faster</label> 
+    <input type="radio" id="speedB3" name="speedB" onclick="onChangeSpeed(2, this);" value="3">
+    <label for="speedB3">15% Faster</label>
+    </b></div>
+    
+    </td>
+    
+    </tr>
+
+    <tr>
+      <td>
+        <span id="title1"> No Track Loaded ...</span>
+      </td>
+
+      <td>
+        <span id="title2"> No Track Loaded ...</span>
+      </td>
+    </tr>
+    
+    <tr>
+    <td colspan="2">
+    <p align="center">
+      <button type="button" onclick="moveSlideTo(1)"> MOVE LEFT </button>
+      <input type="range" min="0" max="100" value="50" id="mixer" class="slider">
+      <button type="button" onclick="moveSlideTo(2)"> MOVE RIGHT </button>
+    </p>
+    </td>
+    </tr>
+    
+    <tr>
+      <td colspan="2">
+      <p align="center">
+        <span id="play">
+        </span>
+      </p>
+      </td>
+    </tr>
+
+    <tr>
+      <td colspan="2">
+      <p align="center">
+        <button type="button" onclick="stopAllPlay()">Stop Play</button> 
+        <button type="button" onclick="clearAll()">Clear All</button>
+      </p>
+      </td>
+    </tr>
+
+    <tr>
+      <td colspan="2">
+      <p align="center">
+        <span id="vumeter">
+        </span>
+      </p>
+      </td>
+    </tr>
+
+    <tr>
+    <td colspan="2">
+    <p>
+      <span id="queList"></span>
+    </p>
+    <p>
+      <span id="playList"></span>
+    </p>
+    </td>
+    </tr>
+  
+    <tr>
+    <td>
+    <p>Mixer Value: <span id="mixerValue"></span></p>
+    </td>
+    <td>
+    <p>
+    Console: <span id="messageText"></span>
+    </p>
+    </td>
+    </tr>
+    
+    </table>
+    
+    <!-- load script for socketio -->
+    <script src="https://cdn.socket.io/4.5.3/socket.io.min.js" integrity="sha384-WPFUvHkB1aHA5TDSZi6xtDgkF0wXJcIIxXhC6h8OT8EH3fC5PWro5pWJ1THjcfEi" crossorigin="anonymous"></script> 
+    
+    <!-- load plyr script -->
+    <script src="https://cdn.plyr.io/3.7.8/plyr.js"></script> 
+
+    <!-- load script that controlls mp3 playback
+    <script src="static/js/controller.js"></script>
+    -->
+    <script>
+      // set our server hosting the mp3 files
+      const mp3BaseUrl = 'http://beebox.sytes.net:5080/music/';
+
+      // dictionary that stores the mp3 database keyed by directory name
+      var mp3DB;
+
+      // dictionary that store information about an mp3
+      const infoDictionary = {};
+
+      // variables to handel the mixer slider
+      var vumeterOutput = document.getElementById("vumeter");
+      var slider = document.getElementById("mixer");
+      var mixerOutput = document.getElementById("mixerValue");
+      mixerOutput.innerHTML = slider.value;
+
+      // add a function to handle slider events
+      slider.oninput = function () {
+        var mixRatio = Number(this.value);
+        changePlayerVolume(mixRatio);
+      }            
+
+      // array to hold tracks to be played in order
+      var currentTracks = [];
+      var trackIndex = 0;
+      var playingTracks = false;
+
+      // array to hold qued Tracks
+      var queTracks = [];
+
+      // keep track when we playing a mix
+      var playMix = false;
+      var stopMix = new Array();
+      var stopMixIndex = 0;
+      var mixSeekTime = 0; // keep track of this to correct seek
+
+      // initialize the players
+      const player1 = new Plyr('#player1', {
+        speed:{ selected: 1, options: [1, 1.05, 1.10, 1.15] }
+      });
+
+      const player2 = new Plyr('#player2', {
+        speed:{ selected: 1, options: [1, 1.05, 1.10, 1.15] }
+      });
+      
+      // add event liseners to be able to get the track time in seconds
+      player1.on('playing', (event) => {
+        const instance = event.detail.plyr;
+        console.log("Player 1 MP3 Length: " + instance.duration);
+      });
+
+      player2.on('playing', (event) => {
+        const instance = event.detail.plyr;
+        console.log("Player 2 MP3 Length: " + instance.duration);
+      });
+
+      player1.on('loadeddata', (event) => {
+        const instance = event.detail.plyr;
+        if(playMix && mixSeekTime !== 0) {
+          console.log("Player 1 Start @ " + mixSeekTime);
+          instance.forward(Number(mixSeekTime));
+          instance.play();
+        }
+      });
+
+      player2.on('loadeddata', (event) => {
+        const instance = event.detail.plyr;
+        if(playMix && mixSeekTime !== 0) {
+          console.log("Player 2 Start @ " + mixSeekTime);
+          instance.forward(Number(mixSeekTime));
+          instance.play();
+        }
+      });
+
+      player1.on('ended', (event) => {
+        const instance = event.detail.plyr;
+        console.log("Player 1 Ended: " + instance.source);
+        if(playingTracks) {
+          trackIndex++;
+          if(trackIndex != currentTracks.length) {
+            let mp3Name = currentTracks[trackIndex];
+            loadMP3FromButton(mp3Name, 2);
+          } else {
+            playingTracks= false;
+          }
+        }
+      });
+
+      player2.on('ended', (event) => {
+        const instance = event.detail.plyr;
+        console.log("Player 2 Ended: " + instance.source);
+        if(playingTracks) {
+          trackIndex++;
+          if(trackIndex != currentTracks.length) {
+            let mp3Name = currentTracks[trackIndex];
+            loadMP3FromButton(mp3Name, 1);
+          } else {
+            playingTracks= false;
+          }
+        }
+      });
+
+      // functon called by load mp3/video file i.e. button
+      function loadMP3FromUrl(playerNum) {
+        let mp3Url = '';
+        if (playerNum == 1) {
+          mp3Url = document.getElementById("videoId1").value;
+          mp3Title = getTitle(mp3Url);
+          loadMP3(mp3Url, mp3Title, 1, 0, mp3Name);  
+        } else {
+          mp3Url = document.getElementById("videoId2").value;
+          mp3Title = getTitle(mp3Url);
+          loadMP3(mp3Url, mp3Title, 2, 0, mp3Name); 
+        }
+      }
+
+      //load the mp3 from button press
+      function loadMP3FromButton(mp3Name, playerNum) {  
+        let mp3Url = mp3BaseUrl + mp3Name;
+        mp3Title = getTitle(mp3Url);
+        mp3Url = encodeURI(mp3Url);
+
+        loadMP3(mp3Url, mp3Title, playerNum, 0, mp3Name);  
+      }
+
+      // load an mp3 then seek to a particular time
+      function loadMP3WithSeek(mp3Name, playerNum, seekTime) {  
+        let mp3Url = mp3BaseUrl + mp3Name;
+        mp3Title = getTitle(mp3Url);
+        mp3Url = encodeURI(mp3Url);
+
+        loadMP3(mp3Url, mp3Title, playerNum, seekTime, mp3Name);  
+      }
+
+      // function to called to load mp3 url for a particular player
+      function loadMP3(mp3Url, mp3Title, playerNum, seekTime=0, mp3Name = '') {
+        let player = (playerNum == 1) ? player1 : player2;
+
+        player.source = {
+          type: 'audio',
+          title: mp3Title,
+            sources: [
+              {
+                src: mp3Url,
+                type: 'audio/mp3',
+              }
+            ]
+          };
+        
+        // see if seek time is greater than zero, if so set the global mixSeekTime
+        // then the mp3 will play once the loadeddata event is fired
+        if(seekTime !== 0) {
+          mixSeekTime = seekTime; 
+        } else {
+          player.play();
+        }
+        
+        // debug
+        console.log("Loaded: " + mp3Title + " - > " + mp3Url + " Seek Time: " + seekTime);
+
+        // update the UI
+        let trackInfo = "?";
+        if(infoDictionary[mp3Name]) {
+          trackInfo = infoDictionary[mp3Name][0];
+        }
+
+        document.getElementById("title" + playerNum).innerHTML = `<b>${mp3Title} |  ${trackInfo}</b>`;
+        document.getElementById("videoId" + playerNum).value = '';   
+      }
+
+      // function to return the mp3 file given url
+      function getTitle(mp3Url) {
+        mp3Url = decodeURIComponent(mp3Url);
+        let lastParts = mp3Url.split('/').slice(-2).join("/");
+        lastParts = lastParts.replaceAll("_", " ");
+        return lastParts;
+      }
+
+      // function to restart the mp3 player
+      function restartMP3(playerNum) {
+        if (playerNum == 1) {
+          player1.restart();   
+        } else {
+          player2.restart();
+        }
+      }
+      
+      // This is by the speed radio buttons
+      function onChangeSpeed(playerNum, speedButton) {
+        let playerSpeed = speedButton.value;
+        updatePlayerSpeed(playerNum, playerSpeed);
+      }
+
+      // update the players speed
+      function updatePlayerSpeed(playerNum, playerSpeed) {
+        let currentPlayer;
+
+        if (playerNum == 1) {
+          currentPlayer = player1;
+        } else {
+          currentPlayer = player2;
+        }
+
+        // update the playback speed
+        if (playerSpeed == 0) {
+          currentPlayer.speed = 1;
+        } else if (playerSpeed == 1) {
+          currentPlayer.speed = 1.05;
+        } else if (playerSpeed == 2) {
+          currentPlayer.speed = 1.10;
+        } else if (playerSpeed == 3) {
+          currentPlayer.speed = 1.15;
+        } else {
+          currentPlayer.speed = 1;
+        }
+
+        console.log("Playback Speed > " + playerNum + " : " + playerSpeed);
+      }
+
+      // play all tracks in a directory
+      function playMP3s(rootDir) {
+        playingTracks = true;
+        trackIndex = 0;
+        currentTracks = mp3DB[rootDir];
+
+        // start playing now on player 1
+        loadMP3FromButton(currentTracks[trackIndex], 1);
+        displayNavigationButtons(rootDir);
+      }
+
+      // play all tracks in the qued list
+      function playQuedMP3s() {
+        playingTracks = true;
+        trackIndex = 0;
+        currentTracks = queTracks;
+
+        // start playing now on player 1
+        loadMP3FromButton(currentTracks[trackIndex], 1);
+        displayNavigationButtons(null);
+      }
+
+      // display the forward and backwards navigation buttons
+      function displayNavigationButtons(rootDir) {
+        let buttonHtml = ` <button type="button" onclick="playNextTrack(-1)">Track--</button> `;
+        
+        if(rootDir) {
+          buttonHtml += `<button type="button" onclick="displayMP3s('${rootDir}')">${rootDir}</button>`;
+        } else {
+          buttonHtml += `<button type="button">Qued Tracks</button>`;
+        }
+        
+        buttonHtml += `<button type="button" onclick="playNextTrack(1)">Track++</button>`;
+        
+        let container = document.getElementById('play');
+        container.innerHTML = buttonHtml;
+      }
+
+      // function to play the next track
+      function playNextTrack(increment) {
+        trackIndex += increment;
+        if(trackIndex > 0 && trackIndex < currentTracks.length) {
+          // stop playback
+          player1.pause();
+          player2.pause();
+        
+          // move index and start playback on player 1
+          loadMP3FromButton(currentTracks[trackIndex], 1);
+        } else {
+          console.log("Invalid track index: " + trackIndex + " Reseting ...");
+          trackIndex = 0;
+        }
+      }
+
+
+      // add all tracks in dir to que list
+      function queMP3s(rootDir) {
+        let tracks = mp3DB[rootDir];
+        queTracks.push.apply(queTracks, tracks);
+        
+        displayQuedMP3s();
+
+        let container = document.getElementById('playList');
+        container.innerHTML = "";
+      }
+
+      // add all tracks in dir to que list
+      function queMP3(mp3Name) {
+        queTracks.push(mp3Name);
+        displayQuedMP3s();
+      }
+
+      // remove a qued track
+      function removeMP3(mp3Name) {
+        let index = queTracks.indexOf(mp3Name);
+        if (index !== -1) {
+          queTracks.splice(index, 1);
+          displayQuedMP3s();
+        }
+      }
+
+      // function to display the que tracks
+      function displayQuedMP3s() {
+        let buttonHtml = ` <button type="button" onclick="playQuedMP3s()">Play All</button> `
+        buttonHtml += `<button type="button" onclick="saveQue()">Save Que</button>`
+        buttonHtml += `<button type="button" onclick="clearQue()">Clear</button>`
+
+        inputHtml = `<button type="button" onclick="startMixPlay()">Play Mix</button> 
+                    <label for="m_start"><b>Start @: </b></label>
+                    <input type="text" id="m_start" name="m_start" value="1" size="2">
+                    <label for="m_overlap"><b>Overlap (s): </b></label>
+                    <input type="text" id="m_overlap" name="m_overlap" value="20" size="2">
+                    <label for="m_play"><b>Plays (s): </b></label>
+                    <input type="text" id="m_play" name="m_play" value="45" size="3">
+                    `;
+
+        let html = `
+          <table style="width:100%; border: none; border-collapse: collapse;"> 
+            <thead>
+              <tr>
+                <th style="width: 50%; text-align: left;">Qued Tracks: ${queTracks.length} | ${buttonHtml}</th>
+                <th style="width: 50%; text-align: left;">${inputHtml}</th>
+              </tr>
+            </thead>
+            <tbody>`;
+
+        for (let i = 0; i < queTracks.length; i += 2) {
+          let track1 = queTracks[i];
+          let track2 = queTracks[i + 1];
+
+          let track1Clean = track1.replaceAll("'", "\\'");
+          
+          let button1Html = `<button type="button" onclick="loadMP3FromButton('${track1Clean}', 1)">&lt;</button>`;
+          button1Html += `<button type="button" onclick="loadMP3FromButton('${track1Clean}', 2)">&gt;</button> `;
+          button1Html += `<button type="button" onclick="removeMP3('${track1Clean}', 2)">X</button>`;
+
+          // get the info for the track
+          let trackInfo = infoDictionary[track1][0];
+
+          // replace under scores with spaces and add track number
+          track1 = `[${i+1}] ${track1.replaceAll("_", " ")}`;
+
+          // add inner table to fix formating
+          let table1Html = `<table style="width:100%; border: none; border-collapse: collapse;"> 
+            <tr>
+              <td style="width: 14%; vertical-align: top;">${button1Html}</td>
+              <td style="vertical-align: top;">${track1} | ${trackInfo}</td>
+            </tr>
+            </table>`;
+
+          let table2Html = '';
+          if(track2) {
+            // get the info for the track
+            trackInfo = infoDictionary[track2][0];
+            
+            let track2Clean = track2.replaceAll("'", "\\'");
+
+            let button2Html = `<button type="button" onclick="loadMP3FromButton('${track2Clean}', 1)">&lt;</button>`;
+            button2Html += `<button type="button" onclick="loadMP3FromButton('${track2Clean}', 2)">&gt;</button> `;
+            button2Html += `<button type="button" onclick="removeMP3('${track2Clean}', 2)">X</button>`;
+
+            track2 = `[${i+2}] ${track2.replaceAll("_", " ")}`;
+
+            // add inner table to fix formating
+            table2Html = `<table style="border: none; border-collapse: collapse;"> 
+              <tr>
+                <td style="width: 14%;vertical-align: top;">${button2Html}</td>
+                <td style="vertical-align: top;">${track2} | ${trackInfo}</td>
+              </tr>
+              </tbody></table>
+            `;
+          }
+
+          html += `
+              <tr>
+                <td><b>${table1Html}</b></td>
+                <td><b>${table2Html}</b></td>
+              </tr>
+          `;
+        }
+
+        html += `</tbody></table>`;
+
+        container = document.getElementById('queList');
+        container.innerHTML = html;
+      }
+
+      // function to mix the que
+      async function startMixPlay() {
+        let startVideo = document.getElementById("m_start").value - 1;
+        let overlap = document.getElementById("m_overlap").value;
+        let playTime = document.getElementById("m_play").value;
+        let startTime = 0;
+        
+        // reset this to zero
+        mixSeekTime = 0;
+
+        // set the current tracks to the qued tracks
+        currentTracks = queTracks;
+
+        // set the stop mix index by making a copy of global variable so we don't have 2 mixes going at once
+        let stopIndex = stopMixIndex;
+        stopMix[stopIndex] = false;
+        playMix = true;
+
+        // check the start video value is valid
+        if(startVideo < 0 || startVideo == currentTracks.length) {
+          startVideo = 0;
+        }
+
+        for (let i = startVideo; i < currentTracks.length; i++) {
+          let mp3Name = currentTracks[i];
+          let trackNum = i + 1
+
+          // display current mixing information
+          let message = "Curent Mix Track: " + trackNum + " / Playtime: " + toHHMMSS(playTime);
+          document.getElementById("messageText").innerHTML = message;
+
+          // if it's not the first video set the start time to the overlap
+          if (i != startVideo) {
+            startTime = overlap;
+          }
+
+          // see which player to use
+          if (i % 2 == 0) {
+            console.log("Mix Player 1: " + mp3Name);
+            moveSlideTo(1);
+            loadMP3WithSeek(mp3Name, 1, startTime);
+          } else {
+            console.log("Mix Player 2: " + mp3Name);
+            moveSlideTo(2);
+            loadMP3WithSeek(mp3Name, 2, startTime);
+          }
+
+          // load the animated vumeter or tape gif
+          vumeterOutput.innerHTML = "<img src=\"https://i.pinimg.com/originals/f7/20/df/f720df37ff3964df6e4b92146a1fe97e.gif\" alt=\"VU Meter\"  width=\"440\" height=\"307\">";
+
+          // delay a specified number of seconds, playtime, before next video is played  
+          await wait(playTime * 1000);
+
+          // check to see if to stop the mix
+          if (stopMix[stopIndex]) {
+            console.log("Stopping Mix @ " + i);
+            break;
+          }
+        }
+
+        playMix = false;
+        vumeterOutput.innerHTML = "";
+        console.log("Mix Play Done ...");
+      }
+
+      // function to wait a certian time before doing something
+      function wait(timeout) {
+        return new Promise((resolve) => setTimeout(resolve, timeout));
+      }
+
+      // function to return time as hh:mm:ss given seconds
+      // https://stackoverflow.com/questions/1322732/convert-seconds-to-hh-mm-ss-with-javascript
+      function toHHMMSS(seconds) {
+        const date = new Date(null);
+        date.setSeconds(seconds);
+        return date.toISOString().slice(11, 19);
+      }
+
+      // function to mix the que
+      function saveQue() {
+        let settings = document.getElementById("mixs").value;
+        console.log("Saving Que: " + settings);
+      }
+
+      // function to stop/pause video playback
+      function stopAllPlay() {
+        player1.pause();
+        player2.pause();
+
+        let container = document.getElementById('play');
+        container.innerHTML = "";
+        playingTracks = false;
+
+        if(playMix) {
+          stopMixPlay();
+        }
+      }
+
+      // function to stop a playing mix
+      function stopMixPlay() {
+        stopMix[stopMixIndex] = true;
+        stopMixIndex++;
+
+        //player1.pause();
+        //player2.pause();
+
+        // hide the vumeter
+        vumeterOutput.innerHTML = "";
+
+        slider.value = 50;
+        changePlayerVolume(50);
+      }
+
+      // clear the main display
+      function clearAll() {
+        clearPlayList();
+        clearQue();
+      }
+
+      // clear the playlist ui
+      function clearPlayList() {
+        let container = document.getElementById('playList');
+        container.innerHTML = "";
+      }
+
+      // function that just clear the que
+      function clearQue() {
+        let container = document.getElementById('queList');
+        container.innerHTML = "";
+
+        queTracks = [];
+
+        /*
+        if(playMix) {
+          stopMixPlay();
+        }*/
+      }
+
+      // add function to "smoothly" move the slider using a timer function
+      function moveSlideTo(playerNum) {
+        var steps = 300;
+        var mixStart = Number(slider.value);
+        var mixStep = 0;
+        var mixRatio = 0;
+
+        if (playerNum == 1) {
+          mixStep = mixStart / steps;
+        } else {
+          mixStep = (100 - mixStart) / steps;
+        }
+
+        for (let i = 1; i < (steps + 1); i++) {
+          setTimeout(function timer() {
+            if (playerNum == 1) {
+              mixRatio = Math.round(mixStart - mixStep * i)
+            } else {
+              mixRatio = Math.round(mixStart + mixStep * i)
+            }
+
+            // move the slider
+            slider.value = mixRatio
+            changePlayerVolume(mixRatio);
+
+            //console.log(i + ": delay for " + playerNum + " mixer: " + mixStart + " / " + mixStep + " / " + mixRatio);
+          }, i * 20);
+        }
+      }
+
+      // function to change the players volume base on the slider position
+      function changePlayerVolume(mixRatio) {
+        var player1Vol = 0;
+        var player2Vol = 0;
+
+        if (mixRatio <= 50) {
+          player1Vol = 100;
+          player2Vol = mixRatio * 2;
+        } else {
+          player1Vol = (100 - mixRatio) * 2;
+          player2Vol = 100;
+        }
+
+        player1.volume = player1Vol/100;
+        player2.volume = player2Vol/100;
+
+        mixerOutput.innerHTML = mixRatio + " || Volume Player 1 @ " + player1Vol + "% / Player 2 @ " + player2Vol + "%";
+      }
+
+      // create a tree structure to display from dictionary
+      function generateHtmlTreeFromArrayDict(data, expand=true) {
+        function createNode(key, value, count=0) {
+          let html = '';
+
+          if (key) {
+            let buttonHtml = '';
+            
+            if(expand) {
+              let rootDir = key.split("/")[0];
+              rootDir = rootDir.replaceAll("'", "\\'");
+              keyClean = key.replaceAll("'", "\\'");
+
+              buttonHtml = ` <button type="button" onclick="playMP3s('${keyClean}')">Play All</button> `;
+              buttonHtml += `<button type="button" onclick="queMP3s('${keyClean}')">Que All</button> `;
+              buttonHtml += `<button type="button" onclick="displayMP3s('${rootDir}')">Back</button> `;
+              buttonHtml += `<button type="button" onclick="clearPlayList()">Clear</button> `;
+            }
+            
+            html += `<strong>${key}:</strong> ${buttonHtml}`;
+          }
+
+          if (Array.isArray(value)) {
+            html += '<ul>';
+            
+            if(expand) {
+              let count = 1;
+              for (const item of value) {
+                html += `<li>${createNode(null, item, count)}</li>`;
+                count++;
+              }
+            } else {
+              // get the information for tracks and sum up the total time
+              let totalTime = 0;
+              for (const item of value) {
+                if(infoDictionary[item]) {
+                  let trackTime = infoDictionary[item][1];
+                  totalTime += Number(trackTime);
+                }
+              }
+
+              let totalPlayTime = toHHMMSS(totalTime);
+              let bitrate = infoDictionary[value[0]][2];
+
+
+              let rootDir = value[0].split("/").slice(0,-1).join("/");
+              rootDir = rootDir.replaceAll("'", "\\'");
+
+              let buttonHtml = `<button type="button" onclick="displayMP3s('${rootDir}',true)">View</button> `
+              buttonHtml += `<button type="button" onclick="playMP3s('${rootDir}',true)">Play</button> `;
+              buttonHtml += `<button type="button" onclick="queMP3s('${rootDir}',true)">Que</button> `;
+              
+              html += `<li>${buttonHtml}<b> ${value.length} Track(s) | ${totalPlayTime} ${bitrate}</b></li>`; 
+            } 
+
+            html += '</ul>';
+          } else {
+            let cleanName = value.replaceAll("'", "\\'");
+            
+            let buttonHtml = `<button type="button" onclick="loadMP3FromButton('${cleanName}', 1)">&lt;</button>`;
+            buttonHtml += `<button type="button" onclick="loadMP3FromButton('${cleanName}', 2)">&gt;</button> `;
+            buttonHtml += `<button type="button" onclick="queMP3('${cleanName}', 2)">Que</button>`;
+
+            let trackNum = String(count).padStart(2, '0');
+            let trackInfo = infoDictionary[value][0];
+
+            html += `<b>[${trackNum}] ${buttonHtml} ${value} | ${trackInfo}</b>`;
+          }
+
+          return html;
+        }
+
+        let html = '<ul>';
+        let keyCount = 1;
+
+        for (const key in data) {
+          let keyNum = String(keyCount).padStart(3, '0');
+          
+          if(Object.keys(data).length == 1) { 
+            html += `<li>${createNode(key, data[key])}</li>`;
+          } else {
+            html += `<li>[${keyNum}] ${createNode(key, data[key])}</li>`;
+          }
+          
+          keyCount++;
+        }
+        
+        html += '</ul>';
+
+        return html;
+      }
+
+      // load the mp3s for a selected root folder or search terms
+      function displayMP3s(rootDir, exact=false) {
+        let data = {};
+        let count =0;
+
+        // this is rediculously inefficient, but database is small by todays standards
+        for(var key in mp3DB) {
+          if(exact) {
+            //console.log("Exact Match Key " + key + " / " + rootDir)
+            if(key === rootDir) {
+              data[key] = mp3DB[key];
+              count++;
+            }
+          } else {
+            if(key.toLowerCase().includes(rootDir.toLowerCase())) {
+              data[key] = mp3DB[key];
+              count++;
+            }
+          }
+        }
+
+        let htmlString = ''
+        if(count == 1) {
+          htmlString = generateHtmlTreeFromArrayDict(data);
+        } else {
+          htmlString = generateHtmlTreeFromArrayDict(data, false);
+        }
+        container = document.getElementById('playList');
+        container.innerHTML = htmlString;
+      }
+
+      // search the mp3 dictionary for particular search in in filename
+      function searchMP3DB() {
+        let search = document.getElementById("search").value.trim();
+        displayMP3s(search);
+      }
+
+      // process the mp3 database
+      function processDB(data) {
+        mp3DB = data;
+        let rootDirs = new Set();
+
+        // print out top directory only
+        for (const fileName in mp3DB) {
+          let parts = fileName.split('/');
+          rootDirs.add(parts[0]); // parents directory
+        }
+
+        // now add those as parent folders
+        let htmlString = '';
+        for (const item of rootDirs) {
+          htmlString += `<button style="height:35px;width:325px" onclick="displayMP3s('${item}')">${item}</button> `; 
+        }
+
+        let container = document.getElementById('rootList');
+        container.innerHTML = htmlString;
+
+        console.log("Root Dir: " + rootDirs.size);
+        console.log(rootDirs); 
+      }
+
+      // code to read the "database of mp3 files from server" GEMINI 
+      async function readFileAndCreateDirectoryDictionary(fileUrl) {
+        try {
+          const response = await fetch(fileUrl);
+          const fileNames = await response.text();
+
+          const directoryDictionary = {};
+          
+          fileNames.split('\n').forEach(fileName => {
+            if (fileName) { 
+              fileName = fileName.replace("./", "");
+
+              const parts1 = fileName.split('/');
+              const parentDirectory = parts1.slice(0, -1).join('/');
+              
+              // exctract the playtime and bit rate from filename
+              const parts2 = fileName.split(": ");
+              const fullFileName = parts2[0]; 
+
+              if(parts2[1]) {
+                let playTime = toHHMMSS(parts2[1]);
+                let bitrate = parts2[2].replace("Variable", "Ver.") + " kbs";
+                let infoString =  playTime + " / " + bitrate;
+                infoDictionary[fullFileName] = [infoString, parts2[1], bitrate]; 
+              }
+              
+              if (!directoryDictionary[parentDirectory]) {
+                directoryDictionary[parentDirectory] = [];
+              }
+
+              directoryDictionary[parentDirectory].push(fullFileName);
+            }
+          });
+
+          return directoryDictionary;
+
+        } catch (error) {
+          console.error('Error reading file from URL:', error);
+          return {}; 
+        }
+      }
+      
+      // load our list of mp3 files into a dictionary and print it out
+      const fileUrl = 'http://beebox.sytes.net:5080/music/mp3_index.txt'; 
+      readFileAndCreateDirectoryDictionary(fileUrl)
+        .then(dictionary => {
+          processDB(dictionary);
+        });
+    </script>
+  </body>
+</html>

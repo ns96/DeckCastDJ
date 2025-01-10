@@ -6,7 +6,7 @@ A simple flask/SocketIO for building very simple youtube DJ application that
 can be shared by other users
 
 @author: Nathan
-@version: 1.9.1 (12/14/2024)
+@version: 1.9.2 (1/7/2025)
 """
 import os.path
 from datetime import datetime, timedelta
@@ -1015,6 +1015,10 @@ def processMessage(json):
 @app.route('/')
 def sessions():
     return render_template('index.html')
+
+@app.route('/mp3')
+def playMP3():
+    return render_template('mp3.html')
 
 @app.route('/playing')
 def currentVideo():
