@@ -6,7 +6,7 @@ A simple flask/SocketIO for building very simple youtube DJ application that
 can be shared by other users
 
 @author: Nathan
-@version: 1.9.2 (1/7/2025)
+@version: 1.10.1 (1/13/2025)
 """
 import os.path
 from datetime import datetime, timedelta
@@ -32,6 +32,7 @@ socketio = SocketIO(app)
 defaultPlayListFile = 'data/playlist.json'
 userPlayListFile = 'data/userPlaylist.json'
 invalidVideosFile = 'data/invalidVideos.json'
+savedQueListFile = 'data/queList.json'
 pafyCacheFile = 'data/pafyCache.pkl'
 
 defaultPlayList = dict() # the default playlist for "guest"
@@ -39,6 +40,9 @@ userPlayList = dict()
 youtubePlayListUrls = dict()
 invalidVideosList = list()
 pafyCache = dict()
+
+# dictionary to store the saved que list
+savedQueList = dict()
 
 # dictionary to store the tracklist for a video
 trackListsFile = 'data/tracklists.json'
@@ -71,6 +75,19 @@ def savePlayList():
 def saveUserPlayList():    
     with open(userPlayListFile, 'w') as fp:
         json.dump(userPlayList, fp, indent=2)
+
+# save the saved que list as json
+def saveQueList():    
+    with open(savedQueListFile, 'w') as fp:
+        json.dump(savedQueList, fp, indent=2)
+
+# load the saved que list from file
+def loadSavedQueList():
+    global savedQueList
+    
+    if os.path.isfile(savedQueListFile):
+        with open(savedQueListFile) as json_file: 
+            savedQueList = json.load(json_file)
 
 # funtion to load the invalid video list
 def loadInvalidVideosList():
@@ -655,6 +672,26 @@ def clearQueList(username):
     
     return ""
 
+def addToSavedQueList(username, qname, qlist):
+    global savedQueList
+    
+    key  = username + '@' + qname
+    savedQueList[key] = qlist
+    saveQueList()
+    print("Saved Que List: ", key, " | ", len(qlist))
+
+def filterSavedQueList(username):
+    global savedQueList
+    
+    filteredQueList = dict()
+    
+    for key in savedQueList.keys():
+        if username in key:
+            newKey = key.split('@')[1]
+            filteredQueList[newKey] = savedQueList[key]
+    
+    return filteredQueList
+
 # function to return a unique name when saving youtube playlist
 def getUniquePlayListName(playListName):
     global userPlayList
@@ -1003,6 +1040,17 @@ def processMessage(json):
     if 'Get Progress' in msgTitle:
         playlistUrl = json['url']
         json['loadingText'] = loadingMessages[playlistUrl]
+    
+    # a message to save a quelist from mp3 DJ or deckcast dj
+    if 'MP3DJ Save QueList' in msgTitle:
+        qname = json['qname']
+        qlist = json['qlist']       
+        addToSavedQueList('MP3DJ', qname, qlist)
+    
+    # a message to load a saved que list and return to the client
+    if 'MP3DJ Load QueList' in msgTitle:
+        json['qlist'] = filterSavedQueList('MP3DJ@')
+        #print("Saved Que List Loaded ...", len(savedQueList))
 
     # reset the stored values
     if 'RESET' in msgTitle:
@@ -1044,11 +1092,12 @@ if __name__ == '__main__':
     app.config['TEMPLATES_AUTO_RELOAD'] = True
     app.config['SEND_FILE_MAX_AGE_DEFAULT'] = 0
                        
-    print("Loading local playlist ...\n")
+    print("Loading saved playlist and que list ...\n")
     loadInvalidVideosList()
     loadPlayList()
     loadPafyCache()
     loadMixVideoTracks()
+    loadSavedQueList()
 
     if(useYoutube):
         # Load youtube playlist for various users

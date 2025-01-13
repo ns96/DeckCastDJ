@@ -4,7 +4,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <style>
   body {
-      background-color: #666699;
+      background-color: #b2b2de;
   }
 
   .slidecontainer {
@@ -128,12 +128,13 @@
 
 </head>
     <body>
-    <h2>DeckCastDJ-MP3 v1.0.2 (01/10/2025) -- Simple DJ Player</h2>
+    <h2>DeckCastDJ-MP3 v1.1.1 (01/13/2025) -- Simple DJ Player</h2>
     
     <p>
       <label for="search"><b id="pageTop">Search For: </b></label>
       <input type="text" id="search" name="search" value="" size="50">
-      <button type="button" onclick="searchMP3DB()">Search</button>
+      <button type="button" onclick="searchMP3DB()">Search</button> 
+      <button type="button" onclick="loadSavedQueList()">Load Saved Ques</button>
     </p>
 
     <p>
@@ -385,6 +386,30 @@
         }
       });
 
+      /**
+       * Functions and variables here are for socketio
+       */
+      var socket = io('http://' + document.domain + ':' + location.port);
+      var username = 'MP3DJ';
+      var clientId = '';
+
+      socket.on('connect', function () {
+        socket.emit('my event', {
+          data: 'User Connected',
+          uname: username
+        })
+
+        clientId = socket.io.engine.id;
+      });
+
+      socket.on('my response', function (msg) {
+        // see if to display the saved que list
+        if (msg.data.includes("MP3DJ Load QueList")) {
+          qlist = msg.qlist; // this is a dictionary
+          displaySavedQueList(qlist);  
+        } 
+      });      
+
       // functon called by load mp3/video file i.e. button
       function loadMP3FromUrl(playerNum) {
         let mp3Url = '';
@@ -526,12 +551,16 @@
 
       // display the forward and backwards navigation buttons
       function displayNavigationButtons(rootDir) {
+        
         let buttonHtml = ` <button type="button" onclick="playNextTrack(-1)">Track--</button> `;
         
         if(rootDir) {
-          buttonHtml += `<button type="button" onclick="displayMP3s('${rootDir}')">${rootDir}</button>`;
+          let trackCount = currentTracks.length;
+          buttonHtml += `<button type="button" onclick="displayMP3s('${rootDir}')">${rootDir} (${trackCount})</button> 
+                        <button type="button" onclick="queCurrentTrack()">Que</button> `;
         } else {
-          buttonHtml += `<button type="button">Qued Tracks</button>`;
+          let trackCount = queTracks.length;
+          buttonHtml += `<button type="button">Qued Tracks  (${trackCount})</button>`;
         }
         
         buttonHtml += `<button type="button" onclick="playNextTrack(1)">Track++</button>`;
@@ -574,6 +603,13 @@
         displayQuedMP3s();
       }
 
+      // add the current track to the que list
+      function queCurrentTrack() {
+        let mp3Name = currentTracks[trackIndex];
+        queTracks.push(mp3Name);
+        displayQuedMP3s();
+      }
+
       // remove a qued track
       function removeMP3(mp3Name) {
         let index = queTracks.indexOf(mp3Name);
@@ -585,8 +621,9 @@
 
       // function to display the que tracks
       function displayQuedMP3s() {
-        let buttonHtml = ` <button type="button" onclick="playQuedMP3s()">Play All</button> `
-        buttonHtml += `<button type="button" onclick="saveQue()">Save Que</button>`
+        let buttonHtml = ` <button type="button" onclick="playQuedMP3s()">Play All</button> `;
+        buttonHtml += `<button type="button" onclick="saveQue()">Save Que</button> `;
+        buttonHtml += `<input type="text" id="que_name" name="que_name" value="Tunes_1" size="10"> `
         buttonHtml += `<button type="button" onclick="clearQue()">Clear</button>`
 
         inputHtml = `<button type="button" onclick="startMixPlay()">Play Mix</button> 
@@ -672,11 +709,11 @@
       // function to mix the que
       async function startMixPlay() {
         let startVideo = document.getElementById("m_start").value - 1;
-        let overlap = document.getElementById("m_overlap").value;
-        let playTime = document.getElementById("m_play").value;
+        let overlap = Number(document.getElementById("m_overlap").value);
+        let playTime = Number(document.getElementById("m_play").value);
         let startTime = 0;
         
-        // reset this to zero
+        // reset this to zero so we can properly start play on loadeddata event
         mixSeekTime = 0;
 
         // set the current tracks to the qued tracks
@@ -694,6 +731,7 @@
 
         for (let i = startVideo; i < currentTracks.length; i++) {
           let mp3Name = currentTracks[i];
+          let trackInfo = infoDictionary[mp3Name];
           let trackNum = i + 1
 
           // display current mixing information
@@ -703,6 +741,20 @@
           // if it's not the first video set the start time to the overlap
           if (i != startVideo) {
             startTime = overlap;
+          }
+
+          // calculate the wait time based on length of song, overlap, and playtime
+          let waitTime = playTime;
+          if (trackInfo) {
+            let trackLength = Number(trackInfo[1]);
+            let endTime = overlap + playTime;
+            if(endTime >= trackLength) {
+              waitTime = trackLength - (overlap + 5);
+              console.log("New Wait Time: " + waitTime);
+              if(waitTime < 0) {
+                waitTime = 0; // skip this track
+              }
+            }
           }
 
           // see which player to use
@@ -719,8 +771,8 @@
           // load the animated vumeter or tape gif
           vumeterOutput.innerHTML = "<img src=\"https://i.pinimg.com/originals/f7/20/df/f720df37ff3964df6e4b92146a1fe97e.gif\" alt=\"VU Meter\"  width=\"440\" height=\"307\">";
 
-          // delay a specified number of seconds, playtime, before next video is played  
-          await wait(playTime * 1000);
+          // delay a specified number of seconds, playtime, before next mp3 is played  
+          await wait(waitTime * 1000);
 
           // check to see if to stop the mix
           if (stopMix[stopIndex]) {
@@ -749,8 +801,28 @@
 
       // function to mix the que
       function saveQue() {
-        let settings = document.getElementById("mixs").value;
-        console.log("Saving Que: " + settings);
+        let queName = document.getElementById("que_name").value;
+
+        jsonText = {
+          data: 'MP3DJ Save QueList',
+          uname: username,
+          qname: queName,
+          qlist: queTracks
+        }
+        socket.emit('my event', jsonText);
+
+        console.log("Saving Que: " + queName);
+      }
+
+      // function to load the saved ques from the server
+      function loadSavedQueList() {
+        jsonText = {
+          data: 'MP3DJ Load QueList',
+          uname: username
+        }
+        socket.emit('my event', jsonText);
+
+        console.log("Loading Saved Ques ...");
       }
 
       // function to stop/pause video playback
@@ -857,7 +929,7 @@
       }
 
       // create a tree structure to display from dictionary
-      function generateHtmlTreeFromArrayDict(data, expand=true) {
+      function generateHtmlTreeFromArrayDict(data, expand=true, qlist=false) {
         function createNode(key, value, count=0) {
           let html = '';
 
@@ -875,7 +947,11 @@
               buttonHtml += `<button type="button" onclick="clearPlayList()">Clear</button> `;
             }
             
-            html += `<strong>${key}:</strong> ${buttonHtml}`;
+            if(qlist) {
+              html += `<strong>Saved Que -- ${key}:</strong> `;
+            } else {
+              html += `<strong>${key}:</strong> ${buttonHtml}`;
+            }
           }
 
           if (Array.isArray(value)) {
@@ -948,6 +1024,59 @@
         return html;
       }
 
+      // given an array of mp3 tracks, return the html for the track info
+      function getTrackInfoHtml(value) {
+        // get the information for tracks and sum up the total time
+        let totalTime = 0;
+        for (const item of value) {
+          if(infoDictionary[item]) {
+            let trackTime = infoDictionary[item][1];
+            totalTime += Number(trackTime);
+          }
+        }
+
+        let totalPlayTime = toHHMMSS(totalTime);
+        let bitrate = infoDictionary[value[0]][2];
+
+        let rootDir = value[0].split("/").slice(0,-1).join("/");
+        rootDir = rootDir.replaceAll("'", "\\'");
+
+        let buttonHtml = `<button type="button" onclick="displayMP3s('${rootDir}',true)">View</button> `
+        buttonHtml += `<button type="button" onclick="playMP3s('${rootDir}',true)">Play</button> `;
+        buttonHtml += `<button type="button" onclick="queMP3s('${rootDir}',true)">Que</button> `;
+              
+        let html = `${buttonHtml}<b> ${value.length} Track(s) | ${totalPlayTime} ${bitrate}</b>`;
+
+        return html;
+      }
+
+      // generate a two column table from a dictionary
+      function generateHtmlTableFromArrayDict(data) {
+        let html = '<table style="width:100%; border: none; border-collapse: collapse;">';
+        let keyCount = 1;
+
+        for (const key in data) {
+          let keyNum = String(keyCount).padStart(3, '0');
+          let value = data[key];
+          
+          if(keyCount % 2 !== 0) {
+            html += `<tr><td style="width: 50%; vertical-align: top; padding-bottom: 15px">
+            <strong>[${keyNum}] ${key}:</strong><br>
+            ${getTrackInfoHtml(value)} (<a href="#pageTop"> &uArr; </a>) (<a href="#messageText">  &dArr; </a>)</td>`;
+          } else {
+            html += `<td style="width: 50%; vertical-align: top;  padding-bottom: 15px">
+             <strong>[${keyNum}] ${key}:</strong><br>
+            ${getTrackInfoHtml(value)} (<a href="#pageTop"> &uArr; </a>) (<a href="#messageText">  &dArr; </a>)</td></tr>`;
+          }
+
+          keyCount++;
+        }
+
+        html += '</table>';
+
+        return html;
+      }
+
       // load the mp3s for a selected root folder or search terms
       function displayMP3s(rootDir, exact=false) {
         let data = {};
@@ -973,8 +1102,16 @@
         if(count == 1) {
           htmlString = generateHtmlTreeFromArrayDict(data);
         } else {
-          htmlString = generateHtmlTreeFromArrayDict(data, false);
+          //htmlString = generateHtmlTreeFromArrayDict(data, false);
+          htmlString = generateHtmlTableFromArrayDict(data);
         }
+        container = document.getElementById('playList');
+        container.innerHTML = htmlString;
+      }
+
+      // function to display the saved que list
+      function displaySavedQueList(savedQueList) {
+        let htmlString = generateHtmlTreeFromArrayDict(savedQueList, false, true);
         container = document.getElementById('playList');
         container.innerHTML = htmlString;
       }

@@ -171,6 +171,7 @@ invalidVideos.json
 # ignore image files in static folder
 static/*.png
 
-# ignore pafy cache an other file
+# ignore pafy cache an other files
 pafyCache.pkl
 mixTrack.json
+queList.json
