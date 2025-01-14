@@ -8,6 +8,10 @@ can be shared by other users
 @author: Nathan
 @version: 1.10.1 (1/13/2025)
 """
+# this variables are passed onto the html templates
+appVersion = 'v1.10.3 (1/14/2025)'
+bgColor = '#b2b2de'
+
 import os.path
 from datetime import datetime, timedelta
 from urllib.request import urlopen
@@ -1062,11 +1066,11 @@ def processMessage(json):
 
 @app.route('/')
 def sessions():
-    return render_template('index.html')
+    return render_template('index.html', version=appVersion, bgcolor=bgColor)
 
 @app.route('/mp3')
 def playMP3():
-    return render_template('mp3.html')
+    return render_template('mp3.html', version=appVersion, bgcolor=bgColor)
 
 @app.route('/playing')
 def currentVideo():

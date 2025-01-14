@@ -4,7 +4,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <style>
   body {
-      background-color: #b2b2de;
+      /*background-color: #b2b2de;*/
+      background-color: {{bgcolor}};
   }
 
   .slidecontainer {
@@ -128,7 +129,7 @@
 
 </head>
     <body>
-    <h2>DeckCastDJ-MP3 v1.1.1 (01/13/2025) -- Simple DJ Player</h2>
+    <h2>DeckCastDJ-MP3 {{version}} -- Simple DJ Player</h2>
     
     <p>
       <label for="search"><b id="pageTop">Search For: </b></label>
@@ -314,6 +315,9 @@
       // array to hold qued Tracks
       var queTracks = [];
 
+      // holds the saved qlist
+      var savedQueList = {};
+
       // keep track when we playing a mix
       var playMix = false;
       var stopMix = new Array();
@@ -405,8 +409,8 @@
       socket.on('my response', function (msg) {
         // see if to display the saved que list
         if (msg.data.includes("MP3DJ Load QueList")) {
-          qlist = msg.qlist; // this is a dictionary
-          displaySavedQueList(qlist);  
+          savedQueList = msg.qlist; // this is a dictionary
+          displaySavedQueList();  
         } 
       });      
 
@@ -572,7 +576,8 @@
       // function to play the next track
       function playNextTrack(increment) {
         trackIndex += increment;
-        if(trackIndex > 0 && trackIndex < currentTracks.length) {
+        
+        if(trackIndex >= 0 && trackIndex < currentTracks.length) {
           // stop playback
           player1.pause();
           player2.pause();
@@ -611,20 +616,28 @@
       }
 
       // remove a qued track
-      function removeMP3(mp3Name) {
+      function removeMP3(mp3Name, queListName = '') {
         let index = queTracks.indexOf(mp3Name);
+        
         if (index !== -1) {
           queTracks.splice(index, 1);
-          displayQuedMP3s();
+          displayQuedMP3s(queListName);
         }
       }
 
       // function to display the que tracks
-      function displayQuedMP3s() {
+      function displayQuedMP3s(saveQueListKey = '') {
+        let defaultName = 'Tunes_1';
+
+        if(saveQueListKey && savedQueList[saveQueListKey]) {
+          queTracks = savedQueList[saveQueListKey];
+          defaultName = saveQueListKey;
+        }
+
         let buttonHtml = ` <button type="button" onclick="playQuedMP3s()">Play All</button> `;
         buttonHtml += `<button type="button" onclick="saveQue()">Save Que</button> `;
-        buttonHtml += `<input type="text" id="que_name" name="que_name" value="Tunes_1" size="10"> `
-        buttonHtml += `<button type="button" onclick="clearQue()">Clear</button>`
+        buttonHtml += `<input type="text" id="que_name" name="que_name" value="${defaultName}" size="10"> `;
+        buttonHtml += `<button type="button" onclick="clearQue()">Clear</button>`;
 
         inputHtml = `<button type="button" onclick="startMixPlay()">Play Mix</button> 
                     <label for="m_start"><b>Start @: </b></label>
@@ -653,7 +666,7 @@
           
           let button1Html = `<button type="button" onclick="loadMP3FromButton('${track1Clean}', 1)">&lt;</button>`;
           button1Html += `<button type="button" onclick="loadMP3FromButton('${track1Clean}', 2)">&gt;</button> `;
-          button1Html += `<button type="button" onclick="removeMP3('${track1Clean}', 2)">X</button>`;
+          button1Html += `<button type="button" onclick="removeMP3('${track1Clean}', '${defaultName}')">X</button>`;
 
           // get the info for the track
           let trackInfo = infoDictionary[track1][0];
@@ -678,7 +691,7 @@
 
             let button2Html = `<button type="button" onclick="loadMP3FromButton('${track2Clean}', 1)">&lt;</button>`;
             button2Html += `<button type="button" onclick="loadMP3FromButton('${track2Clean}', 2)">&gt;</button> `;
-            button2Html += `<button type="button" onclick="removeMP3('${track2Clean}', 2)">X</button>`;
+            button2Html += `<button type="button" onclick="removeMP3('${track2Clean}', '${defaultName}')">X</button>`;
 
             track2 = `[${i+2}] ${track2.replaceAll("_", " ")}`;
 
@@ -948,7 +961,7 @@
             }
             
             if(qlist) {
-              html += `<strong>Saved Que -- ${key}:</strong> `;
+              html += `<strong>Saved Que List -- ${key}:</strong> `;
             } else {
               html += `<strong>${key}:</strong> ${buttonHtml}`;
             }
@@ -976,13 +989,19 @@
               let totalPlayTime = toHHMMSS(totalTime);
               let bitrate = infoDictionary[value[0]][2];
 
+              let buttonHtml = '';
 
-              let rootDir = value[0].split("/").slice(0,-1).join("/");
-              rootDir = rootDir.replaceAll("'", "\\'");
+              // TO-DO 1/14/2025 -- Code for qlist
+              if(qlist) {
+                buttonHtml = `<button type="button" onclick="displayQuedMP3s('${key}')">View</button> `;
+              } else {
+                let rootDir = value[0].split("/").slice(0,-1).join("/");
+                rootDir = rootDir.replaceAll("'", "\\'");
 
-              let buttonHtml = `<button type="button" onclick="displayMP3s('${rootDir}',true)">View</button> `
-              buttonHtml += `<button type="button" onclick="playMP3s('${rootDir}',true)">Play</button> `;
-              buttonHtml += `<button type="button" onclick="queMP3s('${rootDir}',true)">Que</button> `;
+                buttonHtml = `<button type="button" onclick="displayMP3s('${rootDir}',true)">View</button> `;
+                buttonHtml += `<button type="button" onclick="playMP3s('${rootDir}',true)">Play</button> `;
+                buttonHtml += `<button type="button" onclick="queMP3s('${rootDir}',true)">Que</button> `;
+              }
               
               html += `<li>${buttonHtml}<b> ${value.length} Track(s) | ${totalPlayTime} ${bitrate}</b></li>`; 
             } 
@@ -1110,7 +1129,7 @@
       }
 
       // function to display the saved que list
-      function displaySavedQueList(savedQueList) {
+      function displaySavedQueList() {
         let htmlString = generateHtmlTreeFromArrayDict(savedQueList, false, true);
         container = document.getElementById('playList');
         container.innerHTML = htmlString;
