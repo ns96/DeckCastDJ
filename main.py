@@ -6,10 +6,10 @@ A simple flask/SocketIO for building very simple youtube DJ application that
 can be shared by other users
 
 @author: Nathan
-@version: 1.10.1 (1/13/2025)
+@version: 1.10.6 (1/15/2025)
 """
 # this variables are passed onto the html templates
-appVersion = 'v1.10.3 (1/14/2025)'
+appVersion = 'v1.10.6 (1/15/2025)'
 bgColor = '#b2b2de'
 
 import os.path
@@ -696,6 +696,15 @@ def filterSavedQueList(username):
     
     return filteredQueList
 
+def deleteFromSavedQueList(username, qname):
+    global savedQueList
+    
+    key  = username + '@' + qname
+    if key in savedQueList:
+        savedQueList.pop(key)
+        saveQueList()
+        print("Deleted Que List: ", key)
+
 # function to return a unique name when saving youtube playlist
 def getUniquePlayListName(playListName):
     global userPlayList
@@ -1054,7 +1063,15 @@ def processMessage(json):
     # a message to load a saved que list and return to the client
     if 'MP3DJ Load QueList' in msgTitle:
         json['qlist'] = filterSavedQueList('MP3DJ@')
-        #print("Saved Que List Loaded ...", len(savedQueList))
+    
+    # a message to load a saved que list and return to the client
+    if 'MP3DJ Delete QueList' in msgTitle:
+        qname = json['qname'] 
+
+        deleteFromSavedQueList('MP3DJ', qname)
+        
+        json['qlist'] = filterSavedQueList('MP3DJ@')
+        json['data'] = 'MP3DJ Load QueList'
 
     # reset the stored values
     if 'RESET' in msgTitle:

@@ -344,28 +344,38 @@
         console.log("Player 2 MP3 Length: " + instance.duration);
       });
 
-      player1.on('loadeddata', (event) => {
+      player1.on('loadeddata', async(event) => {
         const instance = event.detail.plyr;
         if(playMix && mixSeekTime !== 0) {
           console.log("Player 1 Start @ " + mixSeekTime);
           instance.forward(Number(mixSeekTime));
+          await delay(500);
           instance.play();
+        }
+
+        function delay(ms) {
+          return new Promise(resolve => setTimeout(resolve, ms));
         }
       });
 
-      player2.on('loadeddata', (event) => {
+      player2.on('loadeddata', async(event) => {
         const instance = event.detail.plyr;
         if(playMix && mixSeekTime !== 0) {
           console.log("Player 2 Start @ " + mixSeekTime);
           instance.forward(Number(mixSeekTime));
+          await delay(500);
           instance.play();
+        }
+
+        function delay(ms) {
+          return new Promise(resolve => setTimeout(resolve, ms));
         }
       });
 
       player1.on('ended', (event) => {
         const instance = event.detail.plyr;
         console.log("Player 1 Ended: " + instance.source);
-        if(playingTracks) {
+        if(playingTracks && !playMix) {
           trackIndex++;
           if(trackIndex != currentTracks.length) {
             let mp3Name = currentTracks[trackIndex];
@@ -379,7 +389,7 @@
       player2.on('ended', (event) => {
         const instance = event.detail.plyr;
         console.log("Player 2 Ended: " + instance.source);
-        if(playingTracks) {
+        if(playingTracks && !playMix) {
           trackIndex++;
           if(trackIndex != currentTracks.length) {
             let mp3Name = currentTracks[trackIndex];
@@ -543,9 +553,14 @@
       }
 
       // play all tracks in the qued list
-      function playQuedMP3s() {
+      function playQuedMP3s(saveQueListKey='') {
         playingTracks = true;
         trackIndex = 0;
+
+        if(saveQueListKey) {
+          queTracks = savedQueList[saveQueListKey];
+        }
+
         currentTracks = queTracks;
 
         // start playing now on player 1
@@ -827,7 +842,7 @@
         console.log("Saving Que: " + queName);
       }
 
-      // function to load the saved ques from the server
+      // function to load the saved ques list from the server
       function loadSavedQueList() {
         jsonText = {
           data: 'MP3DJ Load QueList',
@@ -838,6 +853,25 @@
         console.log("Loading Saved Ques ...");
       }
 
+      // function to delete a saved que list from server
+      function deleteSavedQue(queName) {
+          // Show confirmation dialog
+          const userConfirmed = confirm(`Are you sure you want to delete: ${queName}?`);
+      
+          if (userConfirmed) {
+              const jsonText = {
+                  data: 'MP3DJ Delete QueList',
+                  uname: username,
+                  qname: queName
+              };
+              socket.emit('my event', jsonText);
+      
+              console.log("Deleting Que: " + queName);
+          } else {
+              console.log("Deletion cancelled for Que: " + queName);
+          }
+      }
+        
       // function to stop/pause video playback
       function stopAllPlay() {
         player1.pause();
@@ -991,9 +1025,10 @@
 
               let buttonHtml = '';
 
-              // TO-DO 1/14/2025 -- Code for qlist
               if(qlist) {
                 buttonHtml = `<button type="button" onclick="displayQuedMP3s('${key}')">View</button> `;
+                buttonHtml += `<button type="button" onclick="playQuedMP3s('${key}')">Play</button> `;
+                buttonHtml += `<button type="button" onclick="deleteSavedQue('${key}')">Delete</button> `;
               } else {
                 let rootDir = value[0].split("/").slice(0,-1).join("/");
                 rootDir = rootDir.replaceAll("'", "\\'");
