@@ -167,7 +167,7 @@
 
     <td>
     <audio id="player1" crossorigin playsinline>
-      <source src="http://beebox.sytes.net:5080/music/Various_Artists-80s-90s_Songs_MP3/01-01-Annie_Lennox-No_More_I_Love_You_s-LLS.mp3" type="audio/mp3">
+      <source src="http://pi86.sytes.net:8080/music/Various_Artists-80s-90s_Songs_MP3/01-01-Annie_Lennox-No_More_I_Love_You_s-LLS.mp3" type="audio/mp3">
     </audio>
     
     <div><b>
@@ -175,18 +175,18 @@
     <input type="radio" id="speedA0" name="speedA" onclick="onChangeSpeed(1, this);" value="0">
     <label for="speedA0">0% (Normal)</label> 
     <input type="radio" id="speedA1" name="speedA" onclick="onChangeSpeed(1, this);" value="1">
-    <label for="speedA1">5% Faster</label> 
+    <label for="speedA1">3% Faster</label> 
     <input type="radio" id="speedA2" name="speedA" onclick="onChangeSpeed(1, this);" value="2">
-    <label for="speedA2">10% Faster</label> 
+    <label for="speedA2">5% Faster</label> 
     <input type="radio" id="speedA3" name="speedA" onclick="onChangeSpeed(1, this);" value="3">
-    <label for="speedA3">15% Faster</label>
+    <label for="speedA3">7% Faster</label>
     </b></div>
     
     </td>
     
     <td>
     <audio id="player2" crossorigin playsinline>
-      <source src="http://beebox.sytes.net:5080/music/Various_Artists-80s-90s_Songs_MP3/01-01-Annie_Lennox-Why-LLS.mp3" type="audio/mp3">
+      <source src="http://pi86.sytes.net:8080/music/Various_Artists-80s-90s_Songs_MP3/01-01-Annie_Lennox-Why-LLS.mp3" type="audio/mp3">
     </audio>
     
     <div><b>
@@ -194,11 +194,11 @@
     <input type="radio" id="speedB0" name="speedB" onclick="onChangeSpeed(2, this);" value="0">
     <label for="speedB0">0% (Normal)</label> 
     <input type="radio" id="speedB1" name="speedB" onclick="onChangeSpeed(2, this);" value="1">
-    <label for="speedB1">5% Faster</label> 
+    <label for="speedB1">3% Faster</label> 
     <input type="radio" id="speedB2" name="speedB" onclick="onChangeSpeed(2, this);" value="2">
-    <label for="speedB2">10% Faster</label> 
+    <label for="speedB2">5% Faster</label> 
     <input type="radio" id="speedB3" name="speedB" onclick="onChangeSpeed(2, this);" value="3">
-    <label for="speedB3">15% Faster</label>
+    <label for="speedB3">7% Faster</label>
     </b></div>
     
     </td>
@@ -287,7 +287,7 @@
     -->
     <script>
       // set our server hosting the mp3 files
-      const mp3BaseUrl = 'http://beebox.sytes.net:5080/music/';
+      const mp3BaseUrl = 'http://pi86.sytes.net:8080/music/';
 
       // dictionary that stores the mp3 database keyed by directory name
       var mp3DB;
@@ -326,11 +326,11 @@
 
       // initialize the players
       const player1 = new Plyr('#player1', {
-        speed:{ selected: 1, options: [1, 1.05, 1.10, 1.15] }
+        speed:{ selected: 1, options: [1, 1.03, 1.05, 1.07] }
       });
 
       const player2 = new Plyr('#player2', {
-        speed:{ selected: 1, options: [1, 1.05, 1.10, 1.15] }
+        speed:{ selected: 1, options: [1, 1.03, 1.05, 1.07] }
       });
       
       // add event liseners to be able to get the track time in seconds
@@ -529,11 +529,11 @@
         if (playerSpeed == 0) {
           currentPlayer.speed = 1;
         } else if (playerSpeed == 1) {
-          currentPlayer.speed = 1.05;
+          currentPlayer.speed = 1.03;
         } else if (playerSpeed == 2) {
-          currentPlayer.speed = 1.10;
+          currentPlayer.speed = 1.05;
         } else if (playerSpeed == 3) {
-          currentPlayer.speed = 1.15;
+          currentPlayer.speed = 1.07;
         } else {
           currentPlayer.speed = 1;
         }
@@ -658,9 +658,9 @@
                     <label for="m_start"><b>Start @: </b></label>
                     <input type="text" id="m_start" name="m_start" value="1" size="2">
                     <label for="m_overlap"><b>Overlap (s): </b></label>
-                    <input type="text" id="m_overlap" name="m_overlap" value="20" size="2">
+                    <input type="text" id="m_overlap" name="m_overlap" value="10" size="2">
                     <label for="m_play"><b>Plays (s): </b></label>
-                    <input type="text" id="m_play" name="m_play" value="45" size="3">
+                    <input type="text" id="m_play" name="m_play" value="120" size="3">
                     `;
 
         let html = `
@@ -775,6 +775,13 @@
           let waitTime = playTime;
           if (trackInfo) {
             let trackLength = Number(trackInfo[1]);
+
+            // skip tracks which are 15 seconds or less
+            if(trackLength <= 15) {
+              console.log("Skipping Track: " + mp3Name);
+              continue;
+            }
+
             let endTime = overlap + playTime;
             if(endTime >= trackLength) {
               waitTime = trackLength - (overlap + 5);
@@ -1243,7 +1250,7 @@
       }
       
       // load our list of mp3 files into a dictionary and print it out
-      const fileUrl = 'http://beebox.sytes.net:5080/music/mp3_index.txt'; 
+      const fileUrl = mp3BaseUrl + 'mp3_index.txt'; 
       readFileAndCreateDirectoryDictionary(fileUrl)
         .then(dictionary => {
           processDB(dictionary);
