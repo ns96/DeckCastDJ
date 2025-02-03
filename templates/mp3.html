@@ -460,6 +460,9 @@
       function loadMP3(mp3Url, mp3Title, playerNum, seekTime=0, mp3Name = '') {
         let player = (playerNum == 1) ? player1 : player2;
 
+        // prepend the title with the index number + 1
+        mp3Title = `[${trackIndex + 1}] ${mp3Title}`;
+
         player.source = {
           type: 'audio',
           title: mp3Title,
