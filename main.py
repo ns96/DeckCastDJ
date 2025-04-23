@@ -6,10 +6,10 @@ A simple flask/SocketIO for building very simple youtube DJ application that
 can be shared by other users
 
 @author: Nathan
-@version: 1.10.8 (2/2/2025)
+@version: 1.12.0 (4/23/2025)
 """
 # this variables are passed onto the html templates
-appVersion = 'v1.10.8 (02/02/2025)'
+appVersion = 'v1.12.0B (04/23/2025)'
 bgColor = '#b2b2de'
 
 import os.path
@@ -412,7 +412,7 @@ def cleanDate(publishTS):
     return publishTS.split()[0]
     
 # function to create an html table consisting of the playList
-def getHTMLTable(username = "", filter_text = "", que_list = False, sort = True):
+def getHTMLTable(username = "", filter_text = "", que_list = False, sort = True, for_mobile = False):
     global defaultPlayList, userPlayList, invalidVideosList, youtubePlayListUrls 
     
     if sort:
@@ -437,8 +437,16 @@ def getHTMLTable(username = "", filter_text = "", que_list = False, sort = True)
         videoCount = len(defaultPlayList)
         displayName = 'Default (' + str(videoCount) + ')'
 
-        tableHtml += '<b>YouTube Playlist (<a href="#filter_list"> Search </a>): </b>'
-        tableHtml += '<input type="button" onclick="loadPlayListForUser(\'Guest\', \' \', true)" value="' + displayName + '"> '
+        if for_mobile:
+            # add button to go to search
+            tableHtml += '<div align="center"><a href="#filter_list"><button> Search List</button></a> '
+            
+            # add button to clear playlist
+            tableHtml += '<input type="button" onclick="clearPlayList()" value="Clear List"><br>'
+        else: 
+            tableHtml += '<b>YouTube Playlist (<a href="#filter_list"> Search </a>): </b>'
+            
+        tableHtml += '<br><input type="button" onclick="loadPlayListForUser(\'Guest\', \' \', true,' + str(for_mobile).lower() + ')" value="' + displayName + '"> '
         
         for playlistName in youtubePlayListUrls.keys():
             displayName = playlistName
@@ -448,13 +456,16 @@ def getHTMLTable(username = "", filter_text = "", que_list = False, sort = True)
                 videoCount = len(userPlayList[playlistName.lower()])
                 displayName = playlistName + ' (' + str(videoCount) + ')'
 
-            tableHtml += '<input type="button" onclick="loadPlayListForUser(\'' + playlistName + '\', \' \', true)" value="' + displayName + '"> '
+            tableHtml += '<input type="button" onclick="loadPlayListForUser(\'' + playlistName + '\', \' \', true, ' + str(for_mobile).lower() + ')" value="' + displayName + '"> '
         
-        # add button to allow moving playlist to que
-        tableHtml += '<input type="button" onclick="queSavedPlayList()" value="Q"> '
+        if for_mobile:
+            tableHtml += '</div>'
+        else:    
+            # add button to allow moving playlist to que
+            tableHtml += '<input type="button" onclick="queSavedPlayList()" value="Q"> '
 
-        # add button to clear playlist
-        tableHtml += '<input type="button" onclick="clearPlayList()" value="Clear"> '
+            # add button to clear playlist
+            tableHtml += '<input type="button" onclick="clearPlayList()" value="Clear"> '
     else:
         #sortedList = cleanPlayList(sortedList)
         queListString, totalTime, queListTimesString = getQueListString(sortedList)
@@ -497,10 +508,19 @@ def getHTMLTable(username = "", filter_text = "", que_list = False, sort = True)
             matches = [s.strip() for s in filter_text.split('+')]
             
             if all(match in title_lower for match in matches):
-                tableHtml += getHTMLTableRow(i, que_list, videoId, title, meta_info, videoInfo)        
+                if for_mobile:
+                    tableHtml += getHTMLTableRowForMobile(i, videoId, title, videoInfo)
+                else:
+                    tableHtml += getHTMLTableRow(i, que_list, videoId, title, meta_info, videoInfo)        
+                
                 i += 1
         elif filter_text == "" or filter_text in title_lower:
-            tableHtml += getHTMLTableRow(i, que_list, videoId, title, meta_info, videoInfo)        
+            if for_mobile:
+                tableHtml += getHTMLTableRowForMobile(i, videoId, title, videoInfo)
+            else:
+                #print("Adding Row: ", i, videoId, title, meta_info, videoInfo)
+                tableHtml += getHTMLTableRow(i, que_list, videoId, title, meta_info, videoInfo)        
+            
             i += 1
     
     # check to see if to add the end row tag
@@ -534,7 +554,19 @@ def getHTMLTableRow(i, que_list, videoId, title, meta_info, videoInfo):
                 
     rowHtml += '</td>'
     rowHtml += '<td><b>' + str(i) + '.</b></td>'
-    rowHtml += '<td width="25%"><b>' + title + '</b><br>[' + meta_info + '] <b> (<a href="#pageTop"> &uArr; </a>) (<a href="#filter_list">  &dArr; </a>)</b></td>'
+    rowHtml += '<td width="25%"><b>' + title + '</b><br>[' + meta_info + '] <b> (<a href="#pageTop"> &uArr; </a>) (<a href="#filter_list">  &dArr; </a>) '
+    
+    # check to see if there is a tracklist for the video
+    if videoId in videoTrackLists:
+        tracklist = videoTrackLists[videoId]
+        tracklistCount = len(tracklist)
+        if tracklistCount > 0:
+            # clean the title so it can be passed to the javascript function
+            cleanTitle = title.replace("'", "")
+            cleanTitle = cleanTitle.replace('"', '')
+            rowHtml += '<input type="button" onclick="showTrackListDialog(\'' + videoId + '\', \'' + cleanTitle + '\')" value="TL (' + str(tracklistCount) + ')">'
+            
+    rowHtml += '</b></td>'
     rowHtml += '<td><b>' + videoInfo[2] + '</b></td>'
 
     if i % 2 == 0:
@@ -549,6 +581,24 @@ def getHTMLTableRow(i, que_list, videoId, title, meta_info, videoInfo):
         rowHtml += '</tr>'
             
     return(rowHtml)   
+
+# function to return row for single colum mobile html table
+def getHTMLTableRowForMobile(i, videoId, title, videoInfo):
+    rowHtml = '<tr><td align="center">' 
+    rowHtml += '<b>' + str(i) + '. ' + title + '<br>[' + videoInfo[2] + '] <b> (<a href="#pageTop"> &uArr; </a>) (<a href="#filter_list">  &dArr; </a>)</b><br>'
+    
+    rowHtml += '<input type="button" onclick="loadVideoForPlayer(1,\'' + videoId + '\')" value=" < TOP "> '
+
+    if i % 2 == 0:
+        rowHtml += '<img src="' + videoInfo[1] + '" alt="Video Thumbnail" width="120" height="90" onclick="loadVideoForPlayer(2,\'' + videoId + '\')">'
+    else:
+        rowHtml += '<img src="' + videoInfo[1] + '" alt="Video Thumbnail" width="120" height="90" onclick="loadVideoForPlayer(1,\'' + videoId + '\')">'
+
+    rowHtml += ' <input type="button" onclick="loadVideoForPlayer(2,\'' + videoId + '\')" value=" BUT > ">'
+    
+    rowHtml += '<td></tr>'
+            
+    return(rowHtml)
 
 #function to return a csv string given a sorted list of videos
 def getQueListString(sortedList):
@@ -898,6 +948,7 @@ def processMessage(json):
     if 'Load PlayList' in msgTitle:
         playListUser = json['uname'].lower().strip()
         f_text = json['filter'].strip()
+        mobile = json['mobile']
         
         # check to see if to to load a youtube playlist
         if 'https://www.youtube.com/playlist' in f_text:
@@ -906,7 +957,7 @@ def processMessage(json):
             mergeAllPlayList() # create a new merge playlist
             f_text = ""
             
-        json['playListHTML'] = getHTMLTable(username = playListUser, filter_text = f_text.lower())
+        json['playListHTML'] = getHTMLTable(username = playListUser, filter_text = f_text.lower(), for_mobile = mobile)
     
     # merge a youtube playlist to the save playlist
     if 'Merge PlayList' in msgTitle:
@@ -1084,6 +1135,10 @@ def processMessage(json):
 @app.route('/')
 def sessions():
     return render_template('index.html', version=appVersion, bgcolor=bgColor)
+
+@app.route('/mobile')
+def mobile():
+    return render_template('indexm.html', version=appVersion, bgcolor=bgColor)
 
 @app.route('/mp3')
 def playMP3():

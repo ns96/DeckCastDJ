@@ -43,6 +43,9 @@ var stopMixIndex = 0;
 // used to indicate that a playlist is being loaded
 var loadingPlaylist = false;
 
+// indicate if we are on a mobile device
+var mobile = false;
+
 /**
  * Functions and variables here are for socketio
  */
@@ -392,10 +395,19 @@ function setCurrentVideoPlaying(playerNum, videoId, currentTime) {
   console.log("Current Video, Player # " + playerNum + ", VideoID " + videoId);
 }
 
+// function to load a video from mobile device
+function loadVideoForMobile(playerNum) {
+  mobile = true;
+  loadVideo(playerNum);  
+}
+
 // functon called by load video button
 function loadVideo(playerNum) {
   var input;
-  if (playerNum == 1) {
+
+  if(mobile) {
+    input = document.getElementById("filter");
+  } else if (playerNum == 1) {
     input = document.getElementById("videoId1");
   } else {
     input = document.getElementById("videoId2");
@@ -504,7 +516,7 @@ function addOrEditTrackList(msg) {
 }
 
 // functon to kick of the process to add or edit a tracklist for a particular video
-function showTrackListDialog(playerNum) {
+function showTrackListDialogForPlayer(playerNum) {
   var videoId;
   var title;
 
@@ -515,15 +527,20 @@ function showTrackListDialog(playerNum) {
     videoId = player2.getVideoData()['video_id'];
     title = player2.getVideoData()['title'];
   }
+  
+  showTrackListDialog(videoId, title);
+}
 
-  jsonText = {
+// function to actual display the track list dialog
+function showTrackListDialog(videoId, title) {
+  var jsonText = {
     data: 'Edit TrackList',
     videoId: videoId,
     title: title
   }
   socket.emit('my event', jsonText);
 
-  console.log(playerNum + " Track List For Video ID: " + videoId + "\n" + title);
+  console.log("Track List For Video ID: " + videoId + "\n" + title);
 }
 
 // function to add a youtube playlist to the que.
@@ -926,13 +943,21 @@ function loadPlayList() {
   loadPlayListForUser(username, filter);
 }
 
+// function to explicity load the playlist from server for mobile devices
+function loadPlayListForMobile() {
+  username = document.getElementById("uname").value;
+  var filter = document.getElementById("filter").value;
+  loadPlayListForUser(username, filter, false, true);
+}
+
 // function to load a playlist for a user or youtube playlist linked to user
-function loadPlayListForUser(username, filter, showUsername = false) {
+function loadPlayListForUser(username, filter, showUsername = false, mobile = false) {
   jsonText = {
     data: 'Load PlayList',
     uname: username,
     filter: filter,
-    clientId: clientId
+    clientId: clientId,
+    mobile: mobile
   }
   socket.emit('my event', jsonText);
 
