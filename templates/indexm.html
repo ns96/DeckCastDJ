@@ -125,7 +125,7 @@
 </style>
 </head>
 <body>
-<h2>DeckCastDJ {{version}}</h2>
+<h2 align="center">DeckCastDJ {{version}}</h2>
 
 <label class="container" id="pageTop"><b>I am the DJ</b>
   <input type="checkbox" id="isDJ">
@@ -158,9 +158,9 @@
 <tr>
     <td colspan="2">
       <p align="center">
-        <button type="button" onclick="moveSlideTo(1)">&lt; TOP</button>
+        <button type="button" onclick="moveSlideTo(1)">&lt; PLY1</button>
         <input type="range" min="0" max="100" value="50" id="mixer" class="slider">
-        <button type="button" onclick="moveSlideTo(2)">BUT 	&gt;</button>
+        <button type="button" onclick="moveSlideTo(2)">PLY2 &gt;</button>
       </p>
     </td>
 </tr>
@@ -200,7 +200,7 @@
           <td><input type="text" id="uname" name="uname" value="Guest" style="width: 100%;"></td>
         </tr>
         <tr>
-          <td><b id="filter_list">YouTube Url / Filter:</b></td>
+          <td><b id="filter_list">YouTube Url or Search Filter:</b></td>
           <td><input type="text" id="filter" name="filter" style="width: 100%;" value=""></td>
         </tr>
         <tr>
@@ -215,13 +215,10 @@
   </td>
 </tr>
 <tr>
-  <td>
-    <p>Mixer Value: <span id="mixerValue"></span></p>
-  </td>
-  <td>
+  <td align="center">
+    <p>Mixer: <span id="mixerValue"></span></p>
     <p>
-      <input type="text" id="pin" name="pin" value="0001" size="4">
-      <input type="button" onclick="reloadPlaying()" value="RELOAD">
+      PIN <input type="text" id="pin" name="pin" value="0001" size="3">
       <br>
       Console: <span id="messageText">Waiting for data ...</span>
     </p>

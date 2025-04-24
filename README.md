@@ -1,5 +1,5 @@
 # DeckCastDJ
-A Python based webapp for sharing YouTube music videos using basic DJ Deck
+A Python/Flask based webapp for sharing YouTube music videos using basic DJ Deck
 
 ## Introduction
 With the world wide pandemic, I wanted a simple way to share the YouTube music I was playing with family/friends. The obvious approach I tried was just use Zoom/Houseparty etc... and just share the computer audio. This worked ofcourse, but it required folks to use Zoom etc..., and getting good audio quality was a challenge.  Another approach I tried was to use VLC (https://www.videolan.org/vlc/index.html), or Stream What I hear software (https://www.streamwhatyouhear.com/) so that family/friends lessoning just needed a browser on their end. A big downside to this approach is the need to change the ISP firewall settings for streaming to work. Unfortunately, most people don't known how to go about doing this, not to mention the security risk in doing so.

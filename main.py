@@ -9,7 +9,7 @@ can be shared by other users
 @version: 1.12.0 (4/23/2025)
 """
 # this variables are passed onto the html templates
-appVersion = 'v1.12.0B (04/23/2025)'
+appVersion = 'v1.12.1 (04/24/2025)'
 bgColor = '#b2b2de'
 
 import os.path
@@ -587,14 +587,14 @@ def getHTMLTableRowForMobile(i, videoId, title, videoInfo):
     rowHtml = '<tr><td align="center">' 
     rowHtml += '<b>' + str(i) + '. ' + title + '<br>[' + videoInfo[2] + '] <b> (<a href="#pageTop"> &uArr; </a>) (<a href="#filter_list">  &dArr; </a>)</b><br>'
     
-    rowHtml += '<input type="button" onclick="loadVideoForPlayer(1,\'' + videoId + '\')" value=" < TOP "> '
+    rowHtml += '<input type="button" onclick="loadVideoForPlayer(1,\'' + videoId + '\')" value=" < PLY1 "> '
 
     if i % 2 == 0:
         rowHtml += '<img src="' + videoInfo[1] + '" alt="Video Thumbnail" width="120" height="90" onclick="loadVideoForPlayer(2,\'' + videoId + '\')">'
     else:
         rowHtml += '<img src="' + videoInfo[1] + '" alt="Video Thumbnail" width="120" height="90" onclick="loadVideoForPlayer(1,\'' + videoId + '\')">'
 
-    rowHtml += ' <input type="button" onclick="loadVideoForPlayer(2,\'' + videoId + '\')" value=" BUT > ">'
+    rowHtml += ' <input type="button" onclick="loadVideoForPlayer(2,\'' + videoId + '\')" value=" PLY2 > ">'
     
     rowHtml += '<td></tr>'
             

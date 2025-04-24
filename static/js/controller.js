@@ -947,7 +947,13 @@ function loadPlayList() {
 function loadPlayListForMobile() {
   username = document.getElementById("uname").value;
   var filter = document.getElementById("filter").value;
-  loadPlayListForUser(username, filter, false, true);
+
+  // check if the filter contains a youtube url for a video
+  if(filter.includes('https://') && getYouTubeID(filter).length == 11) {
+    loadVideoForMobile(1);
+  } else {
+    loadPlayListForUser(username, filter, false, true);
+  }
 }
 
 // function to load a playlist for a user or youtube playlist linked to user
