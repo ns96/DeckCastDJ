@@ -891,16 +891,28 @@ function mergePlayList() {
   }
 }
 
-// extract the youtube ID from url
+// extract the youtube ID from url from ChatGPT
 // https://stackoverflow.com/questions/3452546/how-do-i-get-the-youtube-video-id-from-a-url
 function getYouTubeID(url) {
   if (url.length == 11) {
     return url;
   } else {
-    var regExp = /^.*((youtu.be\/)|(v\/)|(\/u\/\w\/)|(embed\/)|(watch\?))\??v?=?([^#&?]*).*/;
-    var match = url.match(regExp);
-    return (match && match[7].length == 11) ? match[7] : false;
+    //var regExp = /^.*((youtu.be\/)|(v\/)|(\/u\/\w\/)|(embed\/)|(watch\?))\??v?=?([^#&?]*).*/;
+    //var match = url.match(regExp);
+    //return (match && match[7].length == 11) ? match[7] : false;
+    const patterns = [
+      /(?:https?:\/\/)?(?:www\.|m\.)?youtube\.com\/live\/([a-zA-Z0-9_-]{11})/,   // YouTube Live
+      /(?:https?:\/\/)?(?:www\.)?youtu\.be\/([a-zA-Z0-9_-]{11})/,                // Short youtu.be
+      /(?:https?:\/\/)?(?:www\.|m\.)?youtube\.com\/watch\?v=([a-zA-Z0-9_-]{11})/ // Standard watch URL
+    ];
+  
+    for (const pattern of patterns) {
+      const match = url.match(pattern);
+      if (match) return match[1];
+    }
   }
+
+  return "";
 }
 
 // load a video given the videoNum and videoID
@@ -935,6 +947,15 @@ function loadVideoForPlayer(playerNum, videoId) {
     }
   }
 }
+
+// add listener to filter text input to load the playlist
+var filterInput = document.getElementById("filter");
+filterInput.addEventListener("keydown", function(event) {
+  if (event.key === "Enter") {
+    event.preventDefault(); // Prevent the default action of the Enter key
+    loadPlayList();
+  }
+});
 
 // function to explicity load the playlist from server
 function loadPlayList() {
