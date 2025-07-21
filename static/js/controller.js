@@ -21,9 +21,9 @@ var player2State = -2;
 var notPlayedCount = 0;
 
 // variables to handel the mixer slider
-var slider = document.getElementById("mixer");
+var deckSlider = document.getElementById("mixer");
 var mixerOutput = document.getElementById("mixerValue");
-mixerOutput.innerHTML = slider.value;
+mixerOutput.innerHTML = deckSlider.value;
 
 var playListOutput = document.getElementById("playList");
 var queListOutput = document.getElementById("queList");
@@ -224,7 +224,7 @@ function updateMixerValue(msg) {
   console.log("Updating mixer setting ...");
 
   var mixRatio = Number(msg.mixer);
-  slider.value = mixRatio;
+  deckSlider.value = mixRatio;
   player1.setVolume(msg.volume1);
   player2.setVolume(msg.volume2);
 
@@ -395,6 +395,23 @@ function setCurrentVideoPlaying(playerNum, videoId, currentTime) {
   console.log("Current Video, Player # " + playerNum + ", VideoID " + videoId);
 }
 
+// add event listeners for videoId input textfields
+var videoId1Input = document.getElementById("videoId1");
+videoId1Input.addEventListener("keydown", function(event) {
+  if (event.key === "Enter") {
+    event.preventDefault(); // Prevent the default action of the Enter key
+    loadVideo(1);
+  }
+});
+
+var videoId2Input = document.getElementById("videoId2");
+videoId2Input.addEventListener("keydown", function(event) {
+  if (event.key === "Enter") {
+    event.preventDefault(); // Prevent the default action of the Enter key
+    loadVideo(2);
+  }
+});
+
 // function to load a video from mobile device
 function loadVideoForMobile(playerNum) {
   mobile = true;
@@ -501,7 +518,7 @@ function addOrEditTrackList(msg) {
   myWindow.document.write("<h4>Track List: " + dialogTitle + "</h4>");
   myWindow.document.write("<textarea id=\"tracklist\" name=\"tracklist\" rows=\"35\" cols=\"50\">" + trackListString + "</textarea>")
 
-  // before window close grab the text in the textarea and send to server
+  // before the tracklist window close, grab the text in the textarea and send to server
   myWindow.onbeforeunload = function () {
     var tracklist = myWindow.document.getElementById("tracklist").value;
 
@@ -799,7 +816,7 @@ function stopMixPlay() {
   // hide the vumeter
   vumeterOutput.innerHTML = "";
 
-  slider.value = 50;
+  deckSlider.value = 50;
   changePlayerVolume(50);
 }
 
@@ -1078,7 +1095,7 @@ function reloadPlaying() {
 // add function to "smoothly" move the slider using a timer function
 function moveSlideTo(playerNum) {
   var steps = 200;
-  var mixStart = Number(slider.value);
+  var mixStart = Number(deckSlider.value);
   var mixStep = 0;
   var mixRatio = 0;
 
@@ -1097,7 +1114,7 @@ function moveSlideTo(playerNum) {
       }
 
       // move the slider
-      slider.value = mixRatio
+      deckSlider.value = mixRatio
       changePlayerVolume(mixRatio);
 
       //console.log(i + ": delay for " + playerNum + " mixer: " + mixStart + " / " + mixStep + " / " + mixRatio);
@@ -1120,8 +1137,11 @@ function changePlayerVolume(mixRatio) {
 
   player1.setVolume(player1Vol);
   player2.setVolume(player2Vol);
-
-  mixerOutput.innerHTML = mixRatio + " || Volume Player 1 @ " + player1Vol + "% / Player 2 @ " + player2Vol + "%";
+  
+  // debug message
+  let message = "Mixer Ratio: " + mixRatio + " / Player 1 Volume: " + player1Vol + "% / Player 2 Volume: " + player2Vol + "%";
+  mixerOutput.innerHTML = message;
+  //console.log(message);
 
   if (getIsDJ()) {
     jsonText = {
@@ -1135,8 +1155,7 @@ function changePlayerVolume(mixRatio) {
   }
 }
 
-// add a function to handle slider events
-slider.oninput = function () {
-  var mixRatio = Number(this.value);
-  changePlayerVolume(mixRatio);
-}    
+// function to set to mobile mode
+function setMobileMode() {
+  mobile = true;
+}

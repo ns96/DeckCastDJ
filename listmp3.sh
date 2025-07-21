@@ -1,6 +1,6 @@
 #!/bin/bash
 # Simple script to recursively list all mp3s along with the playtime in seconds 
-# Gemini generated code
+# **Gemini generated code**
 #!/bin/bash
 
 if [ -z "$1" ]; then

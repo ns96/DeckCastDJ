@@ -201,7 +201,7 @@ body {
     <td colspan="2">
     <p align="center">
       <button type="button" onclick="moveSlideTo(1)"> MOVE LEFT </button>
-      <input type="range" min="0" max="100" value="50" id="mixer" class="slider">
+      <input type="range" min="0" max="100" value="50" id="mixer" oninput="changePlayerVolume(this.value)" class="slider">
       <button type="button" onclick="moveSlideTo(2)"> MOVE RIGHT </button>
     </p>
     </td>

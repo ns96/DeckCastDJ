@@ -17,6 +17,7 @@ Based on the requirements, a workable webapp was built using the YouTube Player 
 * Ability to create a Que video list and play all back to back
 * Basic Automixing of Qued Videos
 * Basic pitch control
+* Basic mobile interface at http://the.server.ip.addr:5054/mobile 
 
 ## TO-DOS
 * A modern user interface instead if the current barebones interface.
