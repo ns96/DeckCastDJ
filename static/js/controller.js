@@ -21,9 +21,9 @@ var player2State = -2;
 var notPlayedCount = 0;
 
 // variables to handel the mixer slider
-var deckSlider = document.getElementById("mixer");
+var mixerSlider = document.getElementById("mixer");
 var mixerOutput = document.getElementById("mixerValue");
-mixerOutput.innerHTML = deckSlider.value;
+mixerOutput.innerHTML = mixerSlider.value;
 
 var playListOutput = document.getElementById("playList");
 var queListOutput = document.getElementById("queList");
@@ -224,7 +224,7 @@ function updateMixerValue(msg) {
   console.log("Updating mixer setting ...");
 
   var mixRatio = Number(msg.mixer);
-  deckSlider.value = mixRatio;
+  mixerSlider.value = mixRatio;
   player1.setVolume(msg.volume1);
   player2.setVolume(msg.volume2);
 
@@ -816,7 +816,7 @@ function stopMixPlay() {
   // hide the vumeter
   vumeterOutput.innerHTML = "";
 
-  deckSlider.value = 50;
+  mixerSlider.value = 50;
   changePlayerVolume(50);
 }
 
@@ -1095,7 +1095,7 @@ function reloadPlaying() {
 // add function to "smoothly" move the slider using a timer function
 function moveSlideTo(playerNum) {
   var steps = 200;
-  var mixStart = Number(deckSlider.value);
+  var mixStart = Number(mixerSlider.value);
   var mixStep = 0;
   var mixRatio = 0;
 
@@ -1114,7 +1114,7 @@ function moveSlideTo(playerNum) {
       }
 
       // move the slider
-      deckSlider.value = mixRatio
+      mixerSlider.value = mixRatio
       changePlayerVolume(mixRatio);
 
       //console.log(i + ": delay for " + playerNum + " mixer: " + mixStart + " / " + mixStep + " / " + mixRatio);
