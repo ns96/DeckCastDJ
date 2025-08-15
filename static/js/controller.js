@@ -84,6 +84,10 @@ socket.on('my response', function (msg) {
     updateLoadingProgress(msg);
   }
 
+  if (msg.data.includes("Check Video Status")) {
+    showVideoStatus(msg);  
+  }
+
   console.log(msg);
   messageText.innerHTML = msg.data + " (Users: " + connectedUsers + ")";
 })
@@ -117,6 +121,7 @@ function updatePlayList(msg) {
 
   // see if to alert the user that the video was saved
   if ("savedVideo" in msg) {
+    showVideoStatus(msg);
     alert(msg.savedVideo);
   }
 }
@@ -496,7 +501,8 @@ function saveVideo(playerNum) {
   jsonText = {
     data: 'Video Saved',
     uname: username,
-    videoId: videoId
+    videoId: videoId,
+    player: playerNum
   }
   socket.emit('my event', jsonText);
 
@@ -886,7 +892,6 @@ function updateLoadingProgress(msg) {
   }
 }
 
-
 // function to merge a playlist to the default playlist
 function mergePlayList() {
   username = document.getElementById("uname").value;
@@ -963,6 +968,15 @@ function loadVideoForPlayer(playerNum, videoId) {
       socket.emit('my event', jsonText);
     }
   }
+
+  // send message to server to check if the video is already saved
+  jsonText = {
+    data: 'Check Video Status',
+    player: playerNum,
+    uname: username,
+    videoId: videoId
+  }
+  socket.emit('my event', jsonText);
 }
 
 // add listener to filter text input to load the playlist
@@ -1054,6 +1068,31 @@ function removeVideoFromQueList(videoId, perminent=false) {
 
   socket.emit('my event', jsonText);
   console.log('Delete From Que List: ' + videoId);
+}
+
+// display the video status. Currently it just states if it's saved or not
+function showVideoStatus(msg) {
+  var videoId = msg.videoId;
+  var videoSaved = msg.videoSaved
+  var playerNum = msg.player;
+  
+  if (videoSaved) {
+    message = "Video ID: " + videoId + " is already in playlist.";
+    if (playerNum == 1) {
+      document.getElementById("videoId1Saved").innerHTML = "&#128190;";
+    } else {
+      document.getElementById("videoId2Saved").innerHTML = "&#128190;";
+    }
+  } else {
+    message = "Video ID: " + videoId + " is not in playlist.";
+    if (playerNum == 1) {
+      document.getElementById("videoId1Saved").innerHTML = "";
+    } else {
+      document.getElementById("videoId2Saved").innerHTML = "";
+    }
+  } 
+
+  console.log("Video Status: " + message);
 }
 
 // return if a person is the DJ or not

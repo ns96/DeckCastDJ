@@ -6,10 +6,10 @@ A simple flask/SocketIO for building very simple youtube DJ application that
 can be shared by other users
 
 @author: Nathan
-@version: 1.13.2 (7/21/2025)
+@version: 1.14.0 (8/14/2025)
 """
 # this variables are passed onto the html templates
-appVersion = 'v1.13.2 (07/22/2025)'
+appVersion = 'v1.14.0 (08/14/2025)'
 bgColor = '#b2b2de'
 
 import os.path
@@ -1018,6 +1018,8 @@ def processMessage(json):
         # only save videos for the secret guest0 to prevent anyone from making a 
         # mess of the playlist. A better way would be to use seperate pin variable
         if username == "guest0":
+            json['videoSaved'] = True
+            
             if videoId not in defaultPlayList:
                 json['playListHTML'] = addToPlayList(json['videoId'], "guest")
                 json['savedVideo'] = "Video Saved To Playlist ..."
@@ -1089,7 +1091,17 @@ def processMessage(json):
         if perminent:
             print('Deleting Video:', videoId)
             addToInvalidVideoList(videoId)
-
+    
+    # check to see if a videoId is already in the playlist
+    if 'Check Video Status' in msgTitle:
+        videoId = json['videoId']
+        
+        # check to see if the video is in the merged playlist
+        if videoId in userPlayList[mergedPlayListKey]:
+            json['videoSaved'] = True
+        else:
+            json['videoSaved'] = False
+        
     # get client information from the playing html client
     if 'Video Info Client Connected' in msgTitle:
         clientId = json['uname']
