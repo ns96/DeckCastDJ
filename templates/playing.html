@@ -12,7 +12,7 @@ body {
     <body>
     <p style="color:#ffffff;">
       <span id="videoInfo">
-      <b>No Video Playing (DeckCastDJ v1.11.x) ...</b>
+      <b>No Video Playing (DeckCastDJ Playing v1.15.x) ...</b>
       </span>
     </p>
     
@@ -71,6 +71,11 @@ body {
         var msgText = msg.data;
         var videoId = msg.videoId;
         var trackList = msg.trackList
+
+        // check to see if we have trackNum in the message
+        if("trackNum" in msg) {
+          videoTrack = msg.trackNum; // adjust so we get the correct track number
+        }
         
         if("videoInfoHTML" in msg) {
           videoInfoOutput.innerHTML = msg.videoInfoHTML;
@@ -88,7 +93,6 @@ body {
 
           if(videoId != currentVideoId) {
             currentVideoId = videoId;
-            videoTrack++;
             
             // send the track information back to the server for storing
             jsonText = {
@@ -108,6 +112,9 @@ body {
           var trackOutput = document.getElementById("track");
           trackOutput.innerHTML = "Track # " + videoTrack;
           
+          // increment the track number for next time
+          videoTrack++;
+
           // remove any old timer and start a new one
           if(videoTrack != 0) {
             clearInterval(myTimer);

@@ -46,6 +46,9 @@ var loadingPlaylist = false;
 // indicate if we are on a mobile device
 var mobile = false;
 
+// keep track of the current track number for the video playing. Used to display current track info
+var trackNum = -1;
+
 /**
  * Functions and variables here are for socketio
  */
@@ -243,6 +246,9 @@ function updateVideo(msg) {
   var playerNum = msg.player;
   var videoId = msg.videoId;
 
+  // store global variable for track number
+  trackNum = msg.trackNum;
+
   if (playerNum == 1) {
     player1.loadVideoById(videoId, 0);
   } else {
@@ -393,7 +399,8 @@ function setCurrentVideoPlaying(playerNum, videoId, currentTime) {
     clientId: clientId,
     player: playerNum,
     videoId: videoId,
-    ctime: currentTime
+    ctime: currentTime,
+    trackNum: trackNum
   }
   socket.emit('my event', jsonText);
 
@@ -652,7 +659,7 @@ async function mixQueList(queListString, queListTimesString) {
     var videoId = queList[i];
     var endTime = Math.round(timeList[i] * (playPercent / 100));
     var playTime = endTime - overlap;
-    var trackNum = i + 1
+    trackNum = i + 1
 
     // check to make sure we at least play 30 seconds of video 
     // or 5 seconds if doing play testing by setting play percent to -1 
