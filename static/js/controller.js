@@ -635,6 +635,14 @@ function playQueList(queListString) {
   console.log("Playing qued videos: " + queListString + " / " + queList[0]);
 }
 
+// function to call mixque list funtion to atomatically check that the videos is list are playable
+function checkQueList() {
+  document.getElementById("mixPlayPercent").value = -1;
+
+  // get the mixQueList button and click it
+  document.getElementById("mixButton").click();
+}
+
 // function to mix the que list
 async function mixQueList(queListString, queListTimesString) {
   var queList = queListString.split(",");

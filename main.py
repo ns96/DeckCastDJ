@@ -6,10 +6,10 @@ A simple flask/SocketIO for building very simple youtube DJ application that
 can be shared by other users
 
 @author: Nathan
-@version: 1.15.0 (9/02/2025)
+@version: 1.15.1 (9/23/2025)
 """
 # this variables are passed onto the html templates
-appVersion = 'v1.15.0 (09/02/2025)'
+appVersion = 'v1.15.1 (09/23/2025)'
 bgColor = '#b2b2de'
 
 import os.path
@@ -475,11 +475,12 @@ def getHTMLTable(username = "", filter_text = "", que_list = False, sort = True,
         tableHtml += '<input type="button" onclick="clearQueList()" value="Clear"> '
         tableHtml += '<input type="button" onclick="reloadQueList()" value="RL"> '
         tableHtml += '<input type="button" onclick="playQueList(\'' + queListString + '\')" value="Play All ( ' + totalTime + ' )"> '
-        tableHtml += '<input type="button" onclick="mixQueList(\'' + queListString + '\',\'' + queListTimesString + '\')" value="Play Mix"> '
+        tableHtml += '<input type="button" id="mixButton" onclick="mixQueList(\'' + queListString + '\',\'' + queListTimesString + '\')" value="Play Mix"> '
         tableHtml += 'Start @ Video: <input type="text" id="startMixAt" name="startMixAt" value="1" size="1"> '
         tableHtml += 'Overlap: <input type="text" id="mixOverlap" name="mixOverlap" value="20" size="2"> Seconds || '
         tableHtml += 'Play Percent: <input type="text" id="mixPlayPercent" name="mixPlayPercent" value="60" size="2"> '
-        tableHtml += '<input type="button" onclick="stopMixPlay()" value="Stop Mix"><br>'
+        tableHtml += '<input type="button" onclick="stopMixPlay()" value="Stop Mix"> '
+        tableHtml += '<input type="button" onclick="checkQueList()" value="Check"><br>'
         tableHtml += '<span id="queMixMessage"><b>Curent Mix Track: 0 / Playtime: 0000 seconds</b></span>'
     
     # add the main table for tracks here
