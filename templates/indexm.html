@@ -3,235 +3,390 @@
 <head>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <style>
-  body {
-      background-color: {{bgcolor}};
-  }
+/* --- Basic Setup & Dark Mode Theme --- */
+body {
+    background-color: #1e1e1e; /* Dark background */
+    color: #f0f0f0; /* Light text */
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    margin: 0;
+    padding: 10px; /* Tighter padding for mobile */
+    overflow-x: hidden; /* Prevent horizontal scroll */
+}
 
-  .slidecontainer {
-      width: 100%;
-  }
+h2 {
+    color: #04AA6D; /* Accent color for header */
+    text-align: center;
+    border-bottom: 2px solid #333;
+    padding-bottom: 10px;
+    margin-top: 10px;
+}
 
-  .slider {
-      -webkit-appearance: none;
-      width: 50%;
-      height: 25px;
-      background: #d3d3d3;
-      outline: none;
-      opacity: 0.7;
-      -webkit-transition: .2s;
-      transition: opacity .2s;
-  }
+/* --- Layout --- */
+.app-container {
+    margin: auto;
+}
 
-  .slider:hover {
-      opacity: 1;
-  }
+.global-controls {
+    background-color: #2a2a2a;
+    padding: 15px;
+    border-radius: 8px;
+    margin-bottom: 15px;
+}
 
-  .slider::-webkit-slider-thumb {
-      -webkit-appearance: none;
-      appearance: none;
-      width: 25px;
-      height: 25px;
-      background: #4CAF50;
-      cursor: pointer;
-  }
+.deck {
+    background-color: #2a2a2a;
+    border-radius: 8px;
+    padding: 15px; /* Tighter padding */
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+    margin-bottom: 15px;
+}
 
-  .slider::-moz-range-thumb {
-      width: 25px;
-      height: 25px;
-      background: #4CAF50;
-      cursor: pointer;
-  }
+/* --- MODIFIED: Responsive Video Player --- */
+/* This container creates the 16:9 aspect ratio box */
+.video-container {
+    position: relative;
+    padding-bottom: 56.25%; /* 16:9 aspect ratio (9 / 16 = 0.5625) */
+    height: 0;
+    overflow: hidden;
+    max-width: 100%;
+    background: #000; /* Black background while loading */
+}
 
-  .container {
-      display: block;
-      position: relative;
-      padding-left: 35px;
-      margin-bottom: 12px;
-      cursor: pointer;
-      font-size: 18px;
-      -webkit-user-select: none;
-      -moz-user-select: none;
-      -ms-user-select: none;
-      user-select: none;
-  }
+/* This forces the player (which is the iframe) to fill the container */
+.video-container #player1,
+.video-container #player2 {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+}
+/* --- End of Modified Rules --- */
 
-  .container input {
-      position: absolute;
-      opacity: 0;
-      cursor: pointer;
-      height: 0;
-      width: 0;
-  }
 
-  .checkmark {
-      position: absolute;
-      top: 0;
-      left: 0;
-      height: 25px;
-      width: 25px;
-      background-color: #eee;
-  }
+.playback-controls {
+    margin-top: 15px;
+    background-color: #333;
+    padding: 10px;
+    border-radius: 5px;
+}
 
-  .container:hover input ~ .checkmark {
-      background-color: #ccc;
-  }
+.playback-controls b {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap; 
+    gap: 5px;
+}
 
-  .container input:checked ~ .checkmark {
-      background-color: #2196F3;
-  }
+/* --- Control Sections --- */
+.mixer-section,
+.transport-section,
+.playlist-section,
+.footer-section {
+    background-color: #2a2a2a;
+    border-radius: 8px;
+    padding: 15px; /* Tighter padding */
+    margin-bottom: 15px;
+    text-align: center;
+}
 
-  .checkmark:after {
-      content: "";
-      position: absolute;
-      display: none;
-  }
+/* Use Flexbox for the mixer section */
+.mixer-section {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
 
-  .container input:checked ~ .checkmark:after {
-      display: block;
-  }
+.playlist-section {
+    text-align: left;
+}
+.playlist-section div {
+    margin-bottom: 10px;
+}
 
-  .checkmark:after {
-      left: 9px;
-      top: 5px;
-      width: 5px;
-      height: 10px;
-      border: solid white;
-      border-width: 0 3px 3px 0;
-      -webkit-transform: rotate(45deg);
-      -ms-transform: rotate(45deg);
-      transform: rotate(45deg);
-  }
+.footer-section {
+    text-align: center; /* Stack items vertically */
+}
+.footer-section p {
+    margin: 5px 0;
+}
 
-  .dp_button {
-      background-color: #04AA6D;
-  }
+/* --- Modern Controls (Buttons, Inputs) --- */
+button,
+input[type="button"] {
+    background-color: #04AA6D; /* Main accent color */
+    color: white;
+    border: none;
+    padding: 8px 12px;
+    font-size: 13px;
+    font-weight: bold;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background-color 0.2s, transform 0.1s;
+    margin: 2px; /* Add space for wrapping */
+}
 
-  /* Responsive layout for mobile devices */
-  @media (max-width: 768px) {
-      table {
-          width: 100%;
-      }
+button:hover,
+input[type="button"]:hover {
+    background-color: #05c47d;
+}
 
-      td {
-          display: block;
-          width: 100%;
-      }
+button:active,
+input[type="button"]:active {
+    transform: scale(0.98);
+}
 
-      #player1, #player2 {
-          width: 100%;
-          margin-bottom: 20px;
-      }
-  }
+/* Special button styles */
+button[onclick^="moveSlideTo"],
+button[onclick="stopAllPlay()"] {
+    background-color: #444;
+}
+button[onclick^="moveSlideTo"]:hover,
+button[onclick="stopAllPlay()"]:hover {
+    background-color: #555;
+}
+input[value="RESET"] {
+    background-color: #c9302c;
+}
+input[value="RESET"]:hover {
+    background-color: #d9534f;
+}
+
+
+input[type="text"] {
+    background-color: #333;
+    color: #f0f0f0;
+    border: 1px solid #555;
+    padding: 10px;
+    border-radius: 5px;
+    font-size: 14px;
+    box-sizing: border-box; /* Include padding in width */
+    width: 100%; 
+}
+
+/* --- Slider (Crossfader) --- */
+.slidecontainer {
+  width: 100%;
+  text-align: center;
+}
+
+.slider {
+  -webkit-appearance: none;
+  flex-grow: 1;
+  width: auto;
+  margin: 0 10px; /* Add space between slider and buttons */
+  height: 25px;
+  background: #444;
+  outline: none;
+  opacity: 0.9;
+  -webkit-transition: .2s;
+  transition: opacity .2s;
+  border-radius: 10px;
+  vertical-align: middle;
+}
+
+.slider:hover {
+  opacity: 1;
+}
+
+.slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 25px;
+  height: 25px;
+  background: #f0f0f0;
+  cursor: pointer;
+  border-radius: 50%;
+}
+
+.slider::-moz-range-thumb {
+  width: 25px;
+  height: 25px;
+  background: #f0f0f0;
+  cursor: pointer;
+  border-radius: 50%;
+}
+
+/* --- Custom Checkbox --- */
+.container {
+  display: block;
+  position: relative;
+  padding-left: 35px;
+  margin-bottom: 12px;
+  cursor: pointer;
+  font-size: 18px;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+}
+
+.container input {
+  position: absolute;
+  opacity: 0;
+  cursor: pointer;
+  height: 0;
+  width: 0;
+}
+
+.checkmark {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 25px;
+  width: 25px;
+  background-color: #555;
+  border-radius: 4px;
+}
+
+.container:hover input ~ .checkmark {
+  background-color: #777;
+}
+
+.container input:checked ~ .checkmark {
+  background-color: #2196F3;
+}
+
+.checkmark:after {
+  content: "";
+  position: absolute;
+  display: none;
+}
+
+.container input:checked ~ .checkmark:after {
+  display: block;
+}
+
+.container .checkmark:after {
+  left: 9px;
+  top: 5px;
+  width: 5px;
+  height: 10px;
+  border: solid white;
+  border-width: 0 3px 3px 0;
+  -webkit-transform: rotate(45deg);
+  -ms-transform: rotate(45deg);
+  transform: rotate(45deg);
+}
+
+/* --- Radio Buttons (Speed) --- */
+.playback-controls input[type="radio"] {
+    margin-left: 5px; 
+}
+.playback-controls label {
+    font-size: 13px; 
+    margin-right: 5px; 
+}
+
 </style>
 </head>
 <body>
-<h2 align="center">DeckCastDJ Mobile {{version}}</h2>
 
-<label class="container" id="pageTop"><b>I am the DJ</b>
-  <input type="checkbox" id="isDJ">
-  <span class="checkmark"></span>
-</label>
+<div class="app-container">
 
-<label class="container"><b>Private Mode</b>
-  <input type="checkbox" id="isPrivate" checked="checked">
-  <span class="checkmark"></span>
-</label>
-
-<table>
-<tr>
-  <td>
-    <div id="player1"></div>
-    <div align="center">
-      <b>
-        <button type="button" onclick="restartVideo(1)"><<</button>
-        <input type="radio" id="speedA0" name="speedA" onclick="onChangeSpeed(1, this);" value="0">
-        <label for="speedA0">0%</label>
-        <input type="radio" id="speedA1" name="speedA" onclick="onChangeSpeed(1, this);" value="1">
-        <label for="speedA1">5% Faster</label>
-        <input type="radio" id="speedA2" name="speedA" onclick="onChangeSpeed(1, this);" value="2">
-        <label for="speedA2">10% Faster</label>
-        <span id="videoId1Saved"></span>
-      </b>
+    <div class="header">
+        <h2>DeckCastDJ Mobile {{version}}</h2>
     </div>
-  </td>
-</tr>
 
-<tr>
-    <td colspan="2">
-      <p align="center">
+    <div class="global-controls">
+        <label class="container" id="pageTop"><b>I am the DJ</b>
+          <input type="checkbox" id="isDJ">
+          <span class="checkmark"></span>
+        </label>
+        
+        <label class="container"><b>Private Mode</b>
+          <input type="checkbox" id="isPrivate" checked="checked">
+          <span class="checkmark"></span>
+        </label>
+    </div>
+
+    <div class="deck">
+        <div class="video-container">
+            <div id="player1"></div>
+        </div>
+        <div class="playback-controls">
+          <b>
+            <button type="button" onclick="restartVideo(1)"><<</button>
+            <span>
+                <input type="radio" id="speedA0" name="speedA" onclick="onChangeSpeed(1, this);" value="0">
+                <label for="speedA0">0%</label>
+                <input type="radio" id="speedA1" name="speedA" onclick="onChangeSpeed(1, this);" value="1">
+                <label for="speedA1">5%</label>
+                <input type="radio" id="speedA2" name="speedA" onclick="onChangeSpeed(1, this);" value="2">
+                <label for="speedA2">10%</label>
+            </span>
+            <span id="videoId1Saved"></span>
+          </b>
+        </div>
+    </div>
+
+    <div class="mixer-section">
         <button type="button" onclick="moveSlideTo(1)">&lt; PLY1</button>
         <input type="range" min="0" max="100" value="50" id="mixer" oninput="changePlayerVolume(this.value)" class="slider">
         <button type="button" onclick="moveSlideTo(2)">PLY2 &gt;</button>
-      </p>
-    </td>
-</tr>
-
-<tr>
-  <td>
-    <div id="player2"></div>
-    <div align="center">
-      <b>
-        <button type="button" onclick="restartVideo(2)"><<</button>
-        <input type="radio" id="speedB0" name="speedB" onclick="onChangeSpeed(2, this);" value="0">
-        <label for="speedB0">0%</label>
-        <input type="radio" id="speedB1" name="speedB" onclick="onChangeSpeed(2, this);" value="1">
-        <label for="speedB1">5% Faster</label>
-        <input type="radio" id="speedB2" name="speedB" onclick="onChangeSpeed(2, this);" value="2">
-        <label for="speedB2">10% Faster</label>
-        <span id="videoId2Saved"></span>
-      </b>
     </div>
-  </td>
-</tr>
-<tr>
-  <td colspan="2">
-    <p align="center">
-      <button type="button" onclick="stopAllPlay()">Stop Play</button>
-    </p>
-  </td>
-</tr>
-<tr>
-  <td colspan="2">
-    <p>
-      <span id="playList"></span>
-    </p>
 
-    <table>
-        <tr>
-          <td><b>Username:</b></td>
-          <td><input type="text" id="uname" name="uname" value="Guest" style="width: 100%;"></td>
-        </tr>
-        <tr>
-          <td><b id="filter_list">YouTube Url or Search Filter:</b></td>
-          <td><input type="text" id="filter" name="filter" style="width: 100%;" value=""></td>
-        </tr>
-        <tr>
-          <td colspan="2" align="center">
+    <div class="deck">
+        <div class="video-container">
+            <div id="player2"></div>
+        </div>
+        <div class="playback-controls">
+          <b>
+            <button type="button" onclick="restartVideo(2)"><<</button>
+            <span>
+                <input type="radio" id="speedB0" name="speedB" onclick="onChangeSpeed(2, this);" value="0">
+                <label for="speedB0">0%</label>
+                <input type="radio" id="speedB1" name="speedB" onclick="onChangeSpeed(2, this);" value="1">
+                <label for="speedB1">5%</label>
+                <input type="radio" id="speedB2" name="speedB" onclick="onChangeSpeed(2, this);" value="2">
+                <label for="speedB2">10%</label>
+            </span>
+            <span id="videoId2Saved"></span>
+          </b>
+        </div>
+    </div>
+
+    <div class="transport-section">
+      <button type="button" onclick="stopAllPlay()">Stop Play</button>
+    </div>
+
+    <div class="playlist-section">
+        <p><b>Playlist:</b> <span id="playList"></span></p>
+        <hr style="border-color: #444;">
+        
+        <div>
+          <b>Username:</b>
+          <input type="text" id="uname" name="uname" value="Guest">
+        </div>
+        <div>
+          <b id="filter_list">YouTube Url or Search Filter:</b>
+          <input type="text" id="filter" name="filter" value="">
+        </div>
+        <div style="text-align: center; margin-top: 15px;">
             <button type="button" onclick="loadVideoForMobile(1)">To Player 1</button>
             <button type="button" onclick="loadVideoForMobile(2)">To Player 2</button>
             <button type="button" onclick="loadPlayListForMobile()">Load Playlist</button>
             <button type="button" onclick="clearPlayList()">Clear</button>
-          </td>
-        </tr>
-      </table>
-  </td>
-</tr>
-<tr>
-  <td align="center">
-    <p>Mixer: <span id="mixerValue"></span></p>
-    <p>
-      PIN <input type="text" id="pin" name="pin" value="0001" size="3">
-      <br>
-      Console: <span id="messageText">Waiting for data ...</span>
-    </p>
-  </td>
-</tr>
-</table>
+        </div>
+    </div>
+
+    <div class="footer-section"> 
+        <p>Mixer: <span id="mixerValue"></span></p>
+        <div>
+          <b>PIN:</b>
+          <input type="text" id="pin" name="pin" value="0001">
+        </div>
+        <p>
+          Console: <span id="messageText">Waiting for data ...</span>
+        </p> 
+    </div>
+
+</div>
 
 <script src="https://cdn.socket.io/4.5.3/socket.io.min.js" integrity="sha384-WPFUvHkB1aHA5TDSZi6xtDgkF0wXJcIIxXhC6h8OT8EH3fC5PWro5pWJ1THjcfEi" crossorigin="anonymous"></script>
 <script src="static/js/controller.js"></script>
 
-<!-- call function in controller.js to set to mobile mode -->
 <script>
   setMobileMode();
 </script>
