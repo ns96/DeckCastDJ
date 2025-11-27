@@ -3,278 +3,367 @@
 <head>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <style>
-  body {
-      /*background-color: #b2b2de;*/
-      background-color: {{bgcolor}};
-  }
+/* --- THEME DEFINITIONS (CSS VARIABLES) --- */
+:root {
+    /* Default Dark Theme */
+    --bg-body: #1e1e1e;
+    --bg-panel: #2a2a2a;
+    --bg-control: #333333;
+    --bg-input: #333333;
+    --text-main: #f0f0f0;
+    --text-header: #04AA6D;
+    --accent-primary: #04AA6D;
+    --accent-hover: #05c47d;
+    --border-color: #555555;
+    --slider-track: #444444;
+    --slider-thumb: #f0f0f0;
+    --shadow-color: rgba(0, 0, 0, 0.3);
+}
 
-  .slidecontainer {
-    width: 100%;
-  }
+/* Light Theme */
+.theme-light {
+    --bg-body: #e0e0e0;
+    --bg-panel: #ffffff;
+    --bg-control: #eeeeee;
+    --bg-input: #ffffff;
+    --text-main: #111111;
+    --text-header: #2e7d32;
+    --accent-primary: #2e7d32;
+    --accent-hover: #43a047;
+    --border-color: #cccccc;
+    --slider-track: #bdbdbd;
+    --slider-thumb: #2e7d32;
+    --shadow-color: rgba(0, 0, 0, 0.1);
+}
 
-  .slider {
-    -webkit-appearance: none;
-    width: 50%;
-    height: 25px;
-    background: #d3d3d3;
-    outline: none;
-    opacity: 0.7;
-    -webkit-transition: .2s;
-    transition: opacity .2s;
-  }
+/* Blue Theme */
+.theme-blue {
+    --bg-body: #0f172a;
+    --bg-panel: #1e293b;
+    --bg-control: #334155;
+    --bg-input: #0f172a;
+    --text-main: #e2e8f0;
+    --text-header: #38bdf8;
+    --accent-primary: #0ea5e9;
+    --accent-hover: #38bdf8;
+    --border-color: #475569;
+    --slider-track: #334155;
+    --slider-thumb: #38bdf8;
+    --shadow-color: rgba(0, 0, 0, 0.4);
+}
 
-  .slider:hover {
-    opacity: 1;
-  }
+/* Orange Theme */
+.theme-orange {
+    --bg-body: #291d18;
+    --bg-panel: #3e2c24;
+    --bg-control: #5d4037;
+    --bg-input: #291d18;
+    --text-main: #ffe0b2;
+    --text-header: #ff9800;
+    --accent-primary: #fb8c00;
+    --accent-hover: #ffa726;
+    --border-color: #6d4c41;
+    --slider-track: #4e342e;
+    --slider-thumb: #ffcc80;
+    --shadow-color: rgba(0, 0, 0, 0.4);
+}
 
-  .slider::-webkit-slider-thumb {
-    -webkit-appearance: none;
-    appearance: none;
-    width: 25px;
-    height: 25px;
-    background: #4CAF50;
+/* --- Basic Setup --- */
+body {
+    background-color: var(--bg-body);
+    color: var(--text-main);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    margin: 0;
+    padding: 20px;
+    transition: background-color 0.3s, color 0.3s;
+}
+
+h2 {
+    color: var(--text-header);
+    text-align: center;
+    border-bottom: 2px solid var(--bg-control);
+    padding-bottom: 10px;
+}
+
+/* --- Layout --- */
+.app-container {
+    max-width: 1400px;
+    margin: auto;
+}
+
+.global-controls, .search-controls {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 30px;
+    margin-bottom: 20px;
+    background-color: var(--bg-panel);
+    padding: 15px;
+    border-radius: 8px;
+    flex-wrap: wrap;
+}
+
+.decks-container {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+}
+
+.deck {
+    background-color: var(--bg-panel);
+    border-radius: 8px;
+    padding: 20px;
+    box-shadow: 0 4px 10px var(--shadow-color);
+}
+
+.playback-controls {
+    margin-top: 15px;
+    background-color: var(--bg-control);
+    padding: 10px;
+    border-radius: 5px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 5px;
+}
+
+.mixer-section, .transport-section, .playlist-section, .footer-section {
+    background-color: var(--bg-panel);
+    border-radius: 8px;
+    padding: 20px;
+    margin-top: 20px;
+    text-align: center;
+}
+
+/* ** MODIFICATION HERE ** */
+.playlist-section {
+    text-align: left;
+}
+
+.footer-section {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 15px;
+}
+
+/* ** MODIFICATION HERE ** */
+#rootList {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    justify-content: flex-start; /* Changed from 'center' */
+}
+
+/* --- Modern Controls --- */
+button, input[type="button"] {
+    background-color: var(--accent-primary);
+    color: white;
+    border: none;
+    padding: 6px 10px; /* Reduced padding */
+    font-size: 12px;   /* Reduced font size */
+    font-weight: bold;
+    border-radius: 5px;
     cursor: pointer;
-  }
+    transition: background-color 0.2s, transform 0.1s;
+}
 
-  .slider::-moz-range-thumb {
-    width: 25px;
-    height: 25px;
-    background: #4CAF50;
-    cursor: pointer;
-  }
+button:hover, input[type="button"]:hover {
+    background-color: var(--accent-hover);
+}
 
-  /* The container */
-  .container {
-    display: block;
-    position: relative;
-    padding-left: 35px;
-    margin-bottom: 12px;
-    cursor: pointer;
-    font-size: 18px;
-    -webkit-user-select: none;
-    -moz-user-select: none;
-    -ms-user-select: none;
-    user-select: none;
-  }
+button:active, input[type="button"]:active {
+    transform: scale(0.98);
+}
 
-  /* Hide the browser's default checkbox */
-  .container input {
-    position: absolute;
-    opacity: 0;
-    cursor: pointer;
-    height: 0;
-    width: 0;
-  }
+button[onclick^="moveSlideTo"],
+button[onclick="stopAllPlay()"],
+button[onclick="clearAll()"] {
+    background-color: #444;
+}
+button[onclick^="moveSlideTo"]:hover,
+button[onclick="stopAllPlay()"]:hover,
+button[onclick="clearAll()"]:hover {
+    background-color: #555;
+}
 
-  /* Create a custom checkbox */
-  .checkmark {
-    position: absolute;
-    top: 0;
-    left: 0;
-    height: 25px;
-    width: 25px;
-    background-color: #eee;
-  }
+input[type="text"], select {
+    background-color: var(--bg-input);
+    color: var(--text-main);
+    border: 1px solid var(--border-color);
+    padding: 8px;
+    border-radius: 5px;
+    font-size: 13px;
+}
 
-  /* On mouse-over, add a grey background color */
-  .container:hover input ~ .checkmark {
-    background-color: #ccc;
-  }
+/* --- Radio Buttons --- */
+.playback-controls input[type="radio"] {
+    margin-left: 5px; 
+}
+.playback-controls label {
+    font-size: 12px; 
+    margin-right: 5px; 
+}
 
-  /* When the checkbox is checked, add a blue background */
-  .container input:checked ~ .checkmark {
-    background-color: #2196F3;
-  }
 
-  /* Create the checkmark/indicator (hidden when not checked) */
-  .checkmark:after {
-    content: "";
-    position: absolute;
-    display: none;
-  }
+/* --- Slider (Crossfader) --- */
+.slidecontainer {
+  width: 100%;
+  text-align: center;
+}
 
-  /* Show the checkmark when checked */
-  .container input:checked ~ .checkmark:after {
-    display: block;
-  }
+.slider {
+  -webkit-appearance: none;
+  width: 70%;
+  height: 20px;
+  background: var(--slider-track);
+  outline: none;
+  opacity: 0.9;
+  transition: opacity .2s;
+  border-radius: 10px;
+  vertical-align: middle;
+}
 
-  /* Style the checkmark/indicator */
-  .container .checkmark:after {
-    left: 9px;
-    top: 5px;
-    width: 5px;
-    height: 10px;
-    border: solid white;
-    border-width: 0 3px 3px 0;
-    -webkit-transform: rotate(45deg);
-    -ms-transform: rotate(45deg);
-    transform: rotate(45deg);
-  }
+.slider:hover {
+  opacity: 1;
+}
 
-  #playerTable td {
-      width: 50%;
-  }
+.slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 30px;
+  height: 30px;
+  background: var(--slider-thumb);
+  cursor: pointer;
+  border-radius: 50%;
+  border: 2px solid var(--bg-body);
+}
 
-  ul {
-    list-style-type: none;
-    font-weight:bold;
-  }
+.slider::-moz-range-thumb {
+  width: 30px;
+  height: 30px;
+  background: var(--slider-thumb);
+  cursor: pointer;
+  border-radius: 50%;
+  border: 2px solid var(--bg-body);
+}
 
-  ul li {
-    margin-bottom: 8px;
-  }
+ul {
+  list-style-type: none;
+  padding-left: 0;
+}
+
+ul li {
+  margin-bottom: 8px;
+}
 </style>
 
 <link rel="stylesheet" href="https://cdn.plyr.io/3.7.8/plyr.css" />
 
 </head>
-    <body>
-    <h2>DeckCastDJ-MP3 {{version}} -- Simple DJ Player</h2>
+<body>
+
+<div class="app-container">
+    <h2 id="pageTop">DeckCastDJ-MP3 {{version}} -- Simple DJ Player</h2>
     
-    <p>
-      <label for="search"><b id="pageTop">Search For: </b></label>
+    <div class="global-controls">
+        <label for="themeSelect"><b>Theme:</b></label>
+        <select id="themeSelect" onchange="setTheme(this.value)">
+            <option value="theme-dark">Dark (Default)</option>
+            <option value="theme-light">Light</option>
+            <option value="theme-blue">Blue Night</option>
+            <option value="theme-orange">Warm Orange</option>
+        </select>
+    </div>
+
+    <div class="search-controls">
+      <label for="search"><b>Search For: </b></label>
       <input type="text" id="search" name="search" value="" size="50">
       <button type="button" onclick="searchMP3DB()">Search</button> 
       <button type="button" onclick="loadSavedQueList()">Load Saved Ques</button>
-    </p>
+    </div>
+    
+    <div class="playlist-section">
+      <div id="rootList"></div>
+    </div>
 
-    <p>
-      <span id="rootList"></span>
-    </p>
-    
-    <br><br>
+    <!-- Add some space here -->
+    <br>
+    <div class="decks-container">
+        <div class="deck">
+            <label for="videoId1"><b>MP3 Url: </b></label>
+            <input type="text" id="videoId1" name="videoId1" value="" size="34">
+            <button type="button" onclick="loadMP3FromUrl(1)">Load</button>
+            <button type="button" onclick="queVideo(1)">Que</button>
+            <audio id="player1" crossorigin playsinline>
+              <source src="http://pi86.sytes.net:8080/music/Various_Artists-80s-90s_Songs_MP3/01-01-Annie_Lennox-No_More_I_Love_You_s-LLS.mp3" type="audio/mp3">
+            </audio>
+            <div class="playback-controls">
+                <button type="button" onclick="restartMP3(1)"><<</button>
+                <span>
+                    <input type="radio" id="speedA0" name="speedA" onclick="onChangeSpeed(1, this);" value="0">
+                    <label for="speedA0">0%</label> 
+                    <input type="radio" id="speedA1" name="speedA" onclick="onChangeSpeed(1, this);" value="1">
+                    <label for="speedA1">3%</label> 
+                    <input type="radio" id="speedA2" name="speedA" onclick="onChangeSpeed(1, this);" value="2">
+                    <label for="speedA2">5%</label> 
+                    <input type="radio" id="speedA3" name="speedA" onclick="onChangeSpeed(1, this);" value="3">
+                    <label for="speedA3">7%</label>
+                </span>
+            </div>
+            <span id="title1"> No Track Loaded ...</span>
+        </div>
+        <div class="deck">
+            <label for="videoId2"><b>MP3 Url: </b></label>
+            <input type="text" id="videoId2" name="videoId2" value="" size="34">
+            <button type="button" onclick="loadMP3FromUrl(2)">Load</button>
+            <button type="button" onclick="queVideo(2)">Que</button>
+            <audio id="player2" crossorigin playsinline>
+              <source src="http://pi86.sytes.net:8080/music/Various_Artists-80s-90s_Songs_MP3/01-01-Annie_Lennox-Why-LLS.mp3" type="audio/mp3">
+            </audio>
+            <div class="playback-controls">
+                <button type="button" onclick="restartMP3(2)"><<</button>
+                <span>
+                    <input type="radio" id="speedB0" name="speedB" onclick="onChangeSpeed(2, this);" value="0">
+                    <label for="speedB0">0%</label> 
+                    <input type="radio" id="speedB1" name="speedB" onclick="onChangeSpeed(2, this);" value="1">
+                    <label for="speedB1">3%</label> 
+                    <input type="radio" id="speedB2" name="speedB" onclick="onChangeSpeed(2, this);" value="2">
+                    <label for="speedB2">5%</label> 
+                    <input type="radio" id="speedB3" name="speedB" onclick="onChangeSpeed(2, this);" value="3">
+                    <label for="speedB3">7%</label>
+                </span>
+            </div>
+            <span id="title2"> No Track Loaded ...</span>
+        </div>
+    </div>
 
-    <table style='border-spacing: 10px 1rem;' id="playerTable">
-    <tr>
-    
-    <td>
-    <label for="videoId1"><b id="pageTop">MP3 Url: </b></label>
-    <input type="text" id="videoId1" name="videoId1" value="" size="34">
-    <button type="button" onclick="loadMP3FromUrl(1)">Load</button>
-    <button type="button" onclick="queVideo(1)">Que</button>
-    </td>
-    
-    <td>
-    <label for="videoId2"><b>MP3 Url: </b></label>
-    <input type="text" id="videoId2" name="videoId2" value="" size="34">
-    <button type="button" onclick="loadMP3FromUrl(2)">Load</button>
-    <button type="button" onclick="queVideo(2)">Que</button>
-    </td>
-    
-    </tr>
-    
-    <tr>
+    <div class="mixer-section">
+        <button type="button" onclick="moveSlideTo(1)"> MOVE LEFT </button>
+        <input type="range" min="0" max="100" value="50" id="mixer" class="slider">
+        <button type="button" onclick="moveSlideTo(2)"> MOVE RIGHT </button>
+    </div>
 
-    <td>
-    <audio id="player1" crossorigin playsinline>
-      <source src="http://pi86.sytes.net:8080/music/Various_Artists-80s-90s_Songs_MP3/01-01-Annie_Lennox-No_More_I_Love_You_s-LLS.mp3" type="audio/mp3">
-    </audio>
-    
-    <div><b>
-    <button type="button" onclick="restartMP3(1)"><<</button>
-    <input type="radio" id="speedA0" name="speedA" onclick="onChangeSpeed(1, this);" value="0">
-    <label for="speedA0">0% (Normal)</label> 
-    <input type="radio" id="speedA1" name="speedA" onclick="onChangeSpeed(1, this);" value="1">
-    <label for="speedA1">3% Faster</label> 
-    <input type="radio" id="speedA2" name="speedA" onclick="onChangeSpeed(1, this);" value="2">
-    <label for="speedA2">5% Faster</label> 
-    <input type="radio" id="speedA3" name="speedA" onclick="onChangeSpeed(1, this);" value="3">
-    <label for="speedA3">7% Faster</label>
-    </b></div>
-    
-    </td>
-    
-    <td>
-    <audio id="player2" crossorigin playsinline>
-      <source src="http://pi86.sytes.net:8080/music/Various_Artists-80s-90s_Songs_MP3/01-01-Annie_Lennox-Why-LLS.mp3" type="audio/mp3">
-    </audio>
-    
-    <div><b>
-    <button type="button" onclick="restartMP3(2)"><<</button>
-    <input type="radio" id="speedB0" name="speedB" onclick="onChangeSpeed(2, this);" value="0">
-    <label for="speedB0">0% (Normal)</label> 
-    <input type="radio" id="speedB1" name="speedB" onclick="onChangeSpeed(2, this);" value="1">
-    <label for="speedB1">3% Faster</label> 
-    <input type="radio" id="speedB2" name="speedB" onclick="onChangeSpeed(2, this);" value="2">
-    <label for="speedB2">5% Faster</label> 
-    <input type="radio" id="speedB3" name="speedB" onclick="onChangeSpeed(2, this);" value="3">
-    <label for="speedB3">7% Faster</label>
-    </b></div>
-    
-    </td>
-    
-    </tr>
-
-    <tr>
-      <td>
-        <span id="title1"> No Track Loaded ...</span>
-      </td>
-
-      <td>
-        <span id="title2"> No Track Loaded ...</span>
-      </td>
-    </tr>
-    
-    <tr>
-    <td colspan="2">
-    <p align="center">
-      <button type="button" onclick="moveSlideTo(1)"> MOVE LEFT </button>
-      <input type="range" min="0" max="100" value="50" id="mixer" class="slider">
-      <button type="button" onclick="moveSlideTo(2)"> MOVE RIGHT </button>
-    </p>
-    </td>
-    </tr>
-    
-    <tr>
-      <td colspan="2">
-      <p align="center">
-        <span id="play">
-        </span>
-      </p>
-      </td>
-    </tr>
-
-    <tr>
-      <td colspan="2">
-      <p align="center">
+    <div class="transport-section">
+        <div id="play" style="margin-bottom: 10px;"></div>
         <button type="button" onclick="stopAllPlay()">Stop Play</button> 
         <button type="button" onclick="clearAll()">Clear All</button>
-      </p>
-      </td>
-    </tr>
-
-    <tr>
-      <td colspan="2">
-      <p align="center">
-        <span id="vumeter">
-        </span>
-      </p>
-      </td>
-    </tr>
-
-    <tr>
-    <td colspan="2">
-    <p>
-      <span id="queList"></span>
-    </p>
-    <p>
-      <span id="playList"></span>
-    </p>
-    </td>
-    </tr>
-  
-    <tr>
-    <td>
-    <p>Mixer Value: <span id="mixerValue"></span></p>
-    </td>
-    <td>
-    <p>
-    Console: <span id="messageText"></span>
-    </p>
-    </td>
-    </tr>
+        <div id="vumeter" style="margin-top: 10px;"></div>
+    </div>
     
-    </table>
+    <div class="playlist-section">
+      <p><span id="queList"></span></p>
+      <p><span id="playList"></span></p>
+    </div>
+    
+    <div class="footer-section">
+        <div>Mixer Value: <span id="mixerValue">50</span></div>
+        <div>Console: <span id="messageText">Waiting for data...</span></div>
+    </div>
+
+</div>
     
     <!-- load script for socketio -->
     <script src="https://cdn.socket.io/4.5.3/socket.io.min.js" integrity="sha384-WPFUvHkB1aHA5TDSZi6xtDgkF0wXJcIIxXhC6h8OT8EH3fC5PWro5pWJ1THjcfEi" crossorigin="anonymous"></script> 
@@ -282,9 +371,6 @@
     <!-- load plyr script -->
     <script src="https://cdn.plyr.io/3.7.8/plyr.js"></script> 
 
-    <!-- load script that controlls mp3 playback
-    <script src="static/js/controller.js"></script>
-    -->
     <script>
       // set our server hosting the mp3 files
       const mp3BaseUrl = 'http://pi86.sytes.net:8080/music/';
@@ -1200,7 +1286,8 @@
         // now add those as parent folders
         let htmlString = '';
         for (const item of rootDirs) {
-          htmlString += `<button style="height:35px;width:325px" onclick="displayMP3s('${item}')">${item}</button> `; 
+          // REMOVED INLINE STYLING HERE
+          htmlString += `<button onclick="displayMP3s('${item}')">${item}</button>`; 
         }
 
         let container = document.getElementById('rootList');
@@ -1258,6 +1345,30 @@
         .then(dictionary => {
           processDB(dictionary);
         });
+
+    function setTheme(themeName) {
+        // Clear all potential theme classes
+        document.body.classList.remove('theme-light', 'theme-blue', 'theme-orange');
+        
+        // Add new theme class (unless it's the default)
+        if (themeName !== 'theme-dark') {
+            document.body.classList.add(themeName);
+        }
+        
+        // Save to localStorage
+        localStorage.setItem('djTheme', themeName);
+    }
+
+    // On page load, set the theme
+    (function () {
+        const savedTheme = localStorage.getItem('djTheme');
+        if (savedTheme) {
+            setTheme(savedTheme);
+            // Update the dropdown selector to match
+            const select = document.getElementById('themeSelect');
+            if(select) select.value = savedTheme;
+        }
+    })();
     </script>
   </body>
 </html>

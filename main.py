@@ -6,10 +6,10 @@ A simple flask/SocketIO for building very simple youtube DJ application that
 can be shared by other users
 
 @author: Nathan
-@version: 1.16.0 (11/15/2025)
+@version: 1.16.9 (11/27/2025)
 """
 # this variables are passed onto the html templates
-appVersion = 'v1.16.0 (11/15/2025)'
+appVersion = 'v1.16.9 (11/27/2025)'
 bgColor = '#b2b2de' # no longer used but will keep for backward compatibility
 
 import os.path
@@ -799,7 +799,8 @@ def createQRCode(videoId):
     #print('Image URL', imgUrl)
     return imgUrl        
 
-# get the current information for the video being played html
+# get the current information for the video being played html.
+# TO-DO 11/17/2025 Legacy Code -- Remove later
 def getCurrentVideoInfoHTML(videoId, videoInfo):
     #soundBarImg = 'https://i.pinimg.com/originals/31/12/81/31128181420688cf4eda6579ef7dfcc9.gif'
     soundBarImg = 'static/img/bar_vu.gif'
@@ -824,19 +825,10 @@ def getCurrentVideoInfoHTML(videoId, videoInfo):
 
     # show the QR code for video on youtube or playlist here
     tableHtml += '<td bgcolor="white"><div id="qrcode" style="width: 50%; margin: 0 auto;"></div></td>'
-
-    '''
-    # show video of PCM data encoded onto VHS tape 
-    tableHtml += '<td bgcolor="white" style="text-align: center;">'
-    tableHtml += '<video width="720" height="480" autoplay loop muted>'
-    tableHtml += '<source src="static/video/PCM.mp4" type="video/mp4">'
-    tableHtml += 'Your browser does not support the video tag. </video>'
-    tableHtml += '</td>'
-    '''
     tableHtml += '</tr></table>'
     
     return tableHtml
-
+    
 # get the current information for the video being played
 def getLiteCurrentVideoInfoHTML(videoId, videoInfo):
     qrImg = createQRCode(videoId)
@@ -1039,7 +1031,9 @@ def processMessage(json):
         totalSeconds = pt.second + pt.minute*60 + pt.hour*3600
         
         json['videoTitle'] = videoInfo[0] + ' | ' + videoInfo[2]
-        json['videoInfoHTML'] = getCurrentVideoInfoHTML(videoId, videoInfo)
+        #json['videoInfoHTML'] = getCurrentVideoInfoHTML(videoId, videoInfo)
+        json['videoThumbnail'] = 'https://img.youtube.com/vi/' + videoId + '/0.jpg'
+        json['backupThumbnail'] = 'https://upload.wikimedia.org/wikipedia/commons/8/8b/YouTube_dark_icon_%282017%29.svg'
         json['videoInfoLiteHTML'] = getLiteCurrentVideoInfoHTML(videoId, videoInfo)
         json['videoTime'] = totalSeconds
         json['videoFormat'] = 'youtube'

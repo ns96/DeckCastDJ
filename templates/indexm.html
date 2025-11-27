@@ -3,20 +3,86 @@
 <head>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <style>
-/* --- Basic Setup & Dark Mode Theme --- */
+/* --- THEME DEFINITIONS (CSS VARIABLES) --- */
+:root {
+    /* Default Dark Theme */
+    --bg-body: #1e1e1e;
+    --bg-panel: #2a2a2a;
+    --bg-control: #333333;
+    --bg-input: #333333;
+    --text-main: #f0f0f0;
+    --text-header: #04AA6D;
+    --accent-primary: #04AA6D;
+    --accent-hover: #05c47d;
+    --border-color: #555555;
+    --slider-track: #444444;
+    --slider-thumb: #f0f0f0;
+    --shadow-color: rgba(0, 0, 0, 0.3);
+}
+
+/* Light Theme */
+.theme-light {
+    --bg-body: #e0e0e0;
+    --bg-panel: #ffffff;
+    --bg-control: #eeeeee;
+    --bg-input: #ffffff;
+    --text-main: #111111;
+    --text-header: #2e7d32;
+    --accent-primary: #2e7d32;
+    --accent-hover: #43a047;
+    --border-color: #cccccc;
+    --slider-track: #bdbdbd;
+    --slider-thumb: #2e7d32;
+    --shadow-color: rgba(0, 0, 0, 0.1);
+}
+
+/* Blue Theme */
+.theme-blue {
+    --bg-body: #0f172a;
+    --bg-panel: #1e293b;
+    --bg-control: #334155;
+    --bg-input: #0f172a;
+    --text-main: #e2e8f0;
+    --text-header: #38bdf8;
+    --accent-primary: #0ea5e9;
+    --accent-hover: #38bdf8;
+    --border-color: #475569;
+    --slider-track: #334155;
+    --slider-thumb: #38bdf8;
+    --shadow-color: rgba(0, 0, 0, 0.4);
+}
+
+/* Orange Theme */
+.theme-orange {
+    --bg-body: #291d18;
+    --bg-panel: #3e2c24;
+    --bg-control: #5d4037;
+    --bg-input: #291d18;
+    --text-main: #ffe0b2;
+    --text-header: #ff9800;
+    --accent-primary: #fb8c00;
+    --accent-hover: #ffa726;
+    --border-color: #6d4c41;
+    --slider-track: #4e342e;
+    --slider-thumb: #ffcc80;
+    --shadow-color: rgba(0, 0, 0, 0.4);
+}
+
+/* --- Basic Setup --- */
 body {
-    background-color: #1e1e1e; /* Dark background */
-    color: #f0f0f0; /* Light text */
+    background-color: var(--bg-body);
+    color: var(--text-main);
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
     margin: 0;
-    padding: 10px; /* Tighter padding for mobile */
-    overflow-x: hidden; /* Prevent horizontal scroll */
+    padding: 10px;
+    overflow-x: hidden;
+    transition: background-color 0.3s, color 0.3s;
 }
 
 h2 {
-    color: #04AA6D; /* Accent color for header */
+    color: var(--text-header);
     text-align: center;
-    border-bottom: 2px solid #333;
+    border-bottom: 2px solid var(--bg-control);
     padding-bottom: 10px;
     margin-top: 10px;
 }
@@ -27,32 +93,33 @@ h2 {
 }
 
 .global-controls {
-    background-color: #2a2a2a;
+    background-color: var(--bg-panel);
     padding: 15px;
     border-radius: 8px;
     margin-bottom: 15px;
+    /* Flex for Theme/Checks alignment on mobile */
+    display: flex;
+    flex-direction: column; 
+    gap: 10px;
 }
 
 .deck {
-    background-color: #2a2a2a;
+    background-color: var(--bg-panel);
     border-radius: 8px;
-    padding: 15px; /* Tighter padding */
-    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+    padding: 15px; 
+    box-shadow: 0 4px 10px var(--shadow-color);
     margin-bottom: 15px;
 }
 
-/* --- MODIFIED: Responsive Video Player --- */
-/* This container creates the 16:9 aspect ratio box */
 .video-container {
     position: relative;
-    padding-bottom: 56.25%; /* 16:9 aspect ratio (9 / 16 = 0.5625) */
+    padding-bottom: 56.25%;
     height: 0;
     overflow: hidden;
     max-width: 100%;
-    background: #000; /* Black background while loading */
+    background: #000;
 }
 
-/* This forces the player (which is the iframe) to fill the container */
 .video-container #player1,
 .video-container #player2 {
     position: absolute;
@@ -61,12 +128,10 @@ h2 {
     width: 100%;
     height: 100%;
 }
-/* --- End of Modified Rules --- */
-
 
 .playback-controls {
     margin-top: 15px;
-    background-color: #333;
+    background-color: var(--bg-control);
     padding: 10px;
     border-radius: 5px;
 }
@@ -84,14 +149,13 @@ h2 {
 .transport-section,
 .playlist-section,
 .footer-section {
-    background-color: #2a2a2a;
+    background-color: var(--bg-panel);
     border-radius: 8px;
-    padding: 15px; /* Tighter padding */
+    padding: 15px;
     margin-bottom: 15px;
     text-align: center;
 }
 
-/* Use Flexbox for the mixer section */
 .mixer-section {
     display: flex;
     align-items: center;
@@ -106,16 +170,16 @@ h2 {
 }
 
 .footer-section {
-    text-align: center; /* Stack items vertically */
+    text-align: center;
 }
 .footer-section p {
     margin: 5px 0;
 }
 
-/* --- Modern Controls (Buttons, Inputs) --- */
+/* --- Modern Controls --- */
 button,
 input[type="button"] {
-    background-color: #04AA6D; /* Main accent color */
+    background-color: var(--accent-primary);
     color: white;
     border: none;
     padding: 8px 12px;
@@ -124,12 +188,12 @@ input[type="button"] {
     border-radius: 5px;
     cursor: pointer;
     transition: background-color 0.2s, transform 0.1s;
-    margin: 2px; /* Add space for wrapping */
+    margin: 2px;
 }
 
 button:hover,
 input[type="button"]:hover {
-    background-color: #05c47d;
+    background-color: var(--accent-hover);
 }
 
 button:active,
@@ -154,14 +218,14 @@ input[value="RESET"]:hover {
 }
 
 
-input[type="text"] {
-    background-color: #333;
-    color: #f0f0f0;
-    border: 1px solid #555;
+input[type="text"], select {
+    background-color: var(--bg-input);
+    color: var(--text-main);
+    border: 1px solid var(--border-color);
     padding: 10px;
     border-radius: 5px;
     font-size: 14px;
-    box-sizing: border-box; /* Include padding in width */
+    box-sizing: border-box;
     width: 100%; 
 }
 
@@ -175,12 +239,11 @@ input[type="text"] {
   -webkit-appearance: none;
   flex-grow: 1;
   width: auto;
-  margin: 0 10px; /* Add space between slider and buttons */
+  margin: 0 10px; 
   height: 25px;
-  background: #444;
+  background: var(--slider-track);
   outline: none;
   opacity: 0.9;
-  -webkit-transition: .2s;
   transition: opacity .2s;
   border-radius: 10px;
   vertical-align: middle;
@@ -195,17 +258,19 @@ input[type="text"] {
   appearance: none;
   width: 25px;
   height: 25px;
-  background: #f0f0f0;
+  background: var(--slider-thumb);
   cursor: pointer;
   border-radius: 50%;
+  border: 2px solid var(--bg-body);
 }
 
 .slider::-moz-range-thumb {
   width: 25px;
   height: 25px;
-  background: #f0f0f0;
+  background: var(--slider-thumb);
   cursor: pointer;
   border-radius: 50%;
+  border: 2px solid var(--bg-body);
 }
 
 /* --- Custom Checkbox --- */
@@ -216,9 +281,6 @@ input[type="text"] {
   margin-bottom: 12px;
   cursor: pointer;
   font-size: 18px;
-  -webkit-user-select: none;
-  -moz-user-select: none;
-  -ms-user-select: none;
   user-select: none;
 }
 
@@ -236,7 +298,7 @@ input[type="text"] {
   left: 0;
   height: 25px;
   width: 25px;
-  background-color: #555;
+  background-color: var(--border-color);
   border-radius: 4px;
 }
 
@@ -265,18 +327,20 @@ input[type="text"] {
   height: 10px;
   border: solid white;
   border-width: 0 3px 3px 0;
-  -webkit-transform: rotate(45deg);
-  -ms-transform: rotate(45deg);
   transform: rotate(45deg);
 }
 
-/* --- Radio Buttons (Speed) --- */
+/* --- Radio Buttons --- */
 .playback-controls input[type="radio"] {
     margin-left: 5px; 
 }
 .playback-controls label {
     font-size: 13px; 
     margin-right: 5px; 
+}
+
+td img {
+    border-radius: 10px;
 }
 
 </style>
@@ -290,6 +354,16 @@ input[type="text"] {
     </div>
 
     <div class="global-controls">
+        <div style="margin-bottom: 10px;">
+            <label for="themeSelect"><b>Theme:</b></label>
+            <select id="themeSelect" onchange="setTheme(this.value)">
+                <option value="theme-dark">Dark (Default)</option>
+                <option value="theme-light">Light</option>
+                <option value="theme-blue">Blue Night</option>
+                <option value="theme-orange">Warm Orange</option>
+            </select>
+        </div>
+
         <label class="container" id="pageTop"><b>I am the DJ</b>
           <input type="checkbox" id="isDJ">
           <span class="checkmark"></span>
@@ -353,7 +427,7 @@ input[type="text"] {
 
     <div class="playlist-section">
         <p><b>Playlist:</b> <span id="playList"></span></p>
-        <hr style="border-color: #444;">
+        <hr style="border-color: var(--border-color);">
         
         <div>
           <b>Username:</b>
@@ -389,6 +463,25 @@ input[type="text"] {
 
 <script>
   setMobileMode();
+</script>
+
+<script>
+function setTheme(themeName) {
+    document.body.classList.remove('theme-light', 'theme-blue', 'theme-orange');
+    if (themeName !== 'theme-dark') {
+        document.body.classList.add(themeName);
+    }
+    localStorage.setItem('djTheme', themeName);
+}
+
+(function () {
+    const savedTheme = localStorage.getItem('djTheme');
+    if (savedTheme) {
+        setTheme(savedTheme);
+        const select = document.getElementById('themeSelect');
+        if(select) select.value = savedTheme;
+    }
+})();
 </script>
 </body>
 </html>

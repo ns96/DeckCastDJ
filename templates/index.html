@@ -3,23 +3,89 @@
 <head>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <style>
-/* --- Basic Setup & Dark Mode Theme --- */
+/* --- THEME DEFINITIONS (CSS VARIABLES) --- */
+:root {
+    /* Default Dark Theme */
+    --bg-body: #1e1e1e;
+    --bg-panel: #2a2a2a;
+    --bg-control: #333333;
+    --bg-input: #333333;
+    --text-main: #f0f0f0;
+    --text-header: #04AA6D;
+    --accent-primary: #04AA6D;
+    --accent-hover: #05c47d;
+    --border-color: #555555;
+    --slider-track: #444444;
+    --slider-thumb: #f0f0f0;
+    --shadow-color: rgba(0, 0, 0, 0.3);
+}
+
+/* Light Theme */
+.theme-light {
+    --bg-body: #e0e0e0;
+    --bg-panel: #ffffff;
+    --bg-control: #eeeeee;
+    --bg-input: #ffffff;
+    --text-main: #111111;
+    --text-header: #2e7d32;
+    --accent-primary: #2e7d32;
+    --accent-hover: #43a047;
+    --border-color: #cccccc;
+    --slider-track: #bdbdbd;
+    --slider-thumb: #2e7d32;
+    --shadow-color: rgba(0, 0, 0, 0.1);
+}
+
+/* Blue Theme */
+.theme-blue {
+    --bg-body: #0f172a;
+    --bg-panel: #1e293b;
+    --bg-control: #334155;
+    --bg-input: #0f172a;
+    --text-main: #e2e8f0;
+    --text-header: #38bdf8;
+    --accent-primary: #0ea5e9;
+    --accent-hover: #38bdf8;
+    --border-color: #475569;
+    --slider-track: #334155;
+    --slider-thumb: #38bdf8;
+    --shadow-color: rgba(0, 0, 0, 0.4);
+}
+
+/* Orange Theme */
+.theme-orange {
+    --bg-body: #291d18;
+    --bg-panel: #3e2c24;
+    --bg-control: #5d4037;
+    --bg-input: #291d18;
+    --text-main: #ffe0b2;
+    --text-header: #ff9800;
+    --accent-primary: #fb8c00;
+    --accent-hover: #ffa726;
+    --border-color: #6d4c41;
+    --slider-track: #4e342e;
+    --slider-thumb: #ffcc80;
+    --shadow-color: rgba(0, 0, 0, 0.4);
+}
+
+/* --- Basic Setup --- */
 body {
-    background-color: #1e1e1e; /* Dark background */
-    color: #f0f0f0; /* Light text */
+    background-color: var(--bg-body);
+    color: var(--text-main);
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
     margin: 0;
     padding: 20px;
+    transition: background-color 0.3s, color 0.3s;
 }
 
 h2 {
-    color: #04AA6D; /* Accent color for header */
+    color: var(--text-header);
     text-align: center;
-    border-bottom: 2px solid #333;
+    border-bottom: 2px solid var(--bg-control);
     padding-bottom: 10px;
 }
 
-/* --- Layout (Replaced Table) --- */
+/* --- Layout --- */
 .app-container {
     max-width: 1400px;
     margin: auto;
@@ -28,24 +94,25 @@ h2 {
 .global-controls {
     display: flex;
     justify-content: center;
+    align-items: center;
     gap: 30px;
     margin-bottom: 20px;
-    background-color: #2a2a2a;
+    background-color: var(--bg-panel);
     padding: 15px;
     border-radius: 8px;
 }
 
 .decks-container {
     display: grid;
-    grid-template-columns: 1fr 1fr; /* Two equal columns */
+    grid-template-columns: 1fr 1fr;
     gap: 20px;
 }
 
 .deck {
-    background-color: #2a2a2a;
+    background-color: var(--bg-panel);
     border-radius: 8px;
     padding: 20px;
-    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+    box-shadow: 0 4px 10px var(--shadow-color);
 }
 
 .video-input {
@@ -56,7 +123,7 @@ h2 {
 
 .playback-controls {
     margin-top: 15px;
-    background-color: #333;
+    background-color: var(--bg-control);
     padding: 10px;
     border-radius: 5px;
 }
@@ -65,7 +132,7 @@ h2 {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    flex-wrap: wrap; /* Allow wrapping on small screens */
+    flex-wrap: wrap;
     gap: 5px;
 }
 
@@ -74,7 +141,7 @@ h2 {
 .transport-section,
 .playlist-section,
 .footer-section {
-    background-color: #2a2a2a;
+    background-color: var(--bg-panel);
     border-radius: 8px;
     padding: 20px;
     margin-top: 20px;
@@ -92,13 +159,12 @@ h2 {
     text-align: left;
 }
 
-/* --- Modern Controls (Buttons, Inputs) --- */
+/* --- Modern Controls --- */
 button,
 input[type="button"] {
-    background-color: #04AA6D; /* Main accent color */
-    color: white;
+    background-color: var(--accent-primary);
+    color: white; /* Usually white text on accent looks best */
     border: none;
-    /* MODIFIED: Even smaller padding and font */
     padding: 6px 10px;
     font-size: 12px;
     font-weight: bold;
@@ -109,7 +175,7 @@ input[type="button"] {
 
 button:hover,
 input[type="button"]:hover {
-    background-color: #05c47d;
+    background-color: var(--accent-hover);
 }
 
 button:active,
@@ -119,7 +185,7 @@ input[type="button"]:active {
 
 /* Special button styles */
 .dp_button {
-    background-color: #2196F3; /* Blue for DP */
+    background-color: #2196F3; 
 }
 .dp_button:hover {
     background-color: #4ca9f5;
@@ -127,32 +193,31 @@ input[type="button"]:active {
 
 button[onclick^="moveSlideTo"],
 button[onclick="stopAllPlay()"] {
-    background-color: #444;
+    background-color: #444; /* Keep these neutral or define a variable */
 }
 button[onclick^="moveSlideTo"]:hover,
 button[onclick="stopAllPlay()"]:hover {
     background-color: #555;
 }
 input[value="RESET"] {
-    background-color: #c9302c; /* Red for reset */
+    background-color: #c9302c;
 }
 input[value="RESET"]:hover {
     background-color: #d9534f;
 }
 
 
-input[type="text"] {
-    background-color: #333;
-    color: #f0f0f0;
-    border: 1px solid #555;
-    /* MODIFIED: Smaller padding and font */
+input[type="text"], select {
+    background-color: var(--bg-input);
+    color: var(--text-main);
+    border: 1px solid var(--border-color);
     padding: 8px;
     border-radius: 5px;
     font-size: 13px;
 }
 
 .video-input input[type="text"] {
-    flex-grow: 1; /* Make text input fill space */
+    flex-grow: 1;
 }
 
 /* --- Slider (Crossfader) --- */
@@ -163,12 +228,11 @@ input[type="text"] {
 
 .slider {
   -webkit-appearance: none;
-  width: 70%; /* Make slider prominent */
+  width: 70%;
   height: 20px;
-  background: #444;
+  background: var(--slider-track);
   outline: none;
   opacity: 0.9;
-  -webkit-transition: .2s;
   transition: opacity .2s;
   border-radius: 10px;
   vertical-align: middle;
@@ -181,24 +245,24 @@ input[type="text"] {
 .slider::-webkit-slider-thumb {
   -webkit-appearance: none;
   appearance: none;
-  width: 30px; /* Taller, wider thumb */
+  width: 30px;
   height: 30px;
-  background: #f0f0f0; /* White/light thumb */
+  background: var(--slider-thumb);
   cursor: pointer;
   border-radius: 50%;
-  border: 2px solid #1e1e1e;
+  border: 2px solid var(--bg-body);
 }
 
 .slider::-moz-range-thumb {
   width: 30px;
   height: 30px;
-  background: #f0f0f0;
+  background: var(--slider-thumb);
   cursor: pointer;
   border-radius: 50%;
-  border: 2px solid #1e1e1e;
+  border: 2px solid var(--bg-body);
 }
 
-/* --- Custom Checkbox (Adapted for Dark Mode) --- */
+/* --- Custom Checkbox --- */
 .container {
   display: block;
   position: relative;
@@ -206,9 +270,6 @@ input[type="text"] {
   margin-bottom: 12px;
   cursor: pointer;
   font-size: 18px;
-  -webkit-user-select: none;
-  -moz-user-select: none;
-  -ms-user-select: none;
   user-select: none;
 }
 
@@ -226,7 +287,7 @@ input[type="text"] {
   left: 0;
   height: 25px;
   width: 25px;
-  background-color: #555; /* Darker checkbox bg */
+  background-color: var(--border-color);
   border-radius: 4px;
 }
 
@@ -255,19 +316,20 @@ input[type="text"] {
   height: 10px;
   border: solid white;
   border-width: 0 3px 3px 0;
-  -webkit-transform: rotate(45deg);
-  -ms-transform: rotate(45deg);
   transform: rotate(45deg);
 }
 
-/* --- Radio Buttons (Speed) --- */
+/* --- Radio Buttons --- */
 .playback-controls input[type="radio"] {
     margin-left: 5px; 
 }
 .playback-controls label {
-    /* MODIFIED: Smaller font */
     font-size: 12px; 
     margin-right: 5px; 
+}
+
+td img {
+    border-radius: 10px;
 }
 
 </style>
@@ -281,12 +343,22 @@ input[type="text"] {
     </div>
     
     <div class="global-controls">
-        <label class="container"><b>I am the DJ (cast what you are playing)</b>
+        <div>
+            <label for="themeSelect"><b>Theme:</b></label>
+            <select id="themeSelect" onchange="setTheme(this.value)">
+                <option value="theme-dark">Dark (Default)</option>
+                <option value="theme-light">Light</option>
+                <option value="theme-blue">Blue Night</option>
+                <option value="theme-orange">Warm Orange</option>
+            </select>
+        </div>
+
+        <label class="container"><b>I am the DJ</b>
           <input type="checkbox" id="isDJ">
           <span class="checkmark"></span>
         </label>
         
-        <label class="container"><b>Private Mode (ignore what the DJ is playing)</b>
+        <label class="container"><b>Private Mode</b>
           <input type="checkbox" id="isPrivate" checked="checked">
           <span class="checkmark"></span>
         </label>
@@ -366,7 +438,7 @@ input[type="text"] {
     <div class="playlist-section">
         <p><span id="queList"></span></p>
         <p><span id="playList"></span></p>
-        <hr style="border-color: #444;">
+        <hr style="border-color: var(--border-color);">
         <div>
           <b>Username: </b>
           <input type="text" id="uname" name="uname" value="Guest" size="15">
@@ -398,5 +470,31 @@ input[type="text"] {
 <script src="https://cdn.socket.io/4.5.3/socket.io.min.js" integrity="sha384-WPFUvHkB1aHA5TDSZi6xtDgkF0wXJcIIxXhC6h8OT8EH3fC5PWro5pWJ1THjcfEi" crossorigin="anonymous"></script> 
     
 <script src="static/js/controller.js"></script>
+
+<script>
+function setTheme(themeName) {
+    // Clear all potential theme classes
+    document.body.classList.remove('theme-light', 'theme-blue', 'theme-orange');
+    
+    // Add new theme class (unless it's the default)
+    if (themeName !== 'theme-dark') {
+        document.body.classList.add(themeName);
+    }
+    
+    // Save to localStorage
+    localStorage.setItem('djTheme', themeName);
+}
+
+// On page load, set the theme
+(function () {
+    const savedTheme = localStorage.getItem('djTheme');
+    if (savedTheme) {
+        setTheme(savedTheme);
+        // Update the dropdown selector to match
+        const select = document.getElementById('themeSelect');
+        if(select) select.value = savedTheme;
+    }
+})();
+</script>
 </body>
 </html>
