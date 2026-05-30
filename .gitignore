@@ -175,3 +175,9 @@ static/*.png
 pafyCache.pkl
 mixTrack.json
 queList.json
+
+# ignore files with _old suffix
+*_old.html
+
+# ignore files in .vscode folder
+.vscode/

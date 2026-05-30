@@ -558,11 +558,11 @@ function showTrackListDialogForPlayer(playerNum) {
     title = player2.getVideoData()['title'];
   }
   
-  showTrackListDialog(videoId, title);
+  getTrackList(videoId, title);
 }
 
-// function to actual display the track list dialog
-function showTrackListDialog(videoId, title) {
+// function to get tracklist and eventially display the track list dialog
+function getTrackList(videoId, title) {
   var jsonText = {
     data: 'Edit TrackList',
     videoId: videoId,
@@ -570,7 +570,75 @@ function showTrackListDialog(videoId, title) {
   }
   socket.emit('my event', jsonText);
 
-  console.log("Track List For Video ID: " + videoId + "\n" + title);
+  console.log("Getting Track List For Video ID: " + videoId + "\n" + title);
+}
+
+// function to show the bookmark list dialog to select or delete the bookmarks 
+// for a particular video 
+function selectOrEditBookmarks(msg) {
+  // open modal dialog to show the bookmarks for the video and allow the user to click on them to jump to that time in the video or delete them
+  var pin = document.getElementById("pin").value;
+  var bookmarkString = "";
+  var dialogTitle = msg.title;
+  
+}
+
+// function to add a bookmark for the current video and time
+function addBookmarkForPlayer(playerNum) {
+  var videoId;
+  var time;
+  username = document.getElementById("uname").value;
+
+  if (playerNum == 1) {
+    videoId = player1.getVideoData()['video_id'];
+    time = player1.getCurrentTime();
+  } else {
+    videoId = player2.getVideoData()['video_id'];
+    time = player2.getCurrentTime();
+  }
+
+  var pin = document.getElementById("pin").value;
+
+  jsonText = {
+    data: 'Add Bookmark',
+    pin: pin,
+    clientId: clientId,
+    videoId: videoId,
+    uname: username,
+    time: time
+  }
+  socket.emit('my event', jsonText);
+
+  console.log("Add Bookmark, Player # " + playerNum + ", VideoID " + videoId + ", Time: " + time);     
+}
+
+// function to view the bookmark for the current video
+function viewBookmarksForPlayer(playerNum) {
+  var videoId;
+  var title;
+
+  if (playerNum == 1) {
+    videoId = player1.getVideoData()['video_id'];
+    title = player1.getVideoData()['title'];
+  } else {
+    videoId = player2.getVideoData()['video_id'];
+    title = player2.getVideoData()['title'];
+  }
+  
+  getBookmarks(playerNum, videoId, title);
+}
+
+// function to actual display the bookmarks dialog for a particular video
+function getBookmarks(playerNum, videoId, title) {
+  var jsonText = {
+    data: 'View Bookmarks',
+    playerNum: playerNum,
+    videoId: videoId,
+    title: title
+  }
+  socket.emit('my event', jsonText);
+
+  console.log("Getting Bookmarks For Video ID: " + videoId + "\n" + title);
 }
 
 // function to add a youtube playlist to the que.
