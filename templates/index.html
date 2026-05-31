@@ -491,6 +491,70 @@ td img {
     color: white;
 }
 
+/* --- Modern CSS Loader Card --- */
+.modern-loader-container {
+    background-color: var(--bg-panel);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 25px;
+    text-align: center;
+    box-shadow: 0 4px 20px var(--shadow-color);
+    margin: 20px auto;
+    max-width: 400px;
+    animation: loaderFadeIn 0.3s ease-out;
+}
+
+.loader-spinner {
+    width: 45px;
+    height: 45px;
+    border: 4px solid var(--bg-control);
+    border-top: 4px solid var(--accent-primary);
+    border-radius: 50%;
+    margin: 0 auto 15px auto;
+    animation: loader-spin 1s linear infinite;
+}
+
+.loader-title {
+    color: var(--text-main);
+    font-size: 1.15rem;
+    font-weight: bold;
+    margin-bottom: 5px;
+}
+
+.loader-progress-track {
+    width: 100%;
+    height: 6px;
+    background-color: var(--slider-track);
+    border-radius: 3px;
+    overflow: hidden;
+    margin: 15px 0;
+}
+
+.loader-progress-fill {
+    width: 0%;
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent-primary), var(--accent-hover));
+    border-radius: 3px;
+    transition: width 0.3s ease-out;
+}
+
+.loader-message {
+    color: var(--text-main);
+    opacity: 0.85;
+    font-size: 13px;
+    font-weight: 500;
+}
+
+@keyframes loader-spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+@keyframes loaderFadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
 </style>
 </head>
 <body>

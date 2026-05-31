@@ -1140,11 +1140,16 @@ function toHHMMSS(seconds) {
 
 // function to get text to show to user when loading videos
 function getLoadingText() {
-  var loadingText = "<div style=\"text-align: center\">" +
-    "<h4>Loading Youtube Playlist ...</h4>" +
-    "<img src=\"https://i.gifer.com/YCZH.gif\" align=\"center\"></div>" + 
-    "<div id=\"loadingMessage\" style=\"text-align: center\">Waiting On Backend ...</div>";
-  
+  var loadingText = `
+    <div class="modern-loader-container">
+      <div class="loader-spinner"></div>
+      <div class="loader-title">Loading Playlist</div>
+      <div class="loader-progress-track">
+        <div class="loader-progress-fill" id="loader-fill"></div>
+      </div>
+      <div id="loadingMessage" class="loader-message">Waiting on server...</div>
+    </div>
+  `;
   return loadingText;
 }
 
@@ -1186,11 +1191,29 @@ function updateLoadingProgress(msg) {
   let msgClientId = msg.clientId;
   
   if (msgClientId === clientId && loadingPlaylist) {
-    let loadingText =  msg.loadingText
+    let loadingText = msg.loadingText;
     const progressDisplay = document.getElementById("loadingMessage");
-    progressDisplay.textContent =loadingText;
+    if (progressDisplay) {
+      progressDisplay.textContent = loadingText;
+    }
 
-    if(loadingText.contains('Error Loading')) {
+    // Parse "Loading X / Y ..." to dynamically fill the progress bar
+    if (loadingText && loadingText.includes("Loading")) {
+      var parts = loadingText.replace("Loading", "").replace("...", "").split("/");
+      if (parts.length === 2) {
+        var current = parseInt(parts[0].trim());
+        var total = parseInt(parts[1].trim());
+        if (!isNaN(current) && !isNaN(total) && total > 0) {
+          var percentage = (current / total) * 100;
+          var fill = document.getElementById("loader-fill");
+          if (fill) {
+            fill.style.width = percentage + "%";
+          }
+        }
+      }
+    }
+
+    if (loadingText && loadingText.includes('Error Loading')) {
       loadingPlaylist = false;
     }
   }

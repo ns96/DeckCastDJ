@@ -68,6 +68,9 @@ userCount = 0
 player1Video = ''
 player2Video = ''
 
+# flag to indicate if the WSGI Socket.IO server is active
+serverStarted = False
+
 # keep track of messages when loading a particular youtube playlist. It keys by url
 loadingMessages = dict()
 
@@ -164,6 +167,10 @@ def loadYouTubePlayList(username, url, forQue=False):
 
                 playlist[video.videoid] = [video.title, video.thumb, video.duration, video.published, username]
                 print(loadingText, video.videoid, video.title, video.thumb, video.duration, "\n")
+                
+                # Yield control cooperatively to let the server handle progress polls (only when active)
+                if serverStarted:
+                    socketio.sleep(0.01)
             else:
                 print("Deleted video:", video.videoid)
     
@@ -183,6 +190,48 @@ def loadYouTubePlayList(username, url, forQue=False):
     except Exception as e:
         loadingMessages[url] = 'Error Loading YouTube Playlist ...'
         print("Error loading YouTube playlist ...\n", url, "\n" , e)
+
+def loadPlaylistInBackground(username, url, clientId, mobile):
+    try:
+        loadYouTubePlayList(username, url)
+        mergeAllPlayList()
+        saveUserPlayList()
+        
+        # Emitting success payload back to this specific client
+        html = getHTMLTable(username=username, filter_text="", for_mobile=mobile)
+        socketio.emit('my response', {
+            'data': 'Load PlayList Done',
+            'playListHTML': html,
+            'clientId': clientId
+        })
+    except Exception as e:
+        print("Error in loadPlaylistInBackground:", e)
+        socketio.emit('my response', {
+            'data': 'Error Loading YouTube Playlist ...',
+            'playListHTML': '<div>Error Loading Playlist</div>',
+            'clientId': clientId
+        })
+
+def loadQueuePlaylistInBackground(username, url, clientId):
+    try:
+        loadYouTubePlayList(username, url, True)
+        
+        # Emitting success payload back to this specific client
+        html = getHTMLTable(username, "", True, False)
+        data_list = getQueListData(username)
+        socketio.emit('my response', {
+            'data': 'Video Qued Done',
+            'queListHTML': html,
+            'queListData': data_list,
+            'clientId': clientId
+        })
+    except Exception as e:
+        print("Error in loadQueuePlaylistInBackground:", e)
+        socketio.emit('my response', {
+            'data': 'Error Loading YouTube Playlist ...',
+            'queListHTML': '<div>Error Loading Queue Playlist</div>',
+            'clientId': clientId
+        })
 
 # save the playlist as json
 def saveTrackLists():
@@ -961,15 +1010,16 @@ def processMessage(json):
         playListUser = json['uname'].lower().strip()
         f_text = json['filter'].strip()
         mobile = json['mobile']
+        clientId = json['clientId']
         
         # check to see if to to load a youtube playlist
         if 'https://www.youtube.com/playlist' in f_text:
             playListUser = getUniquePlayListName(playListUser)
-            loadYouTubePlayList(playListUser, f_text)
-            mergeAllPlayList() # create a new merge playlist
-            f_text = ""
-            
-        json['playListHTML'] = getHTMLTable(username = playListUser, filter_text = f_text.lower(), for_mobile = mobile)
+            socketio.start_background_task(
+                loadPlaylistInBackground, playListUser, f_text, clientId, mobile
+            )
+        else:
+            json['playListHTML'] = getHTMLTable(username = playListUser, filter_text = f_text.lower(), for_mobile = mobile)
     
     # merge a youtube playlist to the save playlist
     if 'Merge PlayList' in msgTitle:
@@ -998,12 +1048,13 @@ def processMessage(json):
     if 'Video Qued' in msgTitle:
         videoId = json['videoId']
         username = json['clientId'].lower().strip()
+        clientId = json['clientId']
         
         # check to see if to to load a youtube playlist and add to que
         if 'https://www.youtube.com/playlist' in videoId:
-            loadYouTubePlayList(username, videoId, True)
-            json['queListHTML'] = getHTMLTable(username, "", True, False)
-            json['queListData'] = getQueListData(username)
+            socketio.start_background_task(
+                loadQueuePlaylistInBackground, username, videoId, clientId
+            )
         elif 'savedList:' in videoId:
             savedList = videoId.split(":")[1]
             f_text = json['filter'].strip().lower()
@@ -1289,5 +1340,7 @@ if __name__ == '__main__':
     
     # load the bookmarks database
     loadBookmarks()
+    
+    serverStarted = True
     
     socketio.run(app, host = '0.0.0.0', debug = False, port = app_port, allow_unsafe_werkzeug=True)
