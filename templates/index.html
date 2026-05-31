@@ -332,6 +332,165 @@ td img {
     border-radius: 10px;
 }
 
+/* --- Reusable Internal Dialog System --- */
+.app-modal-overlay {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background-color: rgba(0, 0, 0, 0.7);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 10000;
+    backdrop-filter: blur(5px);
+    animation: appModalFadeIn 0.2s ease-out;
+}
+
+.app-modal-content {
+    background-color: var(--bg-panel);
+    color: var(--text-main);
+    border: 2px solid var(--border-color);
+    border-radius: 12px;
+    width: 92%;
+    max-width: 550px;
+    max-height: 85vh;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 8px 32px var(--shadow-color);
+    overflow: hidden;
+}
+
+.app-modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 15px 20px;
+    border-bottom: 1px solid var(--border-color);
+    background-color: var(--bg-control);
+}
+
+.app-modal-header h3 {
+    margin: 0;
+    color: var(--text-header);
+    font-size: 1.2rem;
+}
+
+.app-modal-close-btn {
+    background: none !important;
+    border: none !important;
+    color: var(--text-main) !important;
+    font-size: 26px !important;
+    cursor: pointer !important;
+    padding: 0 !important;
+    line-height: 1;
+}
+.app-modal-close-btn:hover {
+    color: #ff5555 !important;
+}
+
+.app-modal-body {
+    padding: 20px;
+    overflow-y: auto;
+    flex-grow: 1;
+}
+
+.app-modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 10px;
+    padding: 15px 20px;
+    border-top: 1px solid var(--border-color);
+    background-color: var(--bg-control);
+}
+
+/* --- Tracklist Specific Elements --- */
+.tl-textarea {
+    width: 96%;
+    height: 350px;
+    padding: 10px;
+    background-color: var(--bg-input);
+    color: var(--text-main);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    font-family: "Courier New", Courier, monospace;
+    font-size: 13px;
+    line-height: 1.5;
+    resize: none;
+}
+.tl-textarea:focus {
+    border-color: var(--accent-primary);
+    outline: none;
+}
+
+.secondary-btn {
+    background-color: #6c757d !important;
+}
+.secondary-btn:hover {
+    background-color: #5a6268 !important;
+}
+
+@keyframes appModalFadeIn {
+    from { opacity: 0; transform: scale(0.96); }
+    to { opacity: 1; transform: scale(1); }
+}
+/* --- Bookmarks Table Elements --- */
+.bm-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 10px;
+}
+.bm-table th, .bm-table td {
+    padding: 8px 10px;
+    text-align: left;
+    border-bottom: 1px solid var(--border-color);
+}
+.bm-time-link {
+    color: var(--accent-primary);
+    text-decoration: underline;
+    font-weight: bold;
+    cursor: pointer;
+}
+.bm-time-link:hover {
+    color: var(--accent-hover);
+}
+.bm-input-desc {
+    width: 92%;
+    padding: 6px;
+    background-color: var(--bg-input);
+    color: var(--text-main);
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+}
+.bm-action-btn {
+    padding: 4px 8px;
+    font-size: 11px;
+    margin-right: 4px;
+}
+.danger-btn {
+    background-color: #d9534f !important;
+}
+.danger-btn:hover {
+    background-color: #c9302c !important;
+}
+
+/* --- Navigation Scroll Buttons --- */
+.arrow-btn {
+    padding: 3px 8px;
+    font-size: 11px;
+    background-color: var(--bg-control);
+    color: var(--text-main);
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.2s, color 0.2s;
+    vertical-align: middle;
+    margin: 0 2px;
+}
+.arrow-btn:hover {
+    background-color: var(--accent-primary);
+    color: white;
+}
+
 </style>
 </head>
 <body>

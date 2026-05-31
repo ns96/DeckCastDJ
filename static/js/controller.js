@@ -83,6 +83,11 @@ socket.on('my response', function (msg) {
     addOrEditTrackList(msg);
   }
 
+  // see if to show the bookmarks dialog
+  if (msg.data.includes("View Bookmarks")) {
+    selectOrEditBookmarks(msg);
+  }
+
   if (msg.data.includes("Get Progress")) {
     updateLoadingProgress(msg);
   }
@@ -522,27 +527,86 @@ function addOrEditTrackList(msg) {
   var trackListString = "";
   var dialogTitle = msg.title;
 
-  if(msg.trackList.length != 0) {
+  if (msg.trackList && msg.trackList.length !== 0) {
     trackListString = msg.trackList.join("\n");
     dialogTitle = msg.title + " [" + msg.trackList.length + " Tracks]";
   }
 
-  var myWindow = window.open("", "TrackListWindow", "width=400,height=625");
-  myWindow.document.write("<h4>Track List: " + dialogTitle + "</h4>");
-  myWindow.document.write("<textarea id=\"tracklist\" name=\"tracklist\" rows=\"35\" cols=\"50\">" + trackListString + "</textarea>")
+  // 1. Remove existing dialogs to avoid visual overlaps
+  var oldModal = document.getElementById("app-dialog-overlay");
+  if (oldModal) oldModal.remove();
 
-  // before the tracklist window close, grab the text in the textarea and send to server
-  myWindow.onbeforeunload = function () {
-    var tracklist = myWindow.document.getElementById("tracklist").value;
+  // 2. Build Dialog Overlay and Structure
+  var overlay = document.createElement("div");
+  overlay.id = "app-dialog-overlay";
+  overlay.className = "app-modal-overlay";
+
+  var content = document.createElement("div");
+  content.className = "app-modal-content";
+
+  // Modal Header
+  var header = document.createElement("div");
+  header.className = "app-modal-header";
+  header.innerHTML = `<h3>Track List: ${dialogTitle}</h3><button class="app-modal-close-btn">&times;</button>`;
+  content.appendChild(header);
+
+  // Close binder
+  header.querySelector(".app-modal-close-btn").onclick = function() { overlay.remove(); };
+
+  // Modal Body containing the textarea
+  var body = document.createElement("div");
+  body.className = "app-modal-body";
+  
+  var textarea = document.createElement("textarea");
+  textarea.className = "tl-textarea";
+  textarea.placeholder = "Enter tracklist with line breaks, e.g.\n00:00 Intro\n01:30 Main Beat\n03:15 Outro";
+  textarea.value = trackListString;
+  body.appendChild(textarea);
+  content.appendChild(body);
+
+  // Modal Footer containing Save & Close / Cancel buttons
+  var footer = document.createElement("div");
+  footer.className = "app-modal-footer";
+  
+  var cancelBtn = document.createElement("button");
+  cancelBtn.className = "secondary-btn";
+  cancelBtn.innerText = "Cancel";
+  cancelBtn.onclick = function() { overlay.remove(); };
+
+  var saveBtn = document.createElement("button");
+  saveBtn.innerText = "Save & Close";
+  saveBtn.onclick = function() {
+    var newTracklist = textarea.value;
 
     jsonText = {
       data: 'Add TrackList',
       pin: pin,
       videoId: msg.videoId,
-      tracklist: tracklist
-    }
+      tracklist: newTracklist
+    };
     socket.emit('my event', jsonText);
-  }
+    console.log("Sent Add TrackList to backend:", jsonText);
+    overlay.remove();
+  };
+
+  footer.appendChild(cancelBtn);
+  footer.appendChild(saveBtn);
+  content.appendChild(footer);
+
+  overlay.appendChild(content);
+  document.body.appendChild(overlay);
+
+  // Close modal when clicking on backdrop
+  overlay.onclick = function(e) {
+    if (e.target === overlay) {
+      overlay.remove();
+    }
+  };
+}
+
+// function called by the playlist track rows to load and show the tracklist dialog
+function showTrackListDialog(videoId, title) {
+  getTrackList(videoId, title);
 }
 
 // functon to kick of the process to add or edit a tracklist for a particular video
@@ -576,11 +640,168 @@ function getTrackList(videoId, title) {
 // function to show the bookmark list dialog to select or delete the bookmarks 
 // for a particular video 
 function selectOrEditBookmarks(msg) {
-  // open modal dialog to show the bookmarks for the video and allow the user to click on them to jump to that time in the video or delete them
   var pin = document.getElementById("pin").value;
-  var bookmarkString = "";
-  var dialogTitle = msg.title;
+  var dialogTitle = msg.title || "Bookmarks";
+  var videoId = msg.videoId;
+  var playerNum = msg.playerNum;
   
+  var bookmarks = [];
+  if (msg.bookmarks && Array.isArray(msg.bookmarks)) {
+    bookmarks = msg.bookmarks.map(function(item) {
+      return { time: parseFloat(item[0]), desc: item[1] || "" };
+    });
+  }
+
+  bookmarks.sort(function(a, b) { return a.time - b.time; });
+
+  var oldModal = document.getElementById("app-dialog-overlay");
+  if (oldModal) oldModal.remove();
+
+  var overlay = document.createElement("div");
+  overlay.id = "app-dialog-overlay";
+  overlay.className = "app-modal-overlay";
+
+  var content = document.createElement("div");
+  content.className = "app-modal-content";
+
+  // Modal Header
+  var header = document.createElement("div");
+  header.className = "app-modal-header";
+  header.innerHTML = `<h3>Bookmarks: ${dialogTitle}</h3><button class="app-modal-close-btn">&times;</button>`;
+  content.appendChild(header);
+
+  header.querySelector(".app-modal-close-btn").onclick = function() { overlay.remove(); };
+
+  // Modal Body containing bookmarks table
+  var body = document.createElement("div");
+  body.className = "app-modal-body";
+
+  if (bookmarks.length === 0) {
+    body.innerHTML = "<p style='text-align:center; opacity: 0.7;'>No bookmarks loaded for this video.</p>";
+  } else {
+    var table = document.createElement("table");
+    table.className = "bm-table";
+    table.innerHTML = `
+      <thead>
+        <tr>
+          <th width="20%">Time</th>
+          <th width="50%">Description</th>
+          <th width="30%">Actions</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    `;
+    var tbody = table.querySelector("tbody");
+
+    bookmarks.forEach(function(bm) {
+      var row = document.createElement("tr");
+      var timeStr = toHHMMSS(Math.round(bm.time));
+
+      row.innerHTML = `
+        <td><span class="bm-time-link" title="Jump to time">${timeStr}</span></td>
+        <td><input type="text" class="bm-input-desc" value="${bm.desc}" /></td>
+        <td>
+          <button class="bm-action-btn bm-save-btn">Save</button>
+          <button class="bm-action-btn bm-delete-btn danger-btn">Del</button>
+        </td>
+      `;
+
+      // Jump Action
+      row.querySelector(".bm-time-link").onclick = function() {
+        var player = (playerNum == 1) ? player1 : player2;
+        if (player && typeof player.seekTo === "function") {
+          player.seekTo(bm.time, true);
+          overlay.remove();
+        }
+      };
+
+      // Save/Edit action
+      row.querySelector(".bm-save-btn").onclick = function() {
+        var newDesc = row.querySelector(".bm-input-desc").value;
+        jsonText = {
+          data: 'Edit Bookmark',
+          pin: pin,
+          clientId: clientId,
+          videoId: videoId,
+          time: bm.time,
+          desc: newDesc
+        };
+        socket.emit('my event', jsonText);
+        console.log(`Edited Bookmark: ${bm.time}s -> ${newDesc}`);
+        alert("Bookmark saved!");
+      };
+
+      // Delete Action
+      row.querySelector(".bm-delete-btn").onclick = function() {
+        if (confirm(`Are you sure you want to delete bookmark at ${timeStr}?`)) {
+          jsonText = {
+            data: 'Delete Bookmark',
+            pin: pin,
+            clientId: clientId,
+            videoId: videoId,
+            time: bm.time
+          };
+          socket.emit('my event', jsonText);
+          row.remove();
+          if (tbody.children.length === 0) {
+            body.innerHTML = "<p style='text-align:center; opacity: 0.7;'>No bookmarks loaded for this video.</p>";
+          }
+        }
+      };
+
+      tbody.appendChild(row);
+    });
+
+    body.appendChild(table);
+  }
+  content.appendChild(body);
+
+  // Modal Footer containing "Remove All" and standard Close buttons
+  var footer = document.createElement("div");
+  footer.className = "app-modal-footer";
+  footer.style.justifyContent = "space-between"; // Push Remove All to the left
+  
+  var removeAllBtn = document.createElement("button");
+  removeAllBtn.className = "danger-btn";
+  removeAllBtn.innerText = "Remove All";
+  
+  if (bookmarks.length === 0) {
+    removeAllBtn.disabled = true;
+    removeAllBtn.style.opacity = 0.5;
+  }
+  
+  removeAllBtn.onclick = function() {
+    if (confirm("WARNING: Are you sure you want to permanently delete ALL bookmarks for this video?")) {
+      jsonText = {
+        data: 'Clear Bookmarks',
+        pin: pin,
+        clientId: clientId,
+        videoId: videoId
+      };
+      socket.emit('my event', jsonText);
+      overlay.remove();
+      alert("All bookmarks removed!");
+    }
+  };
+
+  var closeBtn = document.createElement("button");
+  closeBtn.className = "secondary-btn";
+  closeBtn.innerText = "Close";
+  closeBtn.onclick = function() { overlay.remove(); };
+
+  footer.appendChild(removeAllBtn);
+  footer.appendChild(closeBtn);
+  content.appendChild(footer);
+
+  overlay.appendChild(content);
+  document.body.appendChild(overlay);
+
+  // Close modal when clicking outside content area
+  overlay.onclick = function(e) {
+    if (e.target === overlay) {
+      overlay.remove();
+    }
+  };
 }
 
 // function to add a bookmark for the current video and time

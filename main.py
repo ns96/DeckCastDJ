@@ -6,10 +6,10 @@ A simple flask/SocketIO for building very simple youtube DJ application that
 can be shared by other users
 
 @author: Nathan
-@version: 1.17.0 (05/30/2026)
+@version: 1.17.1 (05/31/2026)
 """
 # this variables are passed onto the html templates
-appVersion = 'v1.17.0 (05/30/2026)'
+appVersion = 'v1.17.1 (05/31/2026)'
 bgColor = '#b2b2de' # no longer used but will keep for backward compatibility
 
 import os.path
@@ -51,6 +51,10 @@ savedQueList = dict()
 # dictionary to store the tracklist for a video
 trackListsFile = 'data/tracklists.json'
 videoTrackLists = dict()
+
+# dictionary to store the bookmarks for a video
+bookmarksFile = 'data/bookmarks.json'
+videoBookmarks = dict()
 
 # dictionary to hold tracks being displayed on /playing html page
 mixTracks = dict()
@@ -194,6 +198,21 @@ def loadTrackLists():
     if os.path.isfile(trackListsFile):
         with open(trackListsFile) as json_file: 
             videoTrackLists = json.load(json_file)
+
+# save the bookmarks database to json file
+def saveBookmarks():
+    global videoBookmarks
+    
+    with open(bookmarksFile, 'w') as fp:
+        json.dump(videoBookmarks, fp, indent=2)
+
+# load the bookmarks database from json file
+def loadBookmarks():
+    global videoBookmarks
+    
+    if os.path.isfile(bookmarksFile):
+        with open(bookmarksFile) as json_file:
+            videoBookmarks = json.load(json_file)
 
 # function to merge two youtube playlist
 def mergeYouTubePlayList(username, url):
@@ -361,7 +380,7 @@ def validMixPlayTime(tracks):
 # function to check if the playlist has any videos which were deleted
 # from youtube
 def checkPlayList(videoList):
-    global invalidVideos
+    global invalidVideosList
     
     print("Skipping video check ...")
     
@@ -555,7 +574,7 @@ def getHTMLTableRow(i, que_list, videoId, title, meta_info, videoInfo):
                 
     rowHtml += '</td>'
     rowHtml += '<td><b>' + str(i) + '.</b></td>'
-    rowHtml += '<td width="25%"><b>' + title + '</b><br>[' + meta_info + '] <b> (<a href="#pageTop"> &uArr; </a>) (<a href="#filter_list">  &dArr; </a>) '
+    rowHtml += '<td width="25%"><b>' + title + '</b><br>[' + meta_info + '] <a href="#pageTop"><button type="button" class="arrow-btn" title="Go to Top">&uArr;</button></a> <a href="#filter_list"><button type="button" class="arrow-btn" title="Go to Bottom">&dArr;</button></a> '
     
     # check to see if there is a tracklist for the video
     if videoId in videoTrackLists:
@@ -586,7 +605,7 @@ def getHTMLTableRow(i, que_list, videoId, title, meta_info, videoInfo):
 # function to return row for single colum mobile html table
 def getHTMLTableRowForMobile(i, videoId, title, videoInfo):
     rowHtml = '<tr><td align="center">' 
-    rowHtml += '<b>' + str(i) + '. ' + title + '<br>[' + videoInfo[2] + '] <b> (<a href="#pageTop"> &uArr; </a>) (<a href="#filter_list">  &dArr; </a>)</b><br>'
+    rowHtml += '<b>' + str(i) + '. ' + title + '<br>[' + videoInfo[2] + '] <a href="#pageTop"><button type="button" class="arrow-btn" title="Go to Top">&uArr;</button></a> <a href="#filter_list"><button type="button" class="arrow-btn" title="Go to Bottom">&dArr;</button></a></b><br>'
     
     rowHtml += '<input type="button" onclick="loadVideoForPlayer(1,\'' + videoId + '\')" value=" < PLY1 "> '
 
@@ -1064,6 +1083,68 @@ def processMessage(json):
             json['trackList'] = videoTrackLists[videoId]
         else:
             json['trackList'] = []
+
+    # see if to view bookmarks for a video
+    if 'View Bookmarks' in msgTitle:
+        videoId = json['videoId']
+        json['bookmarks'] = videoBookmarks.get(videoId, [])
+
+    # see if to add a bookmark
+    if 'Add Bookmark' in msgTitle:
+        videoId = json['videoId']
+        time = float(json['time'])
+        uname = json['uname'].strip() or "Guest"
+        
+        if videoId not in videoBookmarks:
+            videoBookmarks[videoId] = []
+            
+        # check if exact/very close time already bookmarked
+        duplicate = False
+        for bm in videoBookmarks[videoId]:
+            if abs(bm[0] - time) < 0.1:
+                duplicate = True
+                break
+                
+        if not duplicate:
+            # append as sublist: [time, description]
+            videoBookmarks[videoId].append([round(time, 2), f"Bookmark by {uname}"])
+            # sort chronologically by time
+            videoBookmarks[videoId].sort(key=lambda x: x[0])
+            saveBookmarks()
+            
+        json['bookmarks'] = videoBookmarks[videoId]
+        # Redirect data to View Bookmarks so it opens the dialog
+        json['data'] = 'View Bookmarks'
+
+    # see if to edit a single bookmark's description
+    if 'Edit Bookmark' in msgTitle:
+        videoId = json['videoId']
+        time = float(json['time'])
+        desc = json['desc']
+        
+        if videoId in videoBookmarks:
+            for bm in videoBookmarks[videoId]:
+                if abs(bm[0] - time) < 0.1:
+                    bm[1] = desc
+                    break
+            saveBookmarks()
+
+    # see if to delete a single bookmark
+    if 'Delete Bookmark' in msgTitle:
+        videoId = json['videoId']
+        time = float(json['time'])
+        
+        if videoId in videoBookmarks:
+            videoBookmarks[videoId] = [bm for bm in videoBookmarks[videoId] if abs(bm[0] - time) >= 0.1]
+            saveBookmarks()
+
+    # see if to clear all bookmarks for a video
+    if 'Clear Bookmarks' in msgTitle:
+        videoId = json['videoId']
+        
+        if videoId in videoBookmarks:
+            videoBookmarks[videoId] = []
+            saveBookmarks()
     
     # delete a video from the playlist.
     if 'Delete Video' in msgTitle:
@@ -1205,5 +1286,8 @@ if __name__ == '__main__':
     
     # load the video track list
     loadTrackLists()
+    
+    # load the bookmarks database
+    loadBookmarks()
     
     socketio.run(app, host = '0.0.0.0', debug = False, port = app_port, allow_unsafe_werkzeug=True)
