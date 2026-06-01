@@ -142,7 +142,9 @@ function updatePlayList(msg) {
     msgClientId = msg.clientId;
 
     if (msgClientId === clientId) {
-      queListOutput.innerHTML = msg.queListHTML;
+      if (queListOutput) {
+        queListOutput.innerHTML = msg.queListHTML;
+      }
     } else {
       console.log("Que Client Id doesn't match ...");
     }
@@ -154,7 +156,9 @@ function updatePlayList(msg) {
     msgClientId = msg.clientId;
 
     if (msgClientId === clientId) {
-      playListOutput.innerHTML = msg.playListHTML;
+      if (playListOutput) {
+        playListOutput.innerHTML = msg.playListHTML;
+      }
     }
   }
 
@@ -167,7 +171,9 @@ function updatePlayList(msg) {
 
 // clear the playList
 function clearPlayList() {
-  playListOutput.innerHTML = "";
+  if (playListOutput) {
+    playListOutput.innerHTML = "";
+  }
 }
 
 // process messages
@@ -286,8 +292,10 @@ function updateVideo(msg) {
   trackNum = msg.trackNum;
 
   if (playerNum == 1) {
+    currentVideoId1 = videoId;
     player1.loadVideoById(videoId, 0);
   } else {
+    currentVideoId2 = videoId;
     player2.loadVideoById(videoId, 0);
   }
 }
@@ -929,7 +937,9 @@ function addPlayListToQueList() {
 
   if(playlistUrl.includes('https://www.youtube.com/playlist?list=')) {
     addToQueList(playlistUrl);
-    queListOutput.innerHTML = getLoadingText();
+    if (queListOutput) {
+      queListOutput.innerHTML = getLoadingText();
+    }
     document.getElementById("filter").value = "";
 
     getLoadingProgress(playlistUrl, 2);
@@ -1089,7 +1099,9 @@ async function mixQueList(queListString, queListTimesString) {
     // load the animated vumeter or tape gif
     //vumeterOutput.innerHTML = "<img src=\"https://u-he.com/products/satin/assets/images/uhe-satin-animation-vumeters.gif\" alt=\"VU Meter\">";
     //vumeterOutput.innerHTML = "<img src=\"https://shopjustaudio.com/cdn/shop/products/VU-Digital-x300.gif?v=1671301051&width=300\" alt=\"VU Meter\">";
-    vumeterOutput.innerHTML = "<img src=\"https://i.pinimg.com/originals/f7/20/df/f720df37ff3964df6e4b92146a1fe97e.gif\" alt=\"VU Meter\"  width=\"440\" height=\"307\">";
+    if (vumeterOutput) {
+      vumeterOutput.innerHTML = "<img src=\"https://i.pinimg.com/originals/f7/20/df/f720df37ff3964df6e4b92146a1fe97e.gif\" alt=\"VU Meter\"  width=\"440\" height=\"307\">";
+    }
     //vumeterOutput.innerHTML = "<img src=\"https://bestgifsdotnet.wordpress.com/wp-content/uploads/2013/12/cassette.gif\" alt=\"VU Meter\">";
 
     // delay a specified number of seconds, playtime, before next video is played  
@@ -1112,7 +1124,9 @@ async function mixQueList(queListString, queListTimesString) {
   }
 
   playMix = false;
-  vumeterOutput.innerHTML = "";
+  if (vumeterOutput) {
+    vumeterOutput.innerHTML = "";
+  }
   notPlayedCount = 0;   // reset this variable
   console.log("Mix Play Done ...");
 }
@@ -1185,7 +1199,9 @@ function stopMixPlay() {
   player2.pauseVideo();
 
   // hide the vumeter
-  vumeterOutput.innerHTML = "";
+  if (vumeterOutput) {
+    vumeterOutput.innerHTML = "";
+  }
 
   mixerSlider.value = 50;
   changePlayerVolume(50);

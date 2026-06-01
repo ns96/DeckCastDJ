@@ -662,8 +662,20 @@ def getHTMLTableRow(i, que_list, videoId, title, meta_info, videoInfo):
 
 # function to return row for single colum mobile html table
 def getHTMLTableRowForMobile(i, videoId, title, videoInfo):
+    cleanTitle = title.replace("'", "")
+    cleanTitle = cleanTitle.replace('"', '')
+    
     rowHtml = '<tr><td align="center">' 
-    rowHtml += '<b>' + str(i) + '. ' + title + '<br>[' + videoInfo[2] + '] <a href="#pageTop"><button type="button" class="arrow-btn" title="Go to Top">&uArr;</button></a> <a href="#filter_list"><button type="button" class="arrow-btn" title="Go to Bottom">&dArr;</button></a></b><br>'
+    rowHtml += '<b>' + str(i) + '. ' + title + '<br>[' + videoInfo[2] + '] <a href="#pageTop"><button type="button" class="arrow-btn" title="Go to Top">&uArr;</button></a> <a href="#filter_list"><button type="button" class="arrow-btn" title="Go to Bottom">&dArr;</button></a>'
+    
+    # check to see if there is a tracklist for the video
+    if videoId in videoTrackLists:
+        tracklist = videoTrackLists[videoId]
+        tracklistCount = len(tracklist)
+        if tracklistCount > 0:
+            rowHtml += ' <input type="button" onclick="showTrackListDialog(\'' + videoId + '\', \'' + cleanTitle + '\')" value="TL (' + str(tracklistCount) + ')">'
+            
+    rowHtml += '</b><br>'
     
     rowHtml += '<input type="button" onclick="loadVideoForPlayer(1,\'' + videoId + '\')" value=" < PLY1 "> '
 
