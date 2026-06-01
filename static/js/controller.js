@@ -97,7 +97,7 @@ socket.on('my response', function (msg) {
   // see if to update the user count
   if (msg.data.includes("User Connected")) {
     updateConnectedUsers(msg);
-  } 
+  }
 
   // see if to show the tracklist edit dialog
   if (msg.data.includes("Edit TrackList")) {
@@ -114,7 +114,7 @@ socket.on('my response', function (msg) {
   }
 
   if (msg.data.includes("Check Video Status")) {
-    showVideoStatus(msg);  
+    showVideoStatus(msg);
   }
 
   // see if to update active tracklists for marquee
@@ -451,34 +451,38 @@ function setCurrentVideoPlaying(playerNum, videoId, currentTime) {
   console.log("Current Video, Player # " + playerNum + ", VideoID " + videoId);
 }
 
-// add event listeners for videoId input textfields
+// add event listeners for videoId input textfields if they exist in the DOM (desktop only)
 var videoId1Input = document.getElementById("videoId1");
-videoId1Input.addEventListener("keydown", function(event) {
-  if (event.key === "Enter") {
-    event.preventDefault(); // Prevent the default action of the Enter key
-    loadVideo(1);
-  }
-});
+if (videoId1Input) {
+  videoId1Input.addEventListener("keydown", function (event) {
+    if (event.key === "Enter") {
+      event.preventDefault(); // Prevent the default action of the Enter key
+      loadVideo(1);
+    }
+  });
+}
 
 var videoId2Input = document.getElementById("videoId2");
-videoId2Input.addEventListener("keydown", function(event) {
-  if (event.key === "Enter") {
-    event.preventDefault(); // Prevent the default action of the Enter key
-    loadVideo(2);
-  }
-});
+if (videoId2Input) {
+  videoId2Input.addEventListener("keydown", function (event) {
+    if (event.key === "Enter") {
+      event.preventDefault(); // Prevent the default action of the Enter key
+      loadVideo(2);
+    }
+  });
+}
 
 // function to load a video from mobile device
 function loadVideoForMobile(playerNum) {
   mobile = true;
-  loadVideo(playerNum);  
+  loadVideo(playerNum);
 }
 
 // functon called by load video button
 function loadVideo(playerNum) {
   var input;
 
-  if(mobile) {
+  if (mobile) {
     input = document.getElementById("filter");
   } else if (playerNum == 1) {
     input = document.getElementById("videoId1");
@@ -501,23 +505,23 @@ async function delayPlay(playerNum) {
   if (playerNum == 1) {
     currentPlayer = player1;
     currentVideoId = currentVideoId1;
-    button = document.getElementById("dp1"); 
+    button = document.getElementById("dp1");
   } else {
     currentPlayer = player2;
     currentVideoId = currentVideoId2;
-    button = document.getElementById("dp2"); 
+    button = document.getElementById("dp2");
   }
 
   // change button color to red
-  button.style.backgroundColor = "red"; 
+  button.style.backgroundColor = "red";
 
   // delay a specified number of seconds, playtime, before playing video  
   await wait(DELAY * 1000);
   currentPlayer.loadVideoById(currentVideoId, 0);
   currentPlayer.playVideo();
-  
+
   // change button color back to green
-  button.style.backgroundColor = "green"; 
+  button.style.backgroundColor = "green";
 
   console.log("Current Video, Player # " + playerNum + ", Started after " + DELAY + "s delay ...");
 }
@@ -590,12 +594,12 @@ function addOrEditTrackList(msg) {
   content.appendChild(header);
 
   // Close binder
-  header.querySelector(".app-modal-close-btn").onclick = function() { overlay.remove(); };
+  header.querySelector(".app-modal-close-btn").onclick = function () { overlay.remove(); };
 
   // Modal Body containing the textarea
   var body = document.createElement("div");
   body.className = "app-modal-body";
-  
+
   var textarea = document.createElement("textarea");
   textarea.className = "tl-textarea";
   textarea.placeholder = "Enter tracklist with line breaks, e.g.\n00:00 Intro\n01:30 Main Beat\n03:15 Outro";
@@ -606,15 +610,15 @@ function addOrEditTrackList(msg) {
   // Modal Footer containing Save & Close / Cancel buttons
   var footer = document.createElement("div");
   footer.className = "app-modal-footer";
-  
+
   var cancelBtn = document.createElement("button");
   cancelBtn.className = "secondary-btn";
   cancelBtn.innerText = "Cancel";
-  cancelBtn.onclick = function() { overlay.remove(); };
+  cancelBtn.onclick = function () { overlay.remove(); };
 
   var saveBtn = document.createElement("button");
   saveBtn.innerText = "Save & Close";
-  saveBtn.onclick = function() {
+  saveBtn.onclick = function () {
     var newTracklist = textarea.value;
 
     jsonText = {
@@ -636,7 +640,7 @@ function addOrEditTrackList(msg) {
   document.body.appendChild(overlay);
 
   // Close modal when clicking on backdrop
-  overlay.onclick = function(e) {
+  overlay.onclick = function (e) {
     if (e.target === overlay) {
       overlay.remove();
     }
@@ -660,7 +664,7 @@ function showTrackListDialogForPlayer(playerNum) {
     videoId = player2.getVideoData()['video_id'];
     title = player2.getVideoData()['title'];
   }
-  
+
   getTrackList(videoId, title);
 }
 
@@ -683,18 +687,18 @@ function selectOrEditBookmarks(msg) {
   var dialogTitle = msg.title || "Bookmarks";
   var videoId = msg.videoId;
   var playerNum = msg.playerNum;
-  
+
   // Disable jump link if noJump is true or active playerNum is not provided
   var noJump = msg.noJump || !msg.playerNum;
-  
+
   var bookmarks = [];
   if (msg.bookmarks && Array.isArray(msg.bookmarks)) {
-    bookmarks = msg.bookmarks.map(function(item) {
+    bookmarks = msg.bookmarks.map(function (item) {
       return { time: parseFloat(item[0]), desc: item[1] || "" };
     });
   }
 
-  bookmarks.sort(function(a, b) { return a.time - b.time; });
+  bookmarks.sort(function (a, b) { return a.time - b.time; });
 
   var oldModal = document.getElementById("app-dialog-overlay");
   if (oldModal) oldModal.remove();
@@ -712,7 +716,7 @@ function selectOrEditBookmarks(msg) {
   header.innerHTML = `<h3>Bookmarks: ${dialogTitle}</h3><button class="app-modal-close-btn">&times;</button>`;
   content.appendChild(header);
 
-  header.querySelector(".app-modal-close-btn").onclick = function() { overlay.remove(); };
+  header.querySelector(".app-modal-close-btn").onclick = function () { overlay.remove(); };
 
   // Modal Body containing bookmarks table
   var body = document.createElement("div");
@@ -735,7 +739,7 @@ function selectOrEditBookmarks(msg) {
     `;
     var tbody = table.querySelector("tbody");
 
-    bookmarks.forEach(function(bm) {
+    bookmarks.forEach(function (bm) {
       var row = document.createElement("tr");
       var timeStr = toHHMMSS(Math.round(bm.time));
 
@@ -759,7 +763,7 @@ function selectOrEditBookmarks(msg) {
         `;
 
         // Jump Action
-        row.querySelector(".bm-time-link").onclick = function() {
+        row.querySelector(".bm-time-link").onclick = function () {
           var player = (playerNum == 1) ? player1 : player2;
           if (player && typeof player.seekTo === "function") {
             player.seekTo(bm.time, true);
@@ -769,7 +773,7 @@ function selectOrEditBookmarks(msg) {
       }
 
       // Save/Edit action
-      row.querySelector(".bm-save-btn").onclick = function() {
+      row.querySelector(".bm-save-btn").onclick = function () {
         var newDesc = row.querySelector(".bm-input-desc").value;
         jsonText = {
           data: 'Edit Bookmark',
@@ -785,7 +789,7 @@ function selectOrEditBookmarks(msg) {
       };
 
       // Delete Action
-      row.querySelector(".bm-delete-btn").onclick = function() {
+      row.querySelector(".bm-delete-btn").onclick = function () {
         if (confirm(`Are you sure you want to delete bookmark at ${timeStr}?`)) {
           jsonText = {
             data: 'Delete Bookmark',
@@ -813,17 +817,17 @@ function selectOrEditBookmarks(msg) {
   var footer = document.createElement("div");
   footer.className = "app-modal-footer";
   footer.style.justifyContent = "space-between"; // Push Remove All to the left
-  
+
   var removeAllBtn = document.createElement("button");
   removeAllBtn.className = "danger-btn";
   removeAllBtn.innerText = "Remove All";
-  
+
   if (bookmarks.length === 0) {
     removeAllBtn.disabled = true;
     removeAllBtn.style.opacity = 0.5;
   }
-  
-  removeAllBtn.onclick = function() {
+
+  removeAllBtn.onclick = function () {
     if (confirm("WARNING: Are you sure you want to permanently delete ALL bookmarks for this video?")) {
       jsonText = {
         data: 'Clear Bookmarks',
@@ -840,7 +844,7 @@ function selectOrEditBookmarks(msg) {
   var closeBtn = document.createElement("button");
   closeBtn.className = "secondary-btn";
   closeBtn.innerText = "Close";
-  closeBtn.onclick = function() { overlay.remove(); };
+  closeBtn.onclick = function () { overlay.remove(); };
 
   footer.appendChild(removeAllBtn);
   footer.appendChild(closeBtn);
@@ -850,7 +854,7 @@ function selectOrEditBookmarks(msg) {
   document.body.appendChild(overlay);
 
   // Close modal when clicking outside content area
-  overlay.onclick = function(e) {
+  overlay.onclick = function (e) {
     if (e.target === overlay) {
       overlay.remove();
     }
@@ -883,7 +887,7 @@ function addBookmarkForPlayer(playerNum) {
   }
   socket.emit('my event', jsonText);
 
-  console.log("Add Bookmark, Player # " + playerNum + ", VideoID " + videoId + ", Time: " + time);     
+  console.log("Add Bookmark, Player # " + playerNum + ", VideoID " + videoId + ", Time: " + time);
 }
 
 // function to view the bookmark for the current video
@@ -898,7 +902,7 @@ function viewBookmarksForPlayer(playerNum) {
     videoId = player2.getVideoData()['video_id'];
     title = player2.getVideoData()['title'];
   }
-  
+
   getBookmarks(playerNum, videoId, title);
 }
 
@@ -935,7 +939,7 @@ function showBookmarksDialogNoLinks(videoId, title) {
 function addPlayListToQueList() {
   var playlistUrl = document.getElementById("filter").value;
 
-  if(playlistUrl.includes('https://www.youtube.com/playlist?list=')) {
+  if (playlistUrl.includes('https://www.youtube.com/playlist?list=')) {
     addToQueList(playlistUrl);
     if (queListOutput) {
       queListOutput.innerHTML = getLoadingText();
@@ -977,7 +981,7 @@ function queSavedPlayList() {
     pin: pin,
     clientId: clientId,
     videoId: savedList,
-    filter: filterText 
+    filter: filterText
   }
   socket.emit('my event', jsonText);
 
@@ -1019,7 +1023,7 @@ async function mixQueList(queListString, queListTimesString) {
   playMix = true;
 
   // check the start video value is valid
-  if(startVideo < 0 || startVideo == queList.length) {
+  if (startVideo < 0 || startVideo == queList.length) {
     startVideo = 0;
   }
 
@@ -1031,7 +1035,7 @@ async function mixQueList(queListString, queListTimesString) {
 
     // check to make sure we at least play 30 seconds of video 
     // or 5 seconds if doing play testing by setting play percent to -1 
-    if(playPercent == -1) {
+    if (playPercent == -1) {
       playTime = 5;
     } else if (playPercent == -2) {
       // we are playing audio to make animated gifs so 
@@ -1048,8 +1052,8 @@ async function mixQueList(queListString, queListTimesString) {
 
     // display current mixing information
     var message = "Curent Mix Track: " + trackNum + " / Playtime: " + toHHMMSS(playTime);
-    
-    if(playPercent == -1) {
+
+    if (playPercent == -1) {
       message = message + " || Testing (Invalid Videos: " + notPlayedCount + ")";
     }
 
@@ -1093,7 +1097,7 @@ async function mixQueList(queListString, queListTimesString) {
           videoId: videoId
         }
         socket.emit('my event', jsonText);
-      }      
+      }
     }
 
     // load the animated vumeter or tape gif
@@ -1108,9 +1112,9 @@ async function mixQueList(queListString, queListTimesString) {
     await wait(playTime * 1000);
 
     // if we doing playing test on video check the player state
-    if(playPercent == -1) {
+    if (playPercent == -1) {
       if (i % 2 == 0) {
-        setVideoPlayed(player1State, videoId);    
+        setVideoPlayed(player1State, videoId);
       } else {
         setVideoPlayed(player2State, videoId);
       }
@@ -1138,7 +1142,7 @@ function wait(timeout) {
 
 // function to store if video played or not
 function setVideoPlayed(playerState, videoId) {
-  if(playerState != 1) {
+  if (playerState != 1) {
     notPlayedCount++;
 
     console.log("Video Not Played: " + videoId + " / " + playerState + " Total Count: " + notPlayedCount);
@@ -1160,7 +1164,7 @@ function clearQueList() {
   socket.emit('my event', jsonText);
   console.log("Clear Video Que: " + clientId);
 
-  if(playMix) {
+  if (playMix) {
     stopMixPlay();
   }
 }
@@ -1179,7 +1183,7 @@ function reloadQueList() {
   socket.emit('my event', jsonText);
   console.log("Reload Video Que: " + clientId);
 
-  if(playMix) {
+  if (playMix) {
     stopMixPlay();
   }
 }
@@ -1242,23 +1246,23 @@ function getLoadingProgress(playListUrl, interval) {
 
   // Update progress every n seconds
   const loadingInterval = setInterval(() => {
-      progress += interval; // Increment progress by a random amount (1 to 10)
-      //console.log("Progress: " + progress + " Loading: " + loadingPlaylist);
-      
-      // only call backend after 4 or so seconds
-      if (progress > 2) {
-          jsonText = {
-            data: 'Get Progress',
-            url: playListUrl,
-            pin: pin,
-            clientId: clientId,
-          }
-          socket.emit('my event', jsonText);
-      } 
-      
-      if(!loadingPlaylist) {
-        clearInterval(loadingInterval);
+    progress += interval; // Increment progress by a random amount (1 to 10)
+    //console.log("Progress: " + progress + " Loading: " + loadingPlaylist);
+
+    // only call backend after 4 or so seconds
+    if (progress > 2) {
+      jsonText = {
+        data: 'Get Progress',
+        url: playListUrl,
+        pin: pin,
+        clientId: clientId,
       }
+      socket.emit('my event', jsonText);
+    }
+
+    if (!loadingPlaylist) {
+      clearInterval(loadingInterval);
+    }
 
   }, interval * 1000);
 }
@@ -1266,7 +1270,7 @@ function getLoadingProgress(playListUrl, interval) {
 // update loading progress text
 function updateLoadingProgress(msg) {
   let msgClientId = msg.clientId;
-  
+
   if (msgClientId === clientId && loadingPlaylist) {
     let loadingText = msg.loadingText;
     const progressDisplay = document.getElementById("loadingMessage");
@@ -1301,7 +1305,7 @@ function mergePlayList() {
   username = document.getElementById("uname").value;
   var playlistUrl = document.getElementById("filter").value;
 
-  if(playlistUrl.includes('https://www.youtube.com/playlist?list=')) {
+  if (playlistUrl.includes('https://www.youtube.com/playlist?list=')) {
     jsonText = {
       data: 'Merge PlayList',
       uname: username,
@@ -1331,7 +1335,7 @@ function getYouTubeID(url) {
       /(?:https?:\/\/)?(?:www\.)?youtu\.be\/([a-zA-Z0-9_-]{11})/,                // Short youtu.be
       /(?:https?:\/\/)?(?:www\.|m\.)?youtube\.com\/watch\?v=([a-zA-Z0-9_-]{11})/ // Standard watch URL
     ];
-  
+
     for (const pattern of patterns) {
       const match = url.match(pattern);
       if (match) return match[1];
@@ -1394,7 +1398,7 @@ function loadVideoForPlayer(playerNum, videoId) {
 
 // add listener to filter text input to load the playlist
 var filterInput = document.getElementById("filter");
-filterInput.addEventListener("keydown", function(event) {
+filterInput.addEventListener("keydown", function (event) {
   if (event.key === "Enter") {
     event.preventDefault(); // Prevent the default action of the Enter key
     loadPlayList();
@@ -1414,7 +1418,7 @@ function loadPlayListForMobile() {
   var filter = document.getElementById("filter").value;
 
   // check if the filter contains a youtube url for a video
-  if(filter.includes('https://') && getYouTubeID(filter).length == 11) {
+  if (filter.includes('https://') && getYouTubeID(filter).length == 11) {
     loadVideoForMobile(1);
   } else {
     loadPlayListForUser(username, filter, false, true);
@@ -1466,7 +1470,7 @@ function removeVideoFromList(videoId) {
 }
 
 // function to remove a video from the que playlist
-function removeVideoFromQueList(videoId, perminent=false) {
+function removeVideoFromQueList(videoId, perminent = false) {
   var pin = document.getElementById("pin").value;
   username = document.getElementById("uname").value;
 
@@ -1488,7 +1492,7 @@ function showVideoStatus(msg) {
   var videoId = msg.videoId;
   var videoSaved = msg.videoSaved
   var playerNum = msg.player;
-  
+
   if (videoSaved) {
     message = "Video ID: " + videoId + " is already in playlist.";
     if (playerNum == 1) {
@@ -1503,7 +1507,7 @@ function showVideoStatus(msg) {
     } else {
       document.getElementById("videoId2Saved").innerHTML = "";
     }
-  } 
+  }
 
   console.log("Video Status: " + message);
 }
@@ -1589,7 +1593,7 @@ function changePlayerVolume(mixRatio) {
 
   player1.setVolume(player1Vol);
   player2.setVolume(player2Vol);
-  
+
   // debug message
   let message = "Mixer Ratio: " + mixRatio + " / Player 1 Volume: " + player1Vol + "% / Player 2 Volume: " + player2Vol + "%";
   mixerOutput.innerHTML = message;
@@ -1616,18 +1620,40 @@ function setMobileMode() {
 function handleCurrentVideoTracklistUpdate(msg) {
   var playerNum = msg.player;
   var trackList = msg.trackList || null;
-  
+
   if (playerNum == 1) {
     trackList1 = trackList;
     if (!trackList || trackList.length === 0) {
       var container1 = document.getElementById("track-scroller-container-1");
-      if (container1) container1.style.display = "none";
+      if (container1) {
+        if (mobile) {
+          container1.style.display = "block";
+          var content1 = document.getElementById("track-scroller-content-1");
+          if (content1) {
+            content1.innerHTML = "";
+            content1.removeAttribute("data-text");
+          }
+        } else {
+          container1.style.display = "none";
+        }
+      }
     }
   } else if (playerNum == 2) {
     trackList2 = trackList;
     if (!trackList || trackList.length === 0) {
       var container2 = document.getElementById("track-scroller-container-2");
-      if (container2) container2.style.display = "none";
+      if (container2) {
+        if (mobile) {
+          container2.style.display = "block";
+          var content2 = document.getElementById("track-scroller-content-2");
+          if (content2) {
+            content2.innerHTML = "";
+            content2.removeAttribute("data-text");
+          }
+        } else {
+          container2.style.display = "none";
+        }
+      }
     }
   }
 }
@@ -1643,13 +1669,13 @@ function updatePlayerTrackScrollers() {
 function updateSinglePlayerScroller(playerNum, player, trackList) {
   var container = document.getElementById("track-scroller-container-" + playerNum);
   var content = document.getElementById("track-scroller-content-" + playerNum);
-  
+
   if (!container || !content) return;
-  
+
   if (trackList && trackList.length > 0) {
     var currentSeconds = 0;
     var totalSeconds = 0;
-    
+
     if (player && typeof player.getCurrentTime === "function" && typeof player.getDuration === "function") {
       try {
         currentSeconds = player.getCurrentTime() || 0;
@@ -1658,21 +1684,21 @@ function updateSinglePlayerScroller(playerNum, player, trackList) {
         // Handle player state loading errors gracefully
       }
     }
-    
+
     if (totalSeconds <= 0 || isNaN(totalSeconds)) {
       totalSeconds = 300; // Fallback to 5 minutes so calculations work for cued/unstarted videos
     }
-    
+
     var trackDisplay = getStatelessTrackDisplay(currentSeconds, totalSeconds, trackList);
-    
+
     if (content.getAttribute("data-text") !== trackDisplay) {
       content.setAttribute("data-text", trackDisplay);
-      
+
       var step = totalSeconds / trackList.length;
       var index = Math.floor(currentSeconds / step);
       if (index < 0) index = 0;
       if (index >= trackList.length) index = trackList.length - 1;
-      
+
       var parts = [];
       if (index > 0) {
         parts.push(`<span style="opacity: 0.65;">Prev: ${trackList[index - 1]}</span>`);
@@ -1681,23 +1707,29 @@ function updateSinglePlayerScroller(playerNum, player, trackList) {
       if (index < trackList.length - 1) {
         parts.push(`<span style="opacity: 0.75;">Next: ${trackList[index + 1]}</span>`);
       }
-      
+
       content.innerHTML = parts.join(" &nbsp; &nbsp; | &nbsp; &nbsp; ");
     }
     container.style.display = "block";
   } else {
-    container.style.display = "none";
+    content.innerHTML = "";
+    content.removeAttribute("data-text");
+    if (mobile) {
+      container.style.display = "block";
+    } else {
+      container.style.display = "none";
+    }
   }
 }
 
 function getStatelessTrackDisplay(currentSeconds, totalSeconds, trackList) {
   if (!trackList || trackList.length === 0 || totalSeconds <= 0) return "";
-  
+
   var step = totalSeconds / trackList.length;
   var index = Math.floor(currentSeconds / step);
   if (index < 0) index = 0;
   if (index >= trackList.length) index = trackList.length - 1;
-  
+
   var parts = [];
   if (index > 0) {
     parts.push("Prev: " + trackList[index - 1]);
@@ -1709,23 +1741,44 @@ function getStatelessTrackDisplay(currentSeconds, totalSeconds, trackList) {
   return parts.join("   |   ");
 }
 
-// function to handle tracklist-only requests privately to populate marquee on load
 function handleTracklistOnlyResponse(msg) {
   var trackList = msg.trackList || null;
   var videoId = msg.videoId;
-  
+
   if (videoId === currentVideoId1) {
     trackList1 = trackList;
     if (!trackList || trackList.length === 0) {
       var container1 = document.getElementById("track-scroller-container-1");
-      if (container1) container1.style.display = "none";
+      if (container1) {
+        if (mobile) {
+          container1.style.display = "block";
+          var content1 = document.getElementById("track-scroller-content-1");
+          if (content1) {
+            content1.innerHTML = "";
+            content1.removeAttribute("data-text");
+          }
+        } else {
+          container1.style.display = "none";
+        }
+      }
     }
   }
   if (videoId === currentVideoId2) {
     trackList2 = trackList;
     if (!trackList || trackList.length === 0) {
       var container2 = document.getElementById("track-scroller-container-2");
-      if (container2) container2.style.display = "none";
+      if (container2) {
+        if (mobile) {
+          container2.style.display = "block";
+          var content2 = document.getElementById("track-scroller-content-2");
+          if (content2) {
+            content2.innerHTML = "";
+            content2.removeAttribute("data-text");
+          }
+        } else {
+          container2.style.display = "none";
+        }
+      }
     }
   }
 }
