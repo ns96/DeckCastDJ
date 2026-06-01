@@ -31,8 +31,8 @@ var vumeterOutput = document.getElementById("vumeter");
 
 var connectedUsers = 0;
 
-var currentVideoId1 = "";
-var currentVideoId2 = "";
+var currentVideoId1 = "1w4O-eiUrZ8";
+var currentVideoId2 = "J3VrtjFIy7U";
 var clientId = "N/A";
 
 // variable to see if to stop the mix
@@ -42,6 +42,10 @@ var stopMixIndex = 0;
 
 // used to indicate that a playlist is being loaded
 var loadingPlaylist = false;
+
+// active tracklists for the dynamic scrolling marquee
+var trackList1 = null;
+var trackList2 = null;
 
 // indicate if we are on a mobile device
 var mobile = false;
@@ -63,6 +67,23 @@ socket.on('connect', function () {
   })
 
   clientId = socket.io.engine.id;
+
+  if (currentVideoId1) {
+    socket.emit('my event', {
+      data: 'Get TrackList Only',
+      playerNum: 1,
+      videoId: currentVideoId1,
+      clientId: clientId
+    });
+  }
+  if (currentVideoId2) {
+    socket.emit('my event', {
+      data: 'Get TrackList Only',
+      playerNum: 2,
+      videoId: currentVideoId2,
+      clientId: clientId
+    });
+  }
 })
 
 socket.on('my response', function (msg) {
@@ -94,6 +115,16 @@ socket.on('my response', function (msg) {
 
   if (msg.data.includes("Check Video Status")) {
     showVideoStatus(msg);  
+  }
+
+  // see if to update active tracklists for marquee
+  if (msg.data.includes("Current Video")) {
+    handleCurrentVideoTracklistUpdate(msg);
+  }
+
+  // see if to update active tracklists privately for marquee
+  if (msg.data.includes("Get TrackList Only")) {
+    handleTracklistOnlyResponse(msg);
   }
 
   console.log(msg);
@@ -1334,6 +1365,15 @@ function loadVideoForPlayer(playerNum, videoId) {
     videoId: videoId
   }
   socket.emit('my event', jsonText);
+
+  // Fetch tracklist for the loaded video in a private-safe way
+  var jsonTextTrack = {
+    data: 'Get TrackList Only',
+    playerNum: playerNum,
+    videoId: videoId,
+    clientId: clientId
+  };
+  socket.emit('my event', jsonTextTrack);
 }
 
 // add listener to filter text input to load the playlist
@@ -1554,4 +1594,122 @@ function changePlayerVolume(mixRatio) {
 // function to set to mobile mode
 function setMobileMode() {
   mobile = true;
+}
+
+// function to update active tracklists for marquee based on Current Video broadcast
+function handleCurrentVideoTracklistUpdate(msg) {
+  var playerNum = msg.player;
+  var trackList = msg.trackList || null;
+  
+  if (playerNum == 1) {
+    trackList1 = trackList;
+    if (!trackList || trackList.length === 0) {
+      var container1 = document.getElementById("track-scroller-container-1");
+      if (container1) container1.style.display = "none";
+    }
+  } else if (playerNum == 2) {
+    trackList2 = trackList;
+    if (!trackList || trackList.length === 0) {
+      var container2 = document.getElementById("track-scroller-container-2");
+      if (container2) container2.style.display = "none";
+    }
+  }
+}
+
+// Set up interval for updating track scrollers
+setInterval(updatePlayerTrackScrollers, 1000);
+
+function updatePlayerTrackScrollers() {
+  updateSinglePlayerScroller(1, player1, trackList1);
+  updateSinglePlayerScroller(2, player2, trackList2);
+}
+
+function updateSinglePlayerScroller(playerNum, player, trackList) {
+  var container = document.getElementById("track-scroller-container-" + playerNum);
+  var content = document.getElementById("track-scroller-content-" + playerNum);
+  
+  if (!container || !content) return;
+  
+  if (trackList && trackList.length > 0) {
+    var currentSeconds = 0;
+    var totalSeconds = 0;
+    
+    if (player && typeof player.getCurrentTime === "function" && typeof player.getDuration === "function") {
+      try {
+        currentSeconds = player.getCurrentTime() || 0;
+        totalSeconds = player.getDuration() || 0;
+      } catch (e) {
+        // Handle player state loading errors gracefully
+      }
+    }
+    
+    if (totalSeconds <= 0 || isNaN(totalSeconds)) {
+      totalSeconds = 300; // Fallback to 5 minutes so calculations work for cued/unstarted videos
+    }
+    
+    var trackDisplay = getStatelessTrackDisplay(currentSeconds, totalSeconds, trackList);
+    
+    if (content.getAttribute("data-text") !== trackDisplay) {
+      content.setAttribute("data-text", trackDisplay);
+      
+      var step = totalSeconds / trackList.length;
+      var index = Math.floor(currentSeconds / step);
+      if (index < 0) index = 0;
+      if (index >= trackList.length) index = trackList.length - 1;
+      
+      var parts = [];
+      if (index > 0) {
+        parts.push(`<span style="opacity: 0.65;">Prev: ${trackList[index - 1]}</span>`);
+      }
+      parts.push(`<span class="highlight">★ NOW PLAYING: ${trackList[index]} ★</span>`);
+      if (index < trackList.length - 1) {
+        parts.push(`<span style="opacity: 0.75;">Next: ${trackList[index + 1]}</span>`);
+      }
+      
+      content.innerHTML = parts.join(" &nbsp; &nbsp; | &nbsp; &nbsp; ");
+    }
+    container.style.display = "block";
+  } else {
+    container.style.display = "none";
+  }
+}
+
+function getStatelessTrackDisplay(currentSeconds, totalSeconds, trackList) {
+  if (!trackList || trackList.length === 0 || totalSeconds <= 0) return "";
+  
+  var step = totalSeconds / trackList.length;
+  var index = Math.floor(currentSeconds / step);
+  if (index < 0) index = 0;
+  if (index >= trackList.length) index = trackList.length - 1;
+  
+  var parts = [];
+  if (index > 0) {
+    parts.push("Prev: " + trackList[index - 1]);
+  }
+  parts.push("★ NOW PLAYING: " + trackList[index] + " ★");
+  if (index < trackList.length - 1) {
+    parts.push("Next: " + trackList[index + 1]);
+  }
+  return parts.join("   |   ");
+}
+
+// function to handle tracklist-only requests privately to populate marquee on load
+function handleTracklistOnlyResponse(msg) {
+  var trackList = msg.trackList || null;
+  var videoId = msg.videoId;
+  
+  if (videoId === currentVideoId1) {
+    trackList1 = trackList;
+    if (!trackList || trackList.length === 0) {
+      var container1 = document.getElementById("track-scroller-container-1");
+      if (container1) container1.style.display = "none";
+    }
+  }
+  if (videoId === currentVideoId2) {
+    trackList2 = trackList;
+    if (!trackList || trackList.length === 0) {
+      var container2 = document.getElementById("track-scroller-container-2");
+      if (container2) container2.style.display = "none";
+    }
+  }
 }

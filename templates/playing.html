@@ -253,18 +253,33 @@
 
         .tracklist {
             color: #ffffff;
-            text-align: center;
             margin-top: 5px; /* Reduced margin */
             /* RESTORED SIZE */
             font-size: 1.4rem; 
             min-height: 1.5em;
-            padding: 10px; /* Reduced padding */
+            padding: 10px 0; /* Reduced padding */
             background: #1a1a1a;
             border-radius: 10px;
             white-space: nowrap;
             overflow: hidden;
-            text-overflow: ellipsis;
             flex-shrink: 0;
+            position: relative;
+        }
+
+        .tracklist-content {
+            display: inline-block;
+            padding-left: 100%;
+            animation: marquee-scroller 25s linear infinite;
+        }
+
+        .tracklist-content .highlight {
+            color: #ffcc00;
+            font-weight: bold;
+        }
+
+        @keyframes marquee-scroller {
+            0% { transform: translate3d(0, 0, 0); }
+            100% { transform: translate3d(-100%, 0, 0); }
         }
 
         @media (max-width: 768px) {
@@ -344,7 +359,9 @@
             </div>
         </div>
         
-        <div class="tracklist" id="tracklist"></div>
+        <div class="tracklist" id="tracklist">
+            <div id="tracklist-content" class="tracklist-content"></div>
+        </div>
     </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js" xintegrity="sha512-q/dWJ3kcmjBLU4Qc47E4A9kTB4m3wuTY7vkFJDTZKjTs8jhyGQnaUrxa0Ytd0ssMZhbNua9hE+E7Qv1j+DyZwA==" crossorigin="anonymous"></script>
@@ -619,8 +636,11 @@
                     socket.emit('my event', jsonText);
 
                     // clear the tracklist text
-                    var tracklistOutput = document.getElementById("tracklist");
-                    tracklistOutput.innerHTML = "";
+                    var scrollerContent = document.getElementById("tracklist-content");
+                    if (scrollerContent) {
+                        scrollerContent.innerHTML = "";
+                        scrollerContent.removeAttribute("data-text");
+                    }
                 }
                 
                 var trackOutput = document.getElementById("track");
@@ -641,32 +661,23 @@
             }
         }
         
-        var index = 0;
-        var step = 0;
-        
         function startCount(totalSeconds, currentTime, trackList) {
             var timerOutput = document.getElementById("timer");
-            var tracklistOutput = document.getElementById("tracklist");
             
-            if(trackList) {
-                step = parseInt(totalSeconds/trackList.length);
-            }
-            
-            var startTime = currentTime; 
             var currentSeconds = currentTime; 
-                    
-            index = 0;
             
+            // Set initial state immediately
+            if (trackList && trackList.length > 0) {
+                updateTracklistScroller(currentSeconds, totalSeconds, trackList);
+            }
+                     
             myTimer = setInterval(count, 1000);
             
             function count() {  
                 currentSeconds++;
                 
-                if(trackList) {
-                    var trackName = getTrackName(totalSeconds, currentSeconds, startTime, trackList)
-                    if(trackName !== "") {
-                        tracklistOutput.innerHTML = trackName;
-                    }
+                if (trackList && trackList.length > 0) {
+                    updateTracklistScroller(currentSeconds, totalSeconds, trackList);
                 }
                 
                 if(currentSeconds <= totalSeconds) {
@@ -682,37 +693,55 @@
                 }
             }
         }
+
+        function updateTracklistScroller(currentSeconds, totalSeconds, trackList) {
+            var scrollerContent = document.getElementById("tracklist-content");
+            if (!scrollerContent) return;
+            
+            if (totalSeconds <= 0 || isNaN(totalSeconds)) {
+                totalSeconds = 300; // Fallback to 5 minutes so calculations work for cued/unstarted videos
+            }
+            
+            var trackDisplay = getStatelessTrackDisplay(currentSeconds, totalSeconds, trackList);
+            
+            if (scrollerContent.getAttribute("data-text") !== trackDisplay) {
+                scrollerContent.setAttribute("data-text", trackDisplay);
+                
+                var step = totalSeconds / trackList.length;
+                var index = Math.floor(currentSeconds / step);
+                if (index < 0) index = 0;
+                if (index >= trackList.length) index = trackList.length - 1;
+                
+                var parts = [];
+                if (index > 0) {
+                    parts.push(`<span style="opacity: 0.65;">Prev: ${trackList[index - 1]}</span>`);
+                }
+                parts.push(`<span class="highlight">★ NOW PLAYING: ${trackList[index]} ★</span>`);
+                if (index < trackList.length - 1) {
+                    parts.push(`<span style="opacity: 0.75;">Next: ${trackList[index + 1]}</span>`);
+                }
+                
+                scrollerContent.innerHTML = parts.join(" &nbsp; &nbsp; | &nbsp; &nbsp; ");
+            }
+        }
         
-        function getTrackName(totalSeconds, currentSeconds, startTime, trackList) {
-            var diff1 = currentSeconds - startTime;
-            var diff2 = (index*step + parseInt(step/2)) - currentSeconds;
+        function getStatelessTrackDisplay(currentSeconds, totalSeconds, trackList) {
+            if (!trackList || trackList.length === 0 || totalSeconds <= 0) return "";
             
-            if(diff1 <= 1 && startTime != 0) {
-                for(i = 0; i < totalSeconds; i += step) {
-                    if(i - currentSeconds >= 0) {
-                        break;
-                    }
-                    index++;
-                }
+            var step = totalSeconds / trackList.length;
+            var index = Math.floor(currentSeconds / step);
+            if (index < 0) index = 0;
+            if (index >= trackList.length) index = trackList.length - 1;
+            
+            var parts = [];
+            if (index > 0) {
+                parts.push("Prev: " + trackList[index - 1]);
             }
-            
-            if(diff1 <= 1 || diff2 == 0) {
-                var trackName = trackList[index];
-                
-                if(index > 0) {
-                    trackName = trackList[index - 1] + " | " + trackName;
-                }
-                
-                if(index < (trackList.length - 1)) {
-                    trackName = trackName + " | " + trackList[index + 1]; 
-                }
-                
-                index++;
-                
-                return trackName;
+            parts.push("★ NOW PLAYING: " + trackList[index] + " ★");
+            if (index < trackList.length - 1) {
+                parts.push("Next: " + trackList[index + 1]);
             }
-            
-            return "";
+            return parts.join("   |   ");
         }
 
         function toTime(seconds) {

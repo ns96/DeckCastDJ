@@ -555,6 +555,41 @@ td img {
     to { opacity: 1; transform: translateY(0); }
 }
 
+/* --- Dynamic Scrolling Track Marquee --- */
+.track-scroller-container {
+    background-color: var(--bg-panel);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    margin: 10px auto;
+    padding: 6px 0;
+    overflow: hidden;
+    white-space: nowrap;
+    position: relative;
+    box-shadow: 0 2px 10px var(--shadow-color);
+    width: 560px;
+    max-width: 100%;
+    box-sizing: border-box;
+}
+
+.track-scroller-content {
+    display: inline-block;
+    padding-left: 100%;
+    animation: marquee-scroller 25s linear infinite;
+    color: var(--text-main);
+    font-size: 13px;
+    font-weight: 500;
+}
+
+.track-scroller-content .highlight {
+    color: var(--accent-primary);
+    font-weight: bold;
+}
+
+@keyframes marquee-scroller {
+    0% { transform: translate3d(0, 0, 0); }
+    100% { transform: translate3d(-100%, 0, 0); }
+}
+
 </style>
 </head>
 <body>
@@ -599,6 +634,9 @@ td img {
             </div>
             
             <div id="player1"></div>
+            <div id="track-scroller-container-1" class="track-scroller-container" style="display: none;">
+                <div id="track-scroller-content-1" class="track-scroller-content"></div>
+            </div>
             
             <div class="playback-controls"><b>
                 <button type="button" onclick="restartVideo(1)"><<</button>
@@ -630,6 +668,9 @@ td img {
             </div>
             
             <div id="player2"></div>
+            <div id="track-scroller-container-2" class="track-scroller-container" style="display: none;">
+                <div id="track-scroller-content-2" class="track-scroller-content"></div>
+            </div>
             
             <div class="playback-controls"><b>
                 <button type="button" onclick="restartVideo(2)"><<</button>

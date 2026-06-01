@@ -1144,6 +1144,14 @@ def processMessage(json):
         else:
             json['trackList'] = []
 
+    # see if to get only the tracklist for a video
+    if 'Get TrackList Only' in msgTitle:
+        videoId = json['videoId']
+        if videoId in videoTrackLists:
+            json['trackList'] = videoTrackLists[videoId]
+        else:
+            json['trackList'] = []
+
     # see if to view bookmarks for a video
     if 'View Bookmarks' in msgTitle:
         videoId = json['videoId']
