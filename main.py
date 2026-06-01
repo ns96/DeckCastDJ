@@ -6,10 +6,10 @@ A simple flask/SocketIO for building very simple youtube DJ application that
 can be shared by other users
 
 @author: Nathan
-@version: 1.17.2 (06/01/2026)
+@version: 1.17.3 (06/01/2026)
 """
 # this variables are passed onto the html templates
-appVersion = 'v1.17.2 (06/01/2026)'
+appVersion = 'v1.17.3 (06/01/2026)'
 bgColor = '#b2b2de' # no longer used but will keep for backward compatibility
 
 import os.path
