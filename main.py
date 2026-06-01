@@ -6,10 +6,10 @@ A simple flask/SocketIO for building very simple youtube DJ application that
 can be shared by other users
 
 @author: Nathan
-@version: 1.17.1 (05/31/2026)
+@version: 1.17.2 (06/01/2026)
 """
 # this variables are passed onto the html templates
-appVersion = 'v1.17.1 (05/31/2026)'
+appVersion = 'v1.17.2 (06/01/2026)'
 bgColor = '#b2b2de' # no longer used but will keep for backward compatibility
 
 import os.path
@@ -634,6 +634,15 @@ def getHTMLTableRow(i, que_list, videoId, title, meta_info, videoInfo):
             cleanTitle = title.replace("'", "")
             cleanTitle = cleanTitle.replace('"', '')
             rowHtml += '<input type="button" onclick="showTrackListDialog(\'' + videoId + '\', \'' + cleanTitle + '\')" value="TL (' + str(tracklistCount) + ')">'
+            
+    # check to see if there is a bookmark for the video
+    if videoId in videoBookmarks:
+        bookmarks = videoBookmarks[videoId]
+        bookmarksCount = len(bookmarks)
+        if bookmarksCount > 0:
+            cleanTitle = title.replace("'", "")
+            cleanTitle = cleanTitle.replace('"', '')
+            rowHtml += ' <input type="button" onclick="showBookmarksDialogNoLinks(\'' + videoId + '\', \'' + cleanTitle + '\')" value="BM (' + str(bookmarksCount) + ')">'
             
     rowHtml += '</b></td>'
     rowHtml += '<td><b>' + videoInfo[2] + '</b></td>'

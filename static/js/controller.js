@@ -645,6 +645,9 @@ function selectOrEditBookmarks(msg) {
   var videoId = msg.videoId;
   var playerNum = msg.playerNum;
   
+  // Disable jump link if noJump is true or active playerNum is not provided
+  var noJump = msg.noJump || !msg.playerNum;
+  
   var bookmarks = [];
   if (msg.bookmarks && Array.isArray(msg.bookmarks)) {
     bookmarks = msg.bookmarks.map(function(item) {
@@ -697,23 +700,34 @@ function selectOrEditBookmarks(msg) {
       var row = document.createElement("tr");
       var timeStr = toHHMMSS(Math.round(bm.time));
 
-      row.innerHTML = `
-        <td><span class="bm-time-link" title="Jump to time">${timeStr}</span></td>
-        <td><input type="text" class="bm-input-desc" value="${bm.desc}" /></td>
-        <td>
-          <button class="bm-action-btn bm-save-btn">Save</button>
-          <button class="bm-action-btn bm-delete-btn danger-btn">Del</button>
-        </td>
-      `;
+      if (noJump) {
+        row.innerHTML = `
+          <td><span style="font-weight: bold; color: var(--text-main);">${timeStr}</span></td>
+          <td><input type="text" class="bm-input-desc" value="${bm.desc}" /></td>
+          <td>
+            <button class="bm-action-btn bm-save-btn">Save</button>
+            <button class="bm-action-btn bm-delete-btn danger-btn">Del</button>
+          </td>
+        `;
+      } else {
+        row.innerHTML = `
+          <td><span class="bm-time-link" title="Jump to time">${timeStr}</span></td>
+          <td><input type="text" class="bm-input-desc" value="${bm.desc}" /></td>
+          <td>
+            <button class="bm-action-btn bm-save-btn">Save</button>
+            <button class="bm-action-btn bm-delete-btn danger-btn">Del</button>
+          </td>
+        `;
 
-      // Jump Action
-      row.querySelector(".bm-time-link").onclick = function() {
-        var player = (playerNum == 1) ? player1 : player2;
-        if (player && typeof player.seekTo === "function") {
-          player.seekTo(bm.time, true);
-          overlay.remove();
-        }
-      };
+        // Jump Action
+        row.querySelector(".bm-time-link").onclick = function() {
+          var player = (playerNum == 1) ? player1 : player2;
+          if (player && typeof player.seekTo === "function") {
+            player.seekTo(bm.time, true);
+            overlay.remove();
+          }
+        };
+      }
 
       // Save/Edit action
       row.querySelector(".bm-save-btn").onclick = function() {
@@ -860,6 +874,22 @@ function getBookmarks(playerNum, videoId, title) {
   socket.emit('my event', jsonText);
 
   console.log("Getting Bookmarks For Video ID: " + videoId + "\n" + title);
+}
+
+// function to display the bookmarks dialog without jump links for a search/playlist row
+function showBookmarksDialogNoLinks(videoId, title) {
+  var pin = document.getElementById("pin").value;
+  var jsonText = {
+    data: 'View Bookmarks',
+    pin: pin,
+    clientId: clientId,
+    videoId: videoId,
+    title: title,
+    noJump: true
+  }
+  socket.emit('my event', jsonText);
+
+  console.log("Getting Bookmarks (No Links) For Video ID: " + videoId + "\n" + title);
 }
 
 // function to add a youtube playlist to the que.
