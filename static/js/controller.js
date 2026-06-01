@@ -101,12 +101,16 @@ socket.on('my response', function (msg) {
 
   // see if to show the tracklist edit dialog
   if (msg.data.includes("Edit TrackList")) {
-    addOrEditTrackList(msg);
+    if (msg.clientId === clientId) {
+      addOrEditTrackList(msg);
+    }
   }
 
   // see if to show the bookmarks dialog
   if (msg.data.includes("View Bookmarks")) {
-    selectOrEditBookmarks(msg);
+    if (msg.clientId === clientId) {
+      selectOrEditBookmarks(msg);
+    }
   }
 
   if (msg.data.includes("Get Progress")) {
@@ -119,7 +123,9 @@ socket.on('my response', function (msg) {
 
   // see if to update active tracklists for marquee
   if (msg.data.includes("Current Video")) {
-    handleCurrentVideoTracklistUpdate(msg);
+    if (msg.clientId === clientId) {
+      handleCurrentVideoTracklistUpdate(msg);
+    }
   }
 
   // see if to update active tracklists privately for marquee
@@ -673,7 +679,8 @@ function getTrackList(videoId, title) {
   var jsonText = {
     data: 'Edit TrackList',
     videoId: videoId,
-    title: title
+    title: title,
+    clientId: clientId
   }
   socket.emit('my event', jsonText);
 
@@ -912,7 +919,8 @@ function getBookmarks(playerNum, videoId, title) {
     data: 'View Bookmarks',
     playerNum: playerNum,
     videoId: videoId,
-    title: title
+    title: title,
+    clientId: clientId
   }
   socket.emit('my event', jsonText);
 

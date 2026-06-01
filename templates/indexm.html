@@ -1,691 +1,751 @@
 <!DOCTYPE html>
 <html>
+
 <head>
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<style>
-/* --- THEME DEFINITIONS (CSS VARIABLES) --- */
-:root {
-    /* Default Dark Theme */
-    --bg-body: #1e1e1e;
-    --bg-panel: #2a2a2a;
-    --bg-control: #333333;
-    --bg-input: #333333;
-    --text-main: #f0f0f0;
-    --text-header: #04AA6D;
-    --accent-primary: #04AA6D;
-    --accent-hover: #05c47d;
-    --border-color: #555555;
-    --slider-track: #444444;
-    --slider-thumb: #f0f0f0;
-    --shadow-color: rgba(0, 0, 0, 0.3);
-}
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+        /* --- THEME DEFINITIONS (CSS VARIABLES) --- */
+        :root {
+            /* Default Dark Theme */
+            --bg-body: #1e1e1e;
+            --bg-panel: #2a2a2a;
+            --bg-control: #333333;
+            --bg-input: #333333;
+            --text-main: #f0f0f0;
+            --text-header: #04AA6D;
+            --accent-primary: #04AA6D;
+            --accent-hover: #05c47d;
+            --border-color: #555555;
+            --slider-track: #444444;
+            --slider-thumb: #f0f0f0;
+            --shadow-color: rgba(0, 0, 0, 0.3);
+        }
 
-/* Light Theme */
-.theme-light {
-    --bg-body: #e0e0e0;
-    --bg-panel: #ffffff;
-    --bg-control: #eeeeee;
-    --bg-input: #ffffff;
-    --text-main: #111111;
-    --text-header: #2e7d32;
-    --accent-primary: #2e7d32;
-    --accent-hover: #43a047;
-    --border-color: #cccccc;
-    --slider-track: #bdbdbd;
-    --slider-thumb: #2e7d32;
-    --shadow-color: rgba(0, 0, 0, 0.1);
-}
+        /* Light Theme */
+        .theme-light {
+            --bg-body: #e0e0e0;
+            --bg-panel: #ffffff;
+            --bg-control: #eeeeee;
+            --bg-input: #ffffff;
+            --text-main: #111111;
+            --text-header: #2e7d32;
+            --accent-primary: #2e7d32;
+            --accent-hover: #43a047;
+            --border-color: #cccccc;
+            --slider-track: #bdbdbd;
+            --slider-thumb: #2e7d32;
+            --shadow-color: rgba(0, 0, 0, 0.1);
+        }
 
-/* Blue Theme */
-.theme-blue {
-    --bg-body: #0f172a;
-    --bg-panel: #1e293b;
-    --bg-control: #334155;
-    --bg-input: #0f172a;
-    --text-main: #e2e8f0;
-    --text-header: #38bdf8;
-    --accent-primary: #0ea5e9;
-    --accent-hover: #38bdf8;
-    --border-color: #475569;
-    --slider-track: #334155;
-    --slider-thumb: #38bdf8;
-    --shadow-color: rgba(0, 0, 0, 0.4);
-}
+        /* Blue Theme */
+        .theme-blue {
+            --bg-body: #0f172a;
+            --bg-panel: #1e293b;
+            --bg-control: #334155;
+            --bg-input: #0f172a;
+            --text-main: #e2e8f0;
+            --text-header: #38bdf8;
+            --accent-primary: #0ea5e9;
+            --accent-hover: #38bdf8;
+            --border-color: #475569;
+            --slider-track: #334155;
+            --slider-thumb: #38bdf8;
+            --shadow-color: rgba(0, 0, 0, 0.4);
+        }
 
-/* Orange Theme */
-.theme-orange {
-    --bg-body: #291d18;
-    --bg-panel: #3e2c24;
-    --bg-control: #5d4037;
-    --bg-input: #291d18;
-    --text-main: #ffe0b2;
-    --text-header: #ff9800;
-    --accent-primary: #fb8c00;
-    --accent-hover: #ffa726;
-    --border-color: #6d4c41;
-    --slider-track: #4e342e;
-    --slider-thumb: #ffcc80;
-    --shadow-color: rgba(0, 0, 0, 0.4);
-}
+        /* Orange Theme */
+        .theme-orange {
+            --bg-body: #291d18;
+            --bg-panel: #3e2c24;
+            --bg-control: #5d4037;
+            --bg-input: #291d18;
+            --text-main: #ffe0b2;
+            --text-header: #ff9800;
+            --accent-primary: #fb8c00;
+            --accent-hover: #ffa726;
+            --border-color: #6d4c41;
+            --slider-track: #4e342e;
+            --slider-thumb: #ffcc80;
+            --shadow-color: rgba(0, 0, 0, 0.4);
+        }
 
-/* --- Basic Setup --- */
-body {
-    background-color: var(--bg-body);
-    color: var(--text-main);
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-    margin: 0;
-    padding: 10px;
-    overflow-x: hidden;
-    transition: background-color 0.3s, color 0.3s;
-}
+        /* --- Basic Setup --- */
+        body {
+            background-color: var(--bg-body);
+            color: var(--text-main);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            margin: 0;
+            padding: 10px;
+            overflow-x: hidden;
+            transition: background-color 0.3s, color 0.3s;
+        }
 
-h2 {
-    color: var(--text-header);
-    text-align: center;
-    border-bottom: 2px solid var(--bg-control);
-    padding-bottom: 10px;
-    margin-top: 10px;
-}
+        h2 {
+            color: var(--text-header);
+            text-align: center;
+            border-bottom: 2px solid var(--bg-control);
+            padding-bottom: 10px;
+            margin-top: 10px;
+        }
 
-/* --- Layout --- */
-.app-container {
-    margin: auto;
-}
+        /* --- Layout --- */
+        .app-container {
+            margin: auto;
+        }
 
-.global-controls {
-    background-color: var(--bg-panel);
-    padding: 15px;
-    border-radius: 8px;
-    margin-bottom: 15px;
-    /* Flex for Theme/Checks alignment on mobile */
-    display: flex;
-    flex-direction: column; 
-    gap: 10px;
-}
+        .global-controls {
+            background-color: var(--bg-panel);
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            /* Flex for Theme/Checks alignment on mobile */
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
 
-.deck {
-    background-color: var(--bg-panel);
-    border-radius: 8px;
-    padding: 15px; 
-    box-shadow: 0 4px 10px var(--shadow-color);
-    margin-bottom: 15px;
-}
+        .deck {
+            background-color: var(--bg-panel);
+            border-radius: 8px;
+            padding: 15px;
+            box-shadow: 0 4px 10px var(--shadow-color);
+            margin-bottom: 15px;
+        }
 
-.video-container {
-    position: relative;
-    padding-bottom: 56.25%;
-    height: 0;
-    overflow: hidden;
-    max-width: 100%;
-    background: #000;
-}
+        .video-container {
+            position: relative;
+            padding-bottom: 56.25%;
+            height: 0;
+            overflow: hidden;
+            max-width: 100%;
+            background: #000;
+        }
 
-.video-container #player1,
-.video-container #player2 {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-}
+        .video-container #player1,
+        .video-container #player2 {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+        }
 
-.playback-controls {
-    margin-top: 15px;
-    background-color: var(--bg-control);
-    padding: 10px;
-    border-radius: 5px;
-}
+        .playback-controls {
+            margin-top: 15px;
+            background-color: var(--bg-control);
+            padding: 10px;
+            border-radius: 5px;
+        }
 
-.playback-controls b {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    flex-wrap: wrap; 
-    gap: 5px;
-}
+        .playback-controls b {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 5px;
+        }
 
-/* --- Control Sections --- */
-.mixer-section,
-.transport-section,
-.playlist-section,
-.footer-section {
-    background-color: var(--bg-panel);
-    border-radius: 8px;
-    padding: 15px;
-    margin-bottom: 15px;
-    text-align: center;
-}
+        /* --- Control Sections --- */
+        .mixer-section,
+        .transport-section,
+        .playlist-section,
+        .footer-section {
+            background-color: var(--bg-panel);
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 15px;
+            text-align: center;
+        }
 
-.mixer-section {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-}
+        .mixer-section {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
 
-.playlist-section {
-    text-align: left;
-}
-.playlist-section div {
-    margin-bottom: 10px;
-}
+        .playlist-section {
+            text-align: left;
+        }
 
-.footer-section {
-    text-align: center;
-}
-.footer-section p {
-    margin: 5px 0;
-}
+        .playlist-section div {
+            margin-bottom: 10px;
+        }
 
-/* --- Modern Controls --- */
-button,
-input[type="button"] {
-    background-color: var(--accent-primary);
-    color: white;
-    border: none;
-    padding: 8px 12px;
-    font-size: 13px;
-    font-weight: bold;
-    border-radius: 5px;
-    cursor: pointer;
-    transition: background-color 0.2s, transform 0.1s;
-    margin: 2px;
-}
+        .footer-section {
+            text-align: center;
+        }
 
-button:hover,
-input[type="button"]:hover {
-    background-color: var(--accent-hover);
-}
+        .footer-section p {
+            margin: 5px 0;
+        }
 
-button:active,
-input[type="button"]:active {
-    transform: scale(0.98);
-}
+        /* --- Modern Controls --- */
+        button,
+        input[type="button"] {
+            background-color: var(--accent-primary);
+            color: white;
+            border: none;
+            padding: 8px 12px;
+            font-size: 13px;
+            font-weight: bold;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.2s, transform 0.1s;
+            margin: 2px;
+        }
 
-/* Special button styles */
-button[onclick^="moveSlideTo"],
-button[onclick="stopAllPlay()"] {
-    background-color: #444;
-}
-button[onclick^="moveSlideTo"]:hover,
-button[onclick="stopAllPlay()"]:hover {
-    background-color: #555;
-}
-input[value="RESET"] {
-    background-color: #c9302c;
-}
-input[value="RESET"]:hover {
-    background-color: #d9534f;
-}
+        button:hover,
+        input[type="button"]:hover {
+            background-color: var(--accent-hover);
+        }
+
+        button:active,
+        input[type="button"]:active {
+            transform: scale(0.98);
+        }
+
+        /* Special button styles */
+        button[onclick^="moveSlideTo"],
+        button[onclick="stopAllPlay()"] {
+            background-color: #444;
+        }
+
+        button[onclick^="moveSlideTo"]:hover,
+        button[onclick="stopAllPlay()"]:hover {
+            background-color: #555;
+        }
+
+        input[value="RESET"] {
+            background-color: #c9302c;
+        }
+
+        input[value="RESET"]:hover {
+            background-color: #d9534f;
+        }
 
 
-input[type="text"], select {
-    background-color: var(--bg-input);
-    color: var(--text-main);
-    border: 1px solid var(--border-color);
-    padding: 10px;
-    border-radius: 5px;
-    font-size: 14px;
-    box-sizing: border-box;
-    width: 100%; 
-}
+        input[type="text"],
+        select {
+            background-color: var(--bg-input);
+            color: var(--text-main);
+            border: 1px solid var(--border-color);
+            padding: 10px;
+            border-radius: 5px;
+            font-size: 14px;
+            box-sizing: border-box;
+            width: 100%;
+        }
 
-/* --- Slider (Crossfader) --- */
-.slidecontainer {
-  width: 100%;
-  text-align: center;
-}
+        /* --- Slider (Crossfader) --- */
+        .slidecontainer {
+            width: 100%;
+            text-align: center;
+        }
 
-.slider {
-  -webkit-appearance: none;
-  flex-grow: 1;
-  width: auto;
-  margin: 0 10px; 
-  height: 25px;
-  background: var(--slider-track);
-  outline: none;
-  opacity: 0.9;
-  transition: opacity .2s;
-  border-radius: 10px;
-  vertical-align: middle;
-}
+        .slider {
+            -webkit-appearance: none;
+            flex-grow: 1;
+            width: auto;
+            margin: 0 10px;
+            height: 25px;
+            background: var(--slider-track);
+            outline: none;
+            opacity: 0.9;
+            transition: opacity .2s;
+            border-radius: 10px;
+            vertical-align: middle;
+        }
 
-.slider:hover {
-  opacity: 1;
-}
+        .slider:hover {
+            opacity: 1;
+        }
 
-.slider::-webkit-slider-thumb {
-  -webkit-appearance: none;
-  appearance: none;
-  width: 25px;
-  height: 25px;
-  background: var(--slider-thumb);
-  cursor: pointer;
-  border-radius: 50%;
-  border: 2px solid var(--bg-body);
-}
+        .slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 25px;
+            height: 25px;
+            background: var(--slider-thumb);
+            cursor: pointer;
+            border-radius: 50%;
+            border: 2px solid var(--bg-body);
+        }
 
-.slider::-moz-range-thumb {
-  width: 25px;
-  height: 25px;
-  background: var(--slider-thumb);
-  cursor: pointer;
-  border-radius: 50%;
-  border: 2px solid var(--bg-body);
-}
+        .slider::-moz-range-thumb {
+            width: 25px;
+            height: 25px;
+            background: var(--slider-thumb);
+            cursor: pointer;
+            border-radius: 50%;
+            border: 2px solid var(--bg-body);
+        }
 
-/* --- Custom Checkbox --- */
-.container {
-  display: block;
-  position: relative;
-  padding-left: 35px;
-  margin-bottom: 12px;
-  cursor: pointer;
-  font-size: 18px;
-  user-select: none;
-}
+        /* --- Custom Checkbox --- */
+        .container {
+            display: block;
+            position: relative;
+            padding-left: 35px;
+            margin-bottom: 12px;
+            cursor: pointer;
+            font-size: 18px;
+            user-select: none;
+        }
 
-.container input {
-  position: absolute;
-  opacity: 0;
-  cursor: pointer;
-  height: 0;
-  width: 0;
-}
+        .container input {
+            position: absolute;
+            opacity: 0;
+            cursor: pointer;
+            height: 0;
+            width: 0;
+        }
 
-.checkmark {
-  position: absolute;
-  top: 0;
-  left: 0;
-  height: 25px;
-  width: 25px;
-  background-color: var(--border-color);
-  border-radius: 4px;
-}
+        .checkmark {
+            position: absolute;
+            top: 0;
+            left: 0;
+            height: 25px;
+            width: 25px;
+            background-color: var(--border-color);
+            border-radius: 4px;
+        }
 
-.container:hover input ~ .checkmark {
-  background-color: #777;
-}
+        .container:hover input~.checkmark {
+            background-color: #777;
+        }
 
-.container input:checked ~ .checkmark {
-  background-color: #2196F3;
-}
+        .container input:checked~.checkmark {
+            background-color: #2196F3;
+        }
 
-.checkmark:after {
-  content: "";
-  position: absolute;
-  display: none;
-}
+        .checkmark:after {
+            content: "";
+            position: absolute;
+            display: none;
+        }
 
-.container input:checked ~ .checkmark:after {
-  display: block;
-}
+        .container input:checked~.checkmark:after {
+            display: block;
+        }
 
-.container .checkmark:after {
-  left: 9px;
-  top: 5px;
-  width: 5px;
-  height: 10px;
-  border: solid white;
-  border-width: 0 3px 3px 0;
-  transform: rotate(45deg);
-}
+        .container .checkmark:after {
+            left: 9px;
+            top: 5px;
+            width: 5px;
+            height: 10px;
+            border: solid white;
+            border-width: 0 3px 3px 0;
+            transform: rotate(45deg);
+        }
 
-/* --- Radio Buttons --- */
-.playback-controls input[type="radio"] {
-    margin-left: 5px; 
-}
-.playback-controls label {
-    font-size: 13px; 
-    margin-right: 5px; 
-}
+        /* --- Radio Buttons --- */
+        .playback-controls input[type="radio"] {
+            margin-left: 5px;
+        }
 
-td img {
-    border-radius: 10px;
-}
+        .playback-controls label {
+            font-size: 13px;
+            margin-right: 5px;
+        }
 
-/* --- Dynamic Scrolling Track Marquee --- */
-.track-scroller-container {
-    background-color: var(--bg-panel);
-    border: 1px solid var(--border-color);
-    border-radius: 8px;
-    margin: 10px 0;
-    padding: 6px 0;
-    overflow: hidden;
-    white-space: nowrap;
-    position: relative;
-    box-shadow: 0 2px 10px var(--shadow-color);
-    width: 100%;
-    box-sizing: border-box;
-}
+        td img {
+            border-radius: 10px;
+        }
 
-.track-scroller-content {
-    display: inline-block;
-    padding-left: 100%;
-    animation: marquee-scroller 25s linear infinite;
-    color: var(--text-main);
-    font-size: 13px;
-    font-weight: 500;
-}
+        /* --- Dynamic Scrolling Track Marquee --- */
+        .track-scroller-container {
+            background-color: var(--bg-panel);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            margin: 10px 0;
+            padding: 6px 0;
+            overflow: hidden;
+            white-space: nowrap;
+            position: relative;
+            box-shadow: 0 2px 10px var(--shadow-color);
+            width: 100%;
+            box-sizing: border-box;
+        }
 
-.track-scroller-content .highlight {
-    color: var(--accent-primary);
-    font-weight: bold;
-}
+        .track-scroller-content {
+            display: inline-block;
+            padding-left: 100%;
+            animation: marquee-scroller 25s linear infinite;
+            color: var(--text-main);
+            font-size: 13px;
+            font-weight: 500;
+        }
 
-@keyframes marquee-scroller {
-    0% { transform: translate3d(0, 0, 0); }
-    100% { transform: translate3d(-100%, 0, 0); }
-}
+        .track-scroller-content .highlight {
+            color: var(--accent-primary);
+            font-weight: bold;
+        }
 
-/* --- Reusable Internal Dialog System --- */
-.app-modal-overlay {
-    position: fixed;
-    top: 0; left: 0; right: 0; bottom: 0;
-    background-color: rgba(0, 0, 0, 0.7);
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    z-index: 10000;
-    backdrop-filter: blur(5px);
-    animation: appModalFadeIn 0.2s ease-out;
-}
+        @keyframes marquee-scroller {
+            0% {
+                transform: translate3d(0, 0, 0);
+            }
 
-.app-modal-content {
-    background-color: var(--bg-panel);
-    color: var(--text-main);
-    border: 2px solid var(--border-color);
-    border-radius: 12px;
-    width: 92%;
-    max-width: 550px;
-    max-height: 85vh;
-    display: flex;
-    flex-direction: column;
-    box-shadow: 0 8px 32px var(--shadow-color);
-    overflow: hidden;
-}
+            100% {
+                transform: translate3d(-100%, 0, 0);
+            }
+        }
 
-.app-modal-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 15px 20px;
-    border-bottom: 1px solid var(--border-color);
-    background-color: var(--bg-control);
-}
+        /* --- Reusable Internal Dialog System --- */
+        .app-modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(0, 0, 0, 0.7);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 10000;
+            backdrop-filter: blur(5px);
+            animation: appModalFadeIn 0.2s ease-out;
+        }
 
-.app-modal-header h3 {
-    margin: 0;
-    color: var(--text-header);
-    font-size: 1.2rem;
-}
+        .app-modal-content {
+            background-color: var(--bg-panel);
+            color: var(--text-main);
+            border: 2px solid var(--border-color);
+            border-radius: 12px;
+            width: 92%;
+            max-width: 550px;
+            max-height: 85vh;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 8px 32px var(--shadow-color);
+            overflow: hidden;
+        }
 
-.app-modal-close-btn {
-    background: none !important;
-    border: none !important;
-    color: var(--text-main) !important;
-    font-size: 26px !important;
-    cursor: pointer !important;
-    padding: 0 !important;
-    line-height: 1;
-}
-.app-modal-close-btn:hover {
-    color: #ff5555 !important;
-}
+        .app-modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px 20px;
+            border-bottom: 1px solid var(--border-color);
+            background-color: var(--bg-control);
+        }
 
-.app-modal-body {
-    padding: 20px;
-    overflow-y: auto;
-    flex-grow: 1;
-}
+        .app-modal-header h3 {
+            margin: 0;
+            color: var(--text-header);
+            font-size: 1.2rem;
+        }
 
-.app-modal-footer {
-    display: flex;
-    justify-content: flex-end;
-    align-items: center;
-    gap: 10px;
-    padding: 15px 20px;
-    border-top: 1px solid var(--border-color);
-    background-color: var(--bg-control);
-}
+        .app-modal-close-btn {
+            background: none !important;
+            border: none !important;
+            color: var(--text-main) !important;
+            font-size: 26px !important;
+            cursor: pointer !important;
+            padding: 0 !important;
+            line-height: 1;
+        }
 
-/* --- Tracklist Specific Elements --- */
-.tl-textarea {
-    width: 96%;
-    height: 350px;
-    padding: 10px;
-    background-color: var(--bg-input);
-    color: var(--text-main);
-    border: 1px solid var(--border-color);
-    border-radius: 6px;
-    font-family: "Courier New", Courier, monospace;
-    font-size: 13px;
-    line-height: 1.5;
-    resize: none;
-}
-.tl-textarea:focus {
-    border-color: var(--accent-primary);
-    outline: none;
-}
+        .app-modal-close-btn:hover {
+            color: #ff5555 !important;
+        }
 
-.secondary-btn {
-    background-color: #6c757d !important;
-}
-.secondary-btn:hover {
-    background-color: #5a6268 !important;
-}
+        .app-modal-body {
+            padding: 20px;
+            overflow-y: auto;
+            flex-grow: 1;
+        }
 
-@keyframes appModalFadeIn {
-    from { opacity: 0; transform: scale(0.96); }
-    to { opacity: 1; transform: scale(1); }
-}
+        .app-modal-footer {
+            display: flex;
+            justify-content: flex-end;
+            align-items: center;
+            gap: 10px;
+            padding: 15px 20px;
+            border-top: 1px solid var(--border-color);
+            background-color: var(--bg-control);
+        }
 
-/* --- Navigation Scroll Buttons --- */
-.arrow-btn {
-    background-color: var(--accent-primary);
-    color: white;
-    border: none;
-    padding: 8px 12px;
-    font-size: 13px;
-    font-weight: bold;
-    border-radius: 5px;
-    cursor: pointer;
-    transition: background-color 0.2s, transform 0.1s;
-    vertical-align: middle;
-    margin: 0 2px;
-}
-.arrow-btn:hover {
-    background-color: var(--accent-hover);
-}
+        /* --- Tracklist Specific Elements --- */
+        .tl-textarea {
+            width: 96%;
+            height: 350px;
+            padding: 10px;
+            background-color: var(--bg-input);
+            color: var(--text-main);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            font-family: "Courier New", Courier, monospace;
+            font-size: 13px;
+            line-height: 1.5;
+            resize: none;
+        }
 
-/* --- Bookmarks Table Elements --- */
-.bm-table {
-    width: 100%;
-    border-collapse: collapse;
-    margin-top: 10px;
-}
-.bm-table th, .bm-table td {
-    padding: 8px 10px;
-    text-align: left;
-    border-bottom: 1px solid var(--border-color);
-}
-.bm-time-link {
-    color: var(--accent-primary);
-    text-decoration: underline;
-    font-weight: bold;
-    cursor: pointer;
-}
-.bm-time-link:hover {
-    color: var(--accent-hover);
-}
-.bm-input-desc {
-    width: 92%;
-    padding: 6px;
-    background-color: var(--bg-input);
-    color: var(--text-main);
-    border: 1px solid var(--border-color);
-    border-radius: 4px;
-}
-.bm-action-btn {
-    padding: 4px 8px;
-    font-size: 11px;
-    margin-right: 4px;
-}
-.danger-btn {
-    background-color: #d9534f !important;
-}
-.danger-btn:hover {
-    background-color: #c9302c !important;
-}
+        .tl-textarea:focus {
+            border-color: var(--accent-primary);
+            outline: none;
+        }
 
-</style>
+        .secondary-btn {
+            background-color: #6c757d !important;
+        }
+
+        .secondary-btn:hover {
+            background-color: #5a6268 !important;
+        }
+
+        @keyframes appModalFadeIn {
+            from {
+                opacity: 0;
+                transform: scale(0.96);
+            }
+
+            to {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+
+        /* --- Navigation Scroll Buttons --- */
+        .arrow-btn {
+            background-color: var(--accent-primary);
+            color: white;
+            border: none;
+            padding: 8px 12px;
+            font-size: 13px;
+            font-weight: bold;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.2s, transform 0.1s;
+            vertical-align: middle;
+            margin: 0 2px;
+        }
+
+        .arrow-btn:hover {
+            background-color: var(--accent-hover);
+        }
+
+        /* --- Bookmarks Table Elements --- */
+        .bm-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+
+        .bm-table th,
+        .bm-table td {
+            padding: 8px 10px;
+            text-align: left;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .bm-time-link {
+            color: var(--accent-primary);
+            text-decoration: underline;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .bm-time-link:hover {
+            color: var(--accent-hover);
+        }
+
+        .bm-input-desc {
+            width: 92%;
+            padding: 6px;
+            background-color: var(--bg-input);
+            color: var(--text-main);
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+        }
+
+        .bm-action-btn {
+            padding: 4px 8px;
+            font-size: 11px;
+            margin-right: 4px;
+        }
+
+        .danger-btn {
+            background-color: #d9534f !important;
+        }
+
+        .danger-btn:hover {
+            background-color: #c9302c !important;
+        }
+
+        /* --- Center Mobile Playlist Row Controls Vertically --- */
+        .playlist-section table td input[type="button"],
+        .playlist-section table td img {
+            vertical-align: middle;
+            margin: 4px;
+        }
+
+        /* --- Responsive Scaling for Doubled Playlist Thumbnails --- */
+        .playlist-section table td img {
+            max-width: calc(100% - 160px);
+            height: auto;
+            aspect-ratio: 4 / 3;
+            object-fit: cover;
+        }
+    </style>
 </head>
+
 <body>
 
-<div class="app-container">
+    <div class="app-container">
 
-    <div class="header">
-        <h2>DeckCastDJ Mobile {{version}}</h2>
+        <div class="header">
+            <h2>DeckCastDJ Mobile {{version}}</h2>
+        </div>
+
+        <div class="global-controls">
+            <div style="margin-bottom: 10px;">
+                <label for="themeSelect"><b>Theme:</b></label>
+                <select id="themeSelect" onchange="setTheme(this.value)">
+                    <option value="theme-dark">Dark (Default)</option>
+                    <option value="theme-light">Light</option>
+                    <option value="theme-blue">Blue Night</option>
+                    <option value="theme-orange">Warm Orange</option>
+                </select>
+            </div>
+
+            <label class="container" id="pageTop"><b>I am the DJ</b>
+                <input type="checkbox" id="isDJ">
+                <span class="checkmark"></span>
+            </label>
+
+            <label class="container"><b>Private Mode</b>
+                <input type="checkbox" id="isPrivate" checked="checked">
+                <span class="checkmark"></span>
+            </label>
+        </div>
+
+        <div class="deck">
+            <div class="video-container">
+                <div id="player1"></div>
+            </div>
+            <div class="playback-controls">
+                <b>
+                    <button type="button" onclick="restartVideo(1)">&lt;&lt;</button>
+                    <button type="button" onclick="showTrackListDialogForPlayer(1)">TL</button>
+                            <button type="button" onclick="viewBookmarksForPlayer(1)">BM</button>
+                            <span>
+                                <input type="radio" id="speedA0" name="speedA" onclick="onChangeSpeed(1, this);"
+                                    value="0">
+                                <label for="speedA0">0%</label>
+                                <input type="radio" id="speedA1" name="speedA" onclick="onChangeSpeed(1, this);"
+                                    value="1">
+                                <label for="speedA1">5%</label>
+                                <input type="radio" id="speedA2" name="speedA" onclick="onChangeSpeed(1, this);"
+                                    value="2">
+                                <label for="speedA2">10%</label>
+                            </span>
+                            <span id="videoId1Saved"></span>
+                </b>
+            </div>
+            <div id="track-scroller-container-1" class="track-scroller-container">
+                <div id="track-scroller-content-1" class="track-scroller-content"></div>
+            </div>
+        </div>
+
+        <div class="mixer-section">
+            <button type="button" onclick="moveSlideTo(1)">&lt; PLY1</button>
+            <input type="range" min="0" max="100" value="50" id="mixer" oninput="changePlayerVolume(this.value)"
+                class="slider">
+            <button type="button" onclick="moveSlideTo(2)">PLY2 &gt;</button>
+        </div>
+
+        <div class="deck">
+            <div class="video-container">
+                <div id="player2"></div>
+            </div>
+            <div class="playback-controls">
+                <b>
+                    <button type="button" onclick="restartVideo(2)">&lt;&lt;</button>
+                    <button type="button" onclick="showTrackListDialogForPlayer(2)">TL</button>
+                            <button type="button" onclick="viewBookmarksForPlayer(2)">BM</button>
+                            <span>
+                                <input type="radio" id="speedB0" name="speedB" onclick="onChangeSpeed(2, this);"
+                                    value="0">
+                                <label for="speedB0">0%</label>
+                                <input type="radio" id="speedB1" name="speedB" onclick="onChangeSpeed(2, this);"
+                                    value="1">
+                                <label for="speedB1">5%</label>
+                                <input type="radio" id="speedB2" name="speedB" onclick="onChangeSpeed(2, this);"
+                                    value="2">
+                                <label for="speedB2">10%</label>
+                            </span>
+                            <span id="videoId2Saved"></span>
+                </b>
+            </div>
+            <div id="track-scroller-container-2" class="track-scroller-container">
+                <div id="track-scroller-content-2" class="track-scroller-content"></div>
+            </div>
+        </div>
+
+        <div class="transport-section">
+            <button type="button" onclick="stopAllPlay()">Stop Play</button>
+        </div>
+
+        <div class="playlist-section">
+            <p><b>Playlist:</b> <span id="playList"></span></p>
+            <hr style="border-color: var(--border-color);">
+
+            <div>
+                <b>Username:</b>
+                <input type="text" id="uname" name="uname" value="Guest">
+            </div>
+            <div>
+                <b id="filter_list">YouTube Url or Search Filter:</b>
+                <input type="text" id="filter" name="filter" value="">
+            </div>
+            <div style="text-align: center; margin-top: 15px;">
+                <button type="button" onclick="loadVideoForMobile(1)">To Player 1</button>
+                <button type="button" onclick="loadVideoForMobile(2)">To Player 2</button>
+                <button type="button" onclick="loadPlayListForMobile()">Load Playlist</button>
+                <button type="button" onclick="clearPlayList()">Clear</button>
+            </div>
+        </div>
+
+        <div class="footer-section">
+            <p>Mixer: <span id="mixerValue"></span></p>
+            <div>
+                <b>PIN:</b>
+                <input type="text" id="pin" name="pin" value="0001">
+            </div>
+            <p>
+                Console: <span id="messageText">Waiting for data ...</span>
+            </p>
+        </div>
+
     </div>
 
-    <div class="global-controls">
-        <div style="margin-bottom: 10px;">
-            <label for="themeSelect"><b>Theme:</b></label>
-            <select id="themeSelect" onchange="setTheme(this.value)">
-                <option value="theme-dark">Dark (Default)</option>
-                <option value="theme-light">Light</option>
-                <option value="theme-blue">Blue Night</option>
-                <option value="theme-orange">Warm Orange</option>
-            </select>
-        </div>
+    <script src="https://cdn.socket.io/4.5.3/socket.io.min.js"
+        integrity="sha384-WPFUvHkB1aHA5TDSZi6xtDgkF0wXJcIIxXhC6h8OT8EH3fC5PWro5pWJ1THjcfEi"
+        crossorigin="anonymous"></script>
+    <script src="static/js/controller.js"></script>
 
-        <label class="container" id="pageTop"><b>I am the DJ</b>
-          <input type="checkbox" id="isDJ">
-          <span class="checkmark"></span>
-        </label>
-        
-        <label class="container"><b>Private Mode</b>
-          <input type="checkbox" id="isPrivate" checked="checked">
-          <span class="checkmark"></span>
-        </label>
-    </div>
+    <script>
+        setMobileMode();
+    </script>
 
-    <div class="deck">
-        <div class="video-container">
-            <div id="player1"></div>
-        </div>
-        <div class="playback-controls">
-          <b>
-            <button type="button" onclick="restartVideo(1)"><<</button>
-            <button type="button" onclick="showTrackListDialogForPlayer(1)">TL</button>
-            <button type="button" onclick="viewBookmarksForPlayer(1)">View BM</button>
-            <span>
-                <input type="radio" id="speedA0" name="speedA" onclick="onChangeSpeed(1, this);" value="0">
-                <label for="speedA0">0%</label>
-                <input type="radio" id="speedA1" name="speedA" onclick="onChangeSpeed(1, this);" value="1">
-                <label for="speedA1">5%</label>
-                <input type="radio" id="speedA2" name="speedA" onclick="onChangeSpeed(1, this);" value="2">
-                <label for="speedA2">10%</label>
-            </span>
-            <span id="videoId1Saved"></span>
-          </b>
-        </div>
-        <div id="track-scroller-container-1" class="track-scroller-container">
-            <div id="track-scroller-content-1" class="track-scroller-content"></div>
-        </div>
-    </div>
+    <script>
+        function setTheme(themeName) {
+            document.body.classList.remove('theme-light', 'theme-blue', 'theme-orange');
+            if (themeName !== 'theme-dark') {
+                document.body.classList.add(themeName);
+            }
+            localStorage.setItem('djTheme', themeName);
+        }
 
-    <div class="mixer-section">
-        <button type="button" onclick="moveSlideTo(1)">&lt; PLY1</button>
-        <input type="range" min="0" max="100" value="50" id="mixer" oninput="changePlayerVolume(this.value)" class="slider">
-        <button type="button" onclick="moveSlideTo(2)">PLY2 &gt;</button>
-    </div>
-
-    <div class="deck">
-        <div class="video-container">
-            <div id="player2"></div>
-        </div>
-        <div class="playback-controls">
-          <b>
-            <button type="button" onclick="restartVideo(2)"><<</button>
-            <button type="button" onclick="showTrackListDialogForPlayer(2)">TL</button>
-            <button type="button" onclick="viewBookmarksForPlayer(2)">View BM</button>
-            <span>
-                <input type="radio" id="speedB0" name="speedB" onclick="onChangeSpeed(2, this);" value="0">
-                <label for="speedB0">0%</label>
-                <input type="radio" id="speedB1" name="speedB" onclick="onChangeSpeed(2, this);" value="1">
-                <label for="speedB1">5%</label>
-                <input type="radio" id="speedB2" name="speedB" onclick="onChangeSpeed(2, this);" value="2">
-                <label for="speedB2">10%</label>
-            </span>
-            <span id="videoId2Saved"></span>
-          </b>
-        </div>
-        <div id="track-scroller-container-2" class="track-scroller-container">
-            <div id="track-scroller-content-2" class="track-scroller-content"></div>
-        </div>
-    </div>
-
-    <div class="transport-section">
-      <button type="button" onclick="stopAllPlay()">Stop Play</button>
-    </div>
-
-    <div class="playlist-section">
-        <p><b>Playlist:</b> <span id="playList"></span></p>
-        <hr style="border-color: var(--border-color);">
-        
-        <div>
-          <b>Username:</b>
-          <input type="text" id="uname" name="uname" value="Guest">
-        </div>
-        <div>
-          <b id="filter_list">YouTube Url or Search Filter:</b>
-          <input type="text" id="filter" name="filter" value="">
-        </div>
-        <div style="text-align: center; margin-top: 15px;">
-            <button type="button" onclick="loadVideoForMobile(1)">To Player 1</button>
-            <button type="button" onclick="loadVideoForMobile(2)">To Player 2</button>
-            <button type="button" onclick="loadPlayListForMobile()">Load Playlist</button>
-            <button type="button" onclick="clearPlayList()">Clear</button>
-        </div>
-    </div>
-
-    <div class="footer-section"> 
-        <p>Mixer: <span id="mixerValue"></span></p>
-        <div>
-          <b>PIN:</b>
-          <input type="text" id="pin" name="pin" value="0001">
-        </div>
-        <p>
-          Console: <span id="messageText">Waiting for data ...</span>
-        </p> 
-    </div>
-
-</div>
-
-<script src="https://cdn.socket.io/4.5.3/socket.io.min.js" integrity="sha384-WPFUvHkB1aHA5TDSZi6xtDgkF0wXJcIIxXhC6h8OT8EH3fC5PWro5pWJ1THjcfEi" crossorigin="anonymous"></script>
-<script src="static/js/controller.js"></script>
-
-<script>
-  setMobileMode();
-</script>
-
-<script>
-function setTheme(themeName) {
-    document.body.classList.remove('theme-light', 'theme-blue', 'theme-orange');
-    if (themeName !== 'theme-dark') {
-        document.body.classList.add(themeName);
-    }
-    localStorage.setItem('djTheme', themeName);
-}
-
-(function () {
-    const savedTheme = localStorage.getItem('djTheme');
-    if (savedTheme) {
-        setTheme(savedTheme);
-        const select = document.getElementById('themeSelect');
-        if(select) select.value = savedTheme;
-    }
-})();
-</script>
+        (function () {
+            const savedTheme = localStorage.getItem('djTheme');
+            if (savedTheme) {
+                setTheme(savedTheme);
+                const select = document.getElementById('themeSelect');
+                if (select) select.value = savedTheme;
+            }
+        })();
+    </script>
 </body>
+
 </html>

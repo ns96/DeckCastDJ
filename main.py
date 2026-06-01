@@ -662,6 +662,9 @@ def getHTMLTableRow(i, que_list, videoId, title, meta_info, videoInfo):
 
 # function to return row for single colum mobile html table
 def getHTMLTableRowForMobile(i, videoId, title, videoInfo):
+    thumbnailWidth = 180
+    thumbnailHeight = 135
+
     cleanTitle = title.replace("'", "")
     cleanTitle = cleanTitle.replace('"', '')
     
@@ -680,9 +683,9 @@ def getHTMLTableRowForMobile(i, videoId, title, videoInfo):
     rowHtml += '<input type="button" onclick="loadVideoForPlayer(1,\'' + videoId + '\')" value=" < PLY1 "> '
 
     if i % 2 == 0:
-        rowHtml += '<img src="' + videoInfo[1] + '" alt="Video Thumbnail" width="120" height="90" onclick="loadVideoForPlayer(2,\'' + videoId + '\')">'
+        rowHtml += '<img src="' + videoInfo[1] + '" alt="Video Thumbnail" width="' + str(thumbnailWidth) + '" height="' + str(thumbnailHeight) + '" onclick="loadVideoForPlayer(2,\'' + videoId + '\')">'
     else:
-        rowHtml += '<img src="' + videoInfo[1] + '" alt="Video Thumbnail" width="120" height="90" onclick="loadVideoForPlayer(1,\'' + videoId + '\')">'
+        rowHtml += '<img src="' + videoInfo[1] + '" alt="Video Thumbnail" width="' + str(thumbnailWidth) + '" height="' + str(thumbnailHeight) + '" onclick="loadVideoForPlayer(1,\'' + videoId + '\')">'
 
     rowHtml += ' <input type="button" onclick="loadVideoForPlayer(2,\'' + videoId + '\')" value=" PLY2 > ">'
     
@@ -1330,7 +1333,25 @@ def messageReceived(methods=['GET', 'POST']):
 @socketio.on('my event')
 def handle_my_custom_event(json, methods=['GET', 'POST']):
     json = processMessage(json)
-    socketio.emit('my response', json, callback=messageReceived)
+    
+    # Identify client-specific private events that should not be broadcasted globally
+    private_events = [
+        "Edit TrackList", 
+        "View Bookmarks", 
+        "Get TrackList Only", 
+        "Get Progress", 
+        "Check Video Status"
+    ]
+    
+    msg_title = json.get('data', '')
+    is_private = any(evt in msg_title for evt in private_events)
+    
+    if is_private:
+        # Route exclusively to the requesting client's session ID
+        socketio.emit('my response', json, room=request.sid, callback=messageReceived)
+    else:
+        # Broadcast globally to all connected clients
+        socketio.emit('my response', json, callback=messageReceived)
 
 if __name__ == '__main__':
     app.config['TEMPLATES_AUTO_RELOAD'] = True
