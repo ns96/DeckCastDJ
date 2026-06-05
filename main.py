@@ -6,10 +6,10 @@ A simple flask/SocketIO for building very simple youtube DJ application that
 can be shared by other users
 
 @author: Nathan
-@version: 1.17.3 (06/01/2026)
+@version: 1.17.5 (06/05/2026)
 """
 # this variables are passed onto the html templates
-appVersion = 'v1.17.3 (06/01/2026)'
+appVersion = 'v1.17.5 (06/05/2026)'
 bgColor = '#b2b2de' # no longer used but will keep for backward compatibility
 
 import os.path
@@ -117,13 +117,10 @@ def loadPlayList():
             defaultPlayList = json.load(json_file)
             #checkPlayList(playList)
     
-    '''
-    for i in range(2):
-        videoId = 'videoId_' + str(i)
-        title = 'Video Title 2020 # ' + str(i)
-        thumbnail = 'https://www.gyanblog.com/assets/img/2018/youtube-logo.jpg'
-        playList[videoId] = [title, thumbnail]
-    '''
+    # remove any videos in default playlist that are in the invalid video list
+    for videoId in list(defaultPlayList.keys()):
+        if videoId in invalidVideosList:
+            del defaultPlayList[videoId]
 
 # function to load the user playlist from file instead of reading from youtube
 def loadBackupUserPlayList():
@@ -132,6 +129,7 @@ def loadBackupUserPlayList():
     if os.path.isfile(userPlayListFile):
         with open(userPlayListFile) as json_file: 
             userPlayList = json.load(json_file)
+
             for playlistKey in userPlayList.keys():
                 # we need to store the merge playlist key 
                 if 'all merged' in playlistKey:
@@ -191,6 +189,7 @@ def loadYouTubePlayList(username, url, forQue=False):
         loadingMessages[url] = 'Error Loading YouTube Playlist ...'
         print("Error loading YouTube playlist ...\n", url, "\n" , e)
 
+# function to load a youtube playlist in a background thread and emit results back to the client
 def loadPlaylistInBackground(username, url, clientId, mobile):
     try:
         loadYouTubePlayList(username, url)
@@ -212,6 +211,7 @@ def loadPlaylistInBackground(username, url, clientId, mobile):
             'clientId': clientId
         })
 
+# function to load a youtube playlist and queue all its videos in a background thread
 def loadQueuePlaylistInBackground(username, url, clientId):
     try:
         loadYouTubePlayList(username, url, True)
@@ -233,7 +233,7 @@ def loadQueuePlaylistInBackground(username, url, clientId):
             'clientId': clientId
         })
 
-# save the playlist as json
+# save the tracklists database to json file
 def saveTrackLists():
     global videoTrackLists
     
@@ -457,7 +457,7 @@ def cleanPlayList(videoList):
         
     return cleanedList
 
-# check to see if video exist. Doesn't always work
+# check to see if a video exists via the YouTube API
 def checkVideoExists(videoId):
     '''Check to see if video is playable and embedable'''
     url = 'https://www.googleapis.com/youtube/v3/videos?part=contentDetails&id=' + videoId + '&key=' + youtubeApiKey        
@@ -755,6 +755,7 @@ def getVideoInfo(videoId, username):
     video = pafy.new(url)            
     return [video.title, video.thumb, video.duration, video.published, username]
     
+# add a video to the default playlist and save it
 def addToPlayList(videoId, username):
     global defaultPlayList
     
@@ -763,6 +764,7 @@ def addToPlayList(videoId, username):
     
     return getHTMLTable()
 
+# delete a video from a user playlist or default playlist
 def deleteFromPlayList(videoId, username):
     global defaultPlayList, userPlayList, invalidVideosList
     
@@ -777,6 +779,7 @@ def deleteFromPlayList(videoId, username):
     
     return getHTMLTable(username)
 
+# add a video to the invalid videos list and save it
 def addToInvalidVideoList(videoId):
     global invalidVideosList
     
@@ -786,6 +789,7 @@ def addToInvalidVideoList(videoId):
     with open(invalidVideosFile, 'w', encoding='utf-8') as f:
         json.dump(invalidVideosList, f, ensure_ascii=False, indent=4)
 
+# add a video to the queue list for a given user
 def addToQueList(videoId, username):
     global userPlayList
     
@@ -801,6 +805,7 @@ def addToQueList(videoId, username):
     
     return getHTMLTable(username, "", True, False)
 
+# delete a video from the queue list for a given user
 def deleteFromQueList(videoId, username):
     global userPlayList
     
@@ -811,6 +816,7 @@ def deleteFromQueList(videoId, username):
     
     return getHTMLTable(username, "", True, False)
 
+# clear the queue list for a given user
 def clearQueList(username):
     global userPlayList
     
@@ -819,6 +825,7 @@ def clearQueList(username):
     
     return ""
 
+# add a queue list to the saved queues database
 def addToSavedQueList(username, qname, qlist):
     global savedQueList
     
@@ -827,6 +834,7 @@ def addToSavedQueList(username, qname, qlist):
     saveQueList()
     print("Saved Que List: ", key, " | ", len(qlist))
 
+# filter saved queue list keys to retrieve queues belonging to a given username
 def filterSavedQueList(username):
     global savedQueList
     
@@ -839,6 +847,7 @@ def filterSavedQueList(username):
     
     return filteredQueList
 
+# delete a saved queue list from the saved queues database
 def deleteFromSavedQueList(username, qname):
     global savedQueList
     
@@ -1012,6 +1021,7 @@ def getMixTracksHTML(mixId):
 
     return htmlString
 
+# process socket io messages from clients and perform appropriate updates
 def processMessage(json):
     global defaultPlayList, userCount, player1Video, player2Video
     
@@ -1303,33 +1313,41 @@ def processMessage(json):
     
     return json
 
+# route for the main desktop DJ interface
 @app.route('/')
 def sessions():
     return render_template('index.html', version=appVersion, bgcolor=bgColor)
 
+# route for the mobile controller interface
 @app.route('/mobile')
 def mobile():
     return render_template('indexm.html', version=appVersion, bgcolor=bgColor)
 
+# route for the MP3 playlist/player page
 @app.route('/mp3')
 def playMP3():
     return render_template('mp3.html', version=appVersion, bgcolor=bgColor)
 
+# route for the current playing video screen (/playing)
 @app.route('/playing')
 def currentVideo():
     return render_template('playing.html')
 
+# route for the VU meter display page (/vu)
 @app.route('/vu')
 def showVU():
     return render_template('vu.html')
 
+# route to display a video mix page based on mixId
 @app.route('/mix/<mixId>')
 def getMixTracks(mixId):
     return getMixTracksHTML(mixId) 
 
+# callback function executed when socket messages are successfully sent/received
 def messageReceived(methods=['GET', 'POST']):
     print('message was received!!!')
 
+# socket io event handler for custom client messages
 @socketio.on('my event')
 def handle_my_custom_event(json, methods=['GET', 'POST']):
     json = processMessage(json)
@@ -1382,7 +1400,7 @@ if __name__ == '__main__':
         print("Merging done ...")
     else:
         print("\nLoading backup playlist ...\n")
-        loadBackupUserPlayList();
+        loadBackupUserPlayList()
         print("Done loading backup ...\n")
     
     # load the video track list
