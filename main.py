@@ -6,10 +6,10 @@ A simple flask/SocketIO for building very simple youtube DJ application that
 can be shared by other users
 
 @author: Nathan
-@version: 1.17.5 (06/05/2026)
+@version: 1.18.0 (06/08/2026)
 """
 # this variables are passed onto the html templates
-appVersion = 'v1.17.5 (06/05/2026)'
+appVersion = 'v1.18.0 (06/08/2026)'
 bgColor = '#b2b2de' # no longer used but will keep for backward compatibility
 
 import os.path
@@ -622,7 +622,7 @@ def getHTMLTableRow(i, que_list, videoId, title, meta_info, videoInfo):
         rowHtml += '<br><input type="button" onclick="addToQueList(\'' + videoId + '\')" value="Q">'    
                 
     rowHtml += '</td>'
-    rowHtml += '<td><b>' + str(i) + '.</b></td>'
+    rowHtml += '<td class="video-number-cell" data-video-id="' + videoId + '" data-original-index="' + str(i) + '"><b>' + str(i) + '.</b></td>'
     rowHtml += '<td width="25%"><b>' + title + '</b><br>[' + meta_info + '] <a href="#pageTop"><button type="button" class="arrow-btn" title="Go to Top">&uArr;</button></a> <a href="#filter_list"><button type="button" class="arrow-btn" title="Go to Bottom">&dArr;</button></a> '
     
     # check to see if there is a tracklist for the video
@@ -669,7 +669,7 @@ def getHTMLTableRowForMobile(i, videoId, title, videoInfo):
     cleanTitle = cleanTitle.replace('"', '')
     
     rowHtml = '<tr><td align="center">' 
-    rowHtml += '<b>' + str(i) + '. ' + title + '<br>[' + videoInfo[2] + '] <a href="#pageTop"><button type="button" class="arrow-btn" title="Go to Top">&uArr;</button></a> <a href="#filter_list"><button type="button" class="arrow-btn" title="Go to Bottom">&dArr;</button></a>'
+    rowHtml += '<b><span class="video-number-cell" data-video-id="' + videoId + '" data-original-index="' + str(i) + '">' + str(i) + '</span>. ' + title + '<br>[' + videoInfo[2] + '] <a href="#pageTop"><button type="button" class="arrow-btn" title="Go to Top">&uArr;</button></a> <a href="#filter_list"><button type="button" class="arrow-btn" title="Go to Bottom">&dArr;</button></a>'
     
     # check to see if there is a tracklist for the video
     if videoId in videoTrackLists:

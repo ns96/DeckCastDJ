@@ -173,6 +173,8 @@ function updatePlayList(msg) {
     showVideoStatus(msg);
     alert(msg.savedVideo);
   }
+
+  updateSelectedStars();
 }
 
 // clear the playList
@@ -304,6 +306,8 @@ function updateVideo(msg) {
     currentVideoId2 = videoId;
     player2.loadVideoById(videoId, 0);
   }
+
+  updateSelectedStars();
 }
 
 function updatePlayerState(msg) {
@@ -340,6 +344,7 @@ function updateConnectedUsers(msg) {
   }
 
   connectedUsers = msg.userCount;
+  updateSelectedStars();
 }
 
 function onYouTubeIframeAPIReady() {
@@ -409,6 +414,17 @@ function onPlayer1StateChange(event) {
     setCurrentVideoPlaying(1, videoId, currentTime);
   }
 
+  if (event.data == YT.PlayerState.PLAYING) {
+    var activeId = player1.getVideoData()['video_id'];
+    if (activeId && activeId !== currentVideoId1) {
+      currentVideoId1 = activeId;
+      updateSelectedStars();
+    }
+  } else if (event.data == YT.PlayerState.ENDED) {
+    currentVideoId1 = "";
+    updateSelectedStars();
+  }
+
   player1State = event.data;
   console.log("Player1 State " + player1State + ", DJ: " + isDJ);
 }
@@ -433,6 +449,17 @@ function onPlayer2StateChange(event) {
     videoId = player2.getVideoData()['video_id'];
     currentTime = Math.floor(player2.getCurrentTime());
     setCurrentVideoPlaying(2, videoId, currentTime);
+  }
+
+  if (event.data == YT.PlayerState.PLAYING) {
+    var activeId = player2.getVideoData()['video_id'];
+    if (activeId && activeId !== currentVideoId2) {
+      currentVideoId2 = activeId;
+      updateSelectedStars();
+    }
+  } else if (event.data == YT.PlayerState.ENDED) {
+    currentVideoId2 = "";
+    updateSelectedStars();
   }
 
   player2State = event.data;
@@ -1402,6 +1429,8 @@ function loadVideoForPlayer(playerNum, videoId) {
     clientId: clientId
   };
   socket.emit('my event', jsonTextTrack);
+
+  updateSelectedStars();
 }
 
 // add listener to filter text input to load the playlist
@@ -1533,6 +1562,9 @@ function isPrivate() {
 // reset data on the server
 function resetValues() {
   connectedUsers = 1;
+  currentVideoId1 = "";
+  currentVideoId2 = "";
+  updateSelectedStars();
 
   jsonText = {
     data: 'RESET',
@@ -1789,4 +1821,29 @@ function handleTracklistOnlyResponse(msg) {
       }
     }
   }
+}
+
+// update the star selection indicators in the playlist and queue tables
+function updateSelectedStars() {
+  var cells = document.querySelectorAll(".video-number-cell");
+  cells.forEach(function (cell) {
+    var videoId = cell.getAttribute("data-video-id");
+    var originalIndex = cell.getAttribute("data-original-index");
+    
+    if (!videoId || !originalIndex) return;
+
+    // Reset base content
+    if (cell.tagName.toLowerCase() === 'span') {
+      cell.innerHTML = originalIndex;
+    } else {
+      cell.innerHTML = "<b>" + originalIndex + ".</b>";
+    }
+
+    // Prepend appropriate star if matches player 1 or player 2 active video ID
+    if (videoId === currentVideoId1) {
+      cell.innerHTML = '<span class="player-star player-1-star">★</span>' + cell.innerHTML;
+    } else if (videoId === currentVideoId2) {
+      cell.innerHTML = '<span class="player-star player-2-star">★</span>' + cell.innerHTML;
+    }
+  });
 }
