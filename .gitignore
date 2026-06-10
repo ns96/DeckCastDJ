@@ -181,3 +181,6 @@ queList.json
 
 # ignore files in .vscode folder
 .vscode/
+
+# ignore files in ytd 
+ytd/
