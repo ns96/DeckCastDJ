@@ -22,7 +22,27 @@ Based on the requirements, a workable webapp was built using the YouTube Player 
 ## TO-DOS
 * A modern user interface instead if the current barebones interface.
 * Implement "rooms" to allow multiple people to use the service.
-* Improve Automixng functionality
+* Improve Automixing functionality
 * Clean up Python code 
 * Move away from using pafy which has issues working with the current YouTube API (https://stackoverflow.com/questions/70344739/backend-youtube-dl-py-line-54-in-fetch-basic-self-dislikes-self-ydl-info)
 * Make this a more user friendly app that none programmers can deploy, maybe use a VM appliance?
+
+## Legacy pafy Workaround
+
+You must patch the installed `pafy` package inside your active Python environment's `site-packages` directory:
+
+1. **Redirect `pafy` to use `yt-dlp`**
+   Locate both `pafy/pafy.py` and `pafy/backend_youtube_dl.py` in your environment's `site-packages` directory. Redirect backend imports from the unmaintained `youtube-dl` library to `yt-dlp` by editing the import line in both files:
+   ```diff
+   - import youtube_dl
+   + import yt_dlp as youtube_dl
+   ```
+
+2. **Fix `dislike_count` KeyError**
+   To prevent `pafy` from crashing due to YouTube removing public dislike counts, locate lines 53–54 in `pafy/backend_youtube_dl.py` and modify them to use safe `.get()` defaults or just comment out the `self._dislikes` line:
+   ```diff
+   - self._likes = self._ydl_info['like_count']
+   - self._dislikes = self._ydl_info['dislike_count']
+   + self._likes = self._ydl_info.get('like_count', 0)
+   + self._dislikes = self._ydl_info.get('dislike_count', 0)
+   ```

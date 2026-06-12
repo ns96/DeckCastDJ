@@ -6,7 +6,7 @@ SciPy spectral analysis to see when the music changes in long video mixes
 then assigns this changes as track 1 ... N for the various sections
 
 @author: Nathan
-@version: 0.3.0 (06/10/2026)
+@version: 0.4.0 (06/10/2026)
 """
 
 import os
@@ -17,21 +17,36 @@ import subprocess
 import numpy as np
 import scipy.signal
 from scipy.io import wavfile
+from scipy.ndimage import median_filter
 import yt_dlp
+import json
 
 # Global defaults (can be edited to set defaults for script execution)
-DEFAULT_VIDEO_ID = "1Tn1S86A44Y"
+DEFAULT_VIDEO_ID = "PnGobxRiN88"
+
+# DEFAULT_METHOD: Toggle between 'adaptive' and 'fixed' peak detection
+# - 'adaptive': Threshold height adjusts dynamically based on a rolling median of the novelty curve + offset.
+# - 'fixed': Standard static peak prominence thresholding.
+DEFAULT_METHOD = "adaptive"
+#DEFAULT_METHOD = "fixed"
 
 # DEFAULT_MIN_DISTANCE: The minimum separation (in seconds) required between two transition peaks.
 # - Lower values (e.g., 30 - 45s) are ideal for fast-paced DJ sets (like Moombahton or quick Dancehall mixes).
 # - Higher values (e.g., 90 - 120s) prevent false detections (e.g., mistaking a song's breakdown or build-up as a new track).
-DEFAULT_MIN_DISTANCE = 25   
+DEFAULT_MIN_DISTANCE = 45  
 
-# DEFAULT_PROMINENCE: The peak detection prominence threshold (how distinct a peak must be relative to its local basin).
-# - Novelty score distance ranges from 0.0 to 1.0.
-# - Lower values (e.g., 0.04 - 0.06) are highly sensitive, capturing smooth crossfades and beat-matched/same-riddim song transitions, but may introduce false positives during quiet parts.
-# - Higher values (e.g., 0.08 - 0.12) only capture prominent transitions (e.g., sudden genre/key cuts or distinct tempo shifts).
-DEFAULT_PROMINENCE = 0.043   
+# DEFAULT_PROMINENCE: Only used for 'fixed' method. The static peak prominence threshold (0.0 to 1.0).
+DEFAULT_PROMINENCE = 0.035   
+
+# DEFAULT_ADAPTIVE_WINDOW: Only used for 'adaptive' method. The window size in seconds for the rolling median filter.
+# - Larger windows (e.g., 120 - 180s) provide a more stable historical baseline.
+# - Smaller windows (e.g., 60 - 90s) adjust quickly to rapid dynamic changes, but might be influenced by longer song builds.
+DEFAULT_ADAPTIVE_WINDOW = 150
+
+# DEFAULT_THRESHOLD_OFFSET: Only used for 'adaptive' method. The height offset added to the rolling median threshold.
+# - Lower values (e.g., 0.03 - 0.04) are more sensitive and catch subtle transitions.
+# - Higher values (e.g., 0.05 - 0.07) are more conservative and filter out local noise.
+DEFAULT_THRESHOLD_OFFSET = 0.02
 
 def format_timestamp(seconds):
     """Converts seconds into HH:MM:SS or MM:SS format."""
@@ -125,7 +140,7 @@ def compute_novelty_curve(features, W):
     novelty = 1.0 - cosine_similarity
     return novelty
 
-def segment_audio(wav_path, min_distance_sec, prominence):
+def segment_audio(wav_path, min_distance_sec, method=DEFAULT_METHOD, prominence=DEFAULT_PROMINENCE, adaptive_window_sec=DEFAULT_ADAPTIVE_WINDOW, threshold_offset=DEFAULT_THRESHOLD_OFFSET):
     """
     Loads downsampled WAV file, calculates transition novelty via STFT,
     and returns list of transition timestamps.
@@ -175,17 +190,40 @@ def segment_audio(wav_path, min_distance_sec, prominence):
     # Minimum track length (in frames)
     min_dist_frames = int(round(min_distance_sec * sr / hop_length))
     
-    # Find local maxima peaks in the novelty curve
-    peaks, _ = scipy.signal.find_peaks(
-        novelty, 
-        distance=min_dist_frames, 
-        prominence=prominence
-    )
+    # Find local maxima peaks in the novelty curve based on the chosen method
+    if method == "adaptive":
+        # Calculate local median filter size in frames
+        kernel_size = int(round(adaptive_window_sec * sr / hop_length))
+        if kernel_size % 2 == 0:
+            kernel_size += 1
+            
+        # Calculate adaptive threshold curve
+        local_median = median_filter(novelty, size=kernel_size)
+        threshold_curve = local_median + threshold_offset
+        
+        # Find peaks exceeding the local threshold height
+        peaks, _ = scipy.signal.find_peaks(
+            novelty, 
+            distance=min_dist_frames, 
+            height=threshold_curve
+        )
+        print(f"Applying adaptive threshold (window={adaptive_window_sec}s, offset={threshold_offset}). Found {len(peaks)} candidate transitions.")
+    else:  # "fixed"
+        # Find peaks using standard global prominence threshold
+        peaks, _ = scipy.signal.find_peaks(
+            novelty, 
+            distance=min_dist_frames, 
+            prominence=prominence
+        )
+        print(f"Applying fixed prominence threshold ({prominence}). Found {len(peaks)} candidate transitions.")
     
     # Convert peak frame indices to timestamps (seconds)
     timestamps = times[peaks]
+    
+    # Filter out transitions too close to the start or end of the track to avoid false positives (e.g., final fade-out)
+    valid_transitions = [t for t in timestamps if t > 10 and t < duration - 20]
         
-    return list(timestamps)
+    return valid_transitions
 
 def main():
     parser = argparse.ArgumentParser(
@@ -203,6 +241,12 @@ def main():
         help="Delete the downloaded audio file in ytd/ after processing (default: keep/cache it)"
     )
     parser.add_argument(
+        "--method",
+        choices=["fixed", "adaptive"],
+        default=DEFAULT_METHOD,
+        help=f"Transition detection method: 'adaptive' or 'fixed' (default: {DEFAULT_METHOD})"
+    )
+    parser.add_argument(
         "--min-distance",
         type=int,
         default=DEFAULT_MIN_DISTANCE,
@@ -212,7 +256,19 @@ def main():
         "--prominence",
         type=float,
         default=DEFAULT_PROMINENCE,
-        help=f"Peak detection prominence threshold (default: {DEFAULT_PROMINENCE})"
+        help=f"Peak detection prominence threshold for 'fixed' method (default: {DEFAULT_PROMINENCE})"
+    )
+    parser.add_argument(
+        "--adaptive-window",
+        type=int,
+        default=DEFAULT_ADAPTIVE_WINDOW,
+        help=f"Adaptive threshold rolling median window in seconds (default: {DEFAULT_ADAPTIVE_WINDOW})"
+    )
+    parser.add_argument(
+        "--offset",
+        type=float,
+        default=DEFAULT_THRESHOLD_OFFSET,
+        help=f"Adaptive threshold height offset above median (default: {DEFAULT_THRESHOLD_OFFSET})"
     )
     
     args = parser.parse_args()
@@ -224,25 +280,56 @@ def main():
         # Segment mix and find transition boundaries
         transitions = segment_audio(
             filepath, 
-            args.min_distance, 
-            args.prominence
+            min_distance_sec=args.min_distance,
+            method=args.method,
+            prominence=args.prominence,
+            adaptive_window_sec=args.adaptive_window,
+            threshold_offset=args.offset
         )
         
-        # Build tracklist output
+        # Build tracklist output and prepare list for JSON saving
         print("\n" + "="*40)
         print("GENERATED TRACKLIST")
         print("="*40)
         
         # All mixes start with Track 1 at 00:00
         print(f"00:00 Track 1")
+        track_list = ["00:00 Track 1"]
         
         track_num = 2
         for t in transitions:
             # Avoid placing a peak at the absolute start
             if t > 10:
-                print(f"{format_timestamp(t)} Track {track_num}")
+                track_str = f"{format_timestamp(t)} Track {track_num}"
+                print(track_str)
+                track_list.append(track_str)
                 track_num += 1
         print("="*40 + "\n")
+        
+        # Save results to data/tracknums.json
+        os.makedirs("data", exist_ok=True)
+        json_path = os.path.join("data", "tracknums.json")
+        
+        # Load existing database if it exists
+        tracknums_data = {}
+        if os.path.exists(json_path):
+            try:
+                with open(json_path, 'r', encoding='utf-8') as f:
+                    tracknums_data = json.load(f)
+            except Exception as e:
+                print(f"Warning: Could not parse existing {json_path} ({e}). Starting fresh.")
+                tracknums_data = {}
+                
+        # Update record for the current video
+        tracknums_data[args.video_id] = track_list
+        
+        # Write updated database back to disk
+        try:
+            with open(json_path, 'w', encoding='utf-8') as f:
+                json.dump(tracknums_data, f, indent=2)
+            print(f"Saved track listing to {json_path}.")
+        except Exception as e:
+            print(f"Error saving track listing to {json_path}: {e}")
         
     finally:
         # Perform cleanup if requested
