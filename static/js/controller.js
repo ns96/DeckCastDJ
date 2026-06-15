@@ -113,6 +113,26 @@ socket.on('my response', function (msg) {
     }
   }
 
+  // see if to show the track numbers dialog
+  if (msg.data.includes("View Track Numbers")) {
+    if (msg.clientId === clientId) {
+      showTrackNumbersDialog(msg);
+    }
+  }
+
+  // handle extract track numbers events
+  if (msg.data.includes("Extract Track Numbers Done")) {
+    if (msg.clientId === clientId) {
+      handleExtractTrackNumbersDone(msg);
+    }
+  }
+
+  if (msg.data.includes("Extract Track Numbers Error")) {
+    if (msg.clientId === clientId) {
+      handleExtractTrackNumbersError(msg);
+    }
+  }
+
   if (msg.data.includes("Get Progress")) {
     updateLoadingProgress(msg);
   }
@@ -895,6 +915,272 @@ function selectOrEditBookmarks(msg) {
   };
 }
 
+// function to show the track numbers dialog for a video mix
+function showTrackNumbersDialog(msg) {
+  // Configurable Extraction Defaults (only initialized once per page load)
+  if (!window.activeTNSettings) {
+    window.activeTNSettings = {
+      method: "adaptive",
+      min_distance: 45,
+      adaptive_window: 150,
+      offset: 0.02,
+      prominence: 0.035
+    };
+  }
+
+  var dialogTitle = msg.title || "Track Numbers";
+  var videoId = msg.videoId;
+  var playerNum = msg.playerNum;
+
+  var tracks = msg.trackNumbers || [];
+
+  // Remove any existing overlay
+  var oldModal = document.getElementById("app-dialog-overlay");
+  if (oldModal) oldModal.remove();
+
+  var overlay = document.createElement("div");
+  overlay.id = "app-dialog-overlay";
+  overlay.className = "app-modal-overlay";
+
+  var content = document.createElement("div");
+  content.className = "app-modal-content";
+  content.style.maxWidth = "600px";
+
+  // Modal Header
+  var header = document.createElement("div");
+  header.className = "app-modal-header";
+  header.innerHTML = `<h3>Track Numbers: ${dialogTitle}</h3><button class="app-modal-close-btn">&times;</button>`;
+  content.appendChild(header);
+
+  header.querySelector(".app-modal-close-btn").onclick = function () { overlay.remove(); };
+
+  // Modal Body containing settings form and tracks list
+  var body = document.createElement("div");
+  body.className = "app-modal-body";
+
+  // Create tuning inputs HTML
+  var settingsDiv = document.createElement("div");
+  settingsDiv.className = "tn-settings-container";
+  settingsDiv.style.marginBottom = "20px";
+  settingsDiv.style.padding = "15px";
+  settingsDiv.style.border = "1px solid var(--border-color)";
+  settingsDiv.style.borderRadius = "8px";
+  settingsDiv.style.backgroundColor = "var(--bg-control)";
+
+  settingsDiv.innerHTML = `
+    <h4 style="margin: 0 0 12px 0; color: var(--text-header); font-size: 14px;">Tuning Settings</h4>
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px;">
+      <div>
+        <label for="tn-method" style="display:block; font-size:11px; font-weight:bold; margin-bottom:4px;">Method:</label>
+        <select id="tn-method" style="width:100%; box-sizing:border-box;">
+          <option value="adaptive" ${window.activeTNSettings.method === "adaptive" ? "selected" : ""}>Adaptive Threshold</option>
+          <option value="fixed" ${window.activeTNSettings.method === "fixed" ? "selected" : ""}>Fixed Prominence</option>
+        </select>
+      </div>
+      <div>
+        <label for="tn-min-distance" style="display:block; font-size:11px; font-weight:bold; margin-bottom:4px;">Min Distance (s):</label>
+        <input type="number" id="tn-min-distance" value="${window.activeTNSettings.min_distance}" min="5" max="600" style="width:100%; box-sizing:border-box; padding:6px; font-size:12px;" />
+      </div>
+    </div>
+    
+    <div id="tn-adaptive-settings" style="display: ${window.activeTNSettings.method === "adaptive" ? "grid" : "none"}; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px;">
+      <div>
+        <label for="tn-adaptive-window" style="display:block; font-size:11px; font-weight:bold; margin-bottom:4px;">Adaptive Window (s):</label>
+        <input type="number" id="tn-adaptive-window" value="${window.activeTNSettings.adaptive_window}" min="10" max="600" style="width:100%; box-sizing:border-box; padding:6px; font-size:12px;" />
+      </div>
+      <div>
+        <label for="tn-offset" style="display:block; font-size:11px; font-weight:bold; margin-bottom:4px;">Threshold Offset:</label>
+        <input type="number" id="tn-offset" value="${window.activeTNSettings.offset}" step="0.001" min="0.001" max="0.5" style="width:100%; box-sizing:border-box; padding:6px; font-size:12px;" />
+      </div>
+    </div>
+    
+    <div id="tn-fixed-settings" style="display: ${window.activeTNSettings.method === "fixed" ? "block" : "none"}; margin-bottom: 12px;">
+      <label for="tn-prominence" style="display:block; font-size:11px; font-weight:bold; margin-bottom:4px;">Peak Prominence:</label>
+      <input type="number" id="tn-prominence" value="${window.activeTNSettings.prominence}" step="0.001" min="0.001" max="0.5" style="width:100%; box-sizing:border-box; padding:6px; font-size:12px;" />
+    </div>
+    
+    <div style="margin-top: 15px;">
+      <button id="tn-extract-btn" style="width: 100%; padding: 8px; font-size: 13px;">Extract Tracks</button>
+    </div>
+    <div id="tn-status" style="margin-top: 10px; font-size: 12px; text-align: center; color: var(--accent-primary); display: none;">
+      <span class="loader-spinner" style="width: 14px; height: 14px; border-width: 2px; display: inline-block; vertical-align: middle; margin-right: 8px;"></span>
+      <span id="tn-status-text" style="vertical-align: middle;">Extracting tracks (SciPy analysis takes ~10-30s)...</span>
+    </div>
+  `;
+  body.appendChild(settingsDiv);
+
+  // Toggle settings visibility based on method selection
+  var methodSelect = settingsDiv.querySelector("#tn-method");
+  var adaptiveSettings = settingsDiv.querySelector("#tn-adaptive-settings");
+  var fixedSettings = settingsDiv.querySelector("#tn-fixed-settings");
+
+  methodSelect.onchange = function () {
+    if (methodSelect.value === "adaptive") {
+      adaptiveSettings.style.display = "grid";
+      fixedSettings.style.display = "none";
+    } else {
+      adaptiveSettings.style.display = "none";
+      fixedSettings.style.display = "block";
+    }
+  };
+
+  // Setup extraction click action
+  var extractBtn = settingsDiv.querySelector("#tn-extract-btn");
+  var statusDiv = settingsDiv.querySelector("#tn-status");
+
+  extractBtn.onclick = function () {
+    extractBtn.disabled = true;
+    statusDiv.style.display = "block";
+    methodSelect.disabled = true;
+    settingsDiv.querySelectorAll("input").forEach(function(input) { input.disabled = true; });
+
+    // Update active settings so they are preserved upon reload
+    window.activeTNSettings.method = methodSelect.value;
+    window.activeTNSettings.min_distance = parseInt(settingsDiv.querySelector("#tn-min-distance").value) || window.activeTNSettings.min_distance;
+    window.activeTNSettings.prominence = parseFloat(settingsDiv.querySelector("#tn-prominence").value) || window.activeTNSettings.prominence;
+    window.activeTNSettings.adaptive_window = parseInt(settingsDiv.querySelector("#tn-adaptive-window").value) || window.activeTNSettings.adaptive_window;
+    window.activeTNSettings.offset = parseFloat(settingsDiv.querySelector("#tn-offset").value) || window.activeTNSettings.offset;
+
+    var jsonText = {
+      data: 'Extract Track Numbers',
+      videoId: videoId,
+      playerNum: playerNum,
+      title: dialogTitle,
+      clientId: clientId,
+      method: window.activeTNSettings.method,
+      min_distance: window.activeTNSettings.min_distance,
+      prominence: window.activeTNSettings.prominence,
+      adaptive_window: window.activeTNSettings.adaptive_window,
+      offset: window.activeTNSettings.offset
+    };
+    socket.emit('my event', jsonText);
+  };
+
+  // Add Tracks section title
+  var listHeader = document.createElement("h4");
+  listHeader.innerText = "Current Tracks (" + tracks.length + ")";
+  listHeader.style.margin = "20px 0 10px 0";
+  listHeader.style.borderBottom = "1px solid var(--border-color)";
+  listHeader.style.paddingBottom = "5px";
+  listHeader.style.fontSize = "14px";
+  body.appendChild(listHeader);
+
+  // Tracks list/table
+  var tracksContainer = document.createElement("div");
+  tracksContainer.id = "tn-tracks-container";
+
+  if (tracks.length === 0) {
+    tracksContainer.innerHTML = "<p style='text-align:center; opacity: 0.7; font-size:12px; margin: 15px 0;'>No track numbers extracted yet for this video.</p>";
+  } else {
+    var table = document.createElement("table");
+    table.className = "bm-table";
+    table.innerHTML = `
+      <thead>
+        <tr>
+          <th width="30%">Time</th>
+          <th width="70%">Track Label</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    `;
+    var tbody = table.querySelector("tbody");
+
+    tracks.forEach(function (trackLine) {
+      // Split into time and title
+      // Format is e.g. "03:46 Track 2" or "01:02:31 Track 15"
+      var spaceIdx = trackLine.indexOf(' ');
+      if (spaceIdx === -1) return;
+      var timeStr = trackLine.substring(0, spaceIdx);
+      var label = trackLine.substring(spaceIdx + 1);
+
+      var row = document.createElement("tr");
+      row.innerHTML = `
+        <td><span class="bm-time-link" title="Jump to time">${timeStr}</span></td>
+        <td><span style="color: var(--text-main); font-weight: bold;">${label}</span></td>
+      `;
+
+      var secs = parseTimeToSeconds(timeStr);
+      row.querySelector(".bm-time-link").onclick = function () {
+        var player = (playerNum == 1) ? player1 : player2;
+        if (player && typeof player.seekTo === "function") {
+          player.seekTo(secs, true);
+        }
+      };
+
+      tbody.appendChild(row);
+    });
+
+    tracksContainer.appendChild(table);
+  }
+  body.appendChild(tracksContainer);
+  content.appendChild(body);
+
+  // Modal Footer
+  var footer = document.createElement("div");
+  footer.className = "app-modal-footer";
+  var closeBtn = document.createElement("button");
+  closeBtn.className = "secondary-btn";
+  closeBtn.innerText = "Close";
+  closeBtn.onclick = function () { overlay.remove(); };
+  footer.appendChild(closeBtn);
+  content.appendChild(footer);
+
+  overlay.appendChild(content);
+  document.body.appendChild(overlay);
+
+  // Close modal when clicking outside content area
+  overlay.onclick = function (e) {
+    if (e.target === overlay) {
+      overlay.remove();
+    }
+  };
+}
+
+// helper function to parse time format HH:MM:SS or MM:SS to seconds
+function parseTimeToSeconds(timeStr) {
+  var parts = timeStr.split(':');
+  var secs = 0;
+  if (parts.length === 3) {
+    secs += parseInt(parts[0]) * 3600;
+    secs += parseInt(parts[1]) * 60;
+    secs += parseInt(parts[2]);
+  } else if (parts.length === 2) {
+    secs += parseInt(parts[0]) * 60;
+    secs += parseInt(parts[1]);
+  }
+  return secs;
+}
+
+// socket event response when track extraction finishes successfully
+function handleExtractTrackNumbersDone(msg) {
+  var overlay = document.getElementById("app-dialog-overlay");
+  if (overlay) {
+    var methodInput = document.getElementById("tn-method");
+    if (methodInput) {
+      // Re-render the modal with the new tracks
+      showTrackNumbersDialog(msg);
+      return;
+    }
+  }
+}
+
+// socket event response when track extraction fails
+function handleExtractTrackNumbersError(msg) {
+  var overlay = document.getElementById("app-dialog-overlay");
+  if (overlay) {
+    var extractBtn = document.getElementById("tn-extract-btn");
+    var statusDiv = document.getElementById("tn-status");
+    var methodSelect = document.getElementById("tn-method");
+    if (extractBtn && statusDiv && methodSelect) {
+      extractBtn.disabled = false;
+      statusDiv.style.display = "none";
+      methodSelect.disabled = false;
+      overlay.querySelectorAll("input").forEach(function(input) { input.disabled = false; });
+    }
+  }
+  alert("Error extracting tracks: " + msg.message);
+}
+
 // function to add a bookmark for the current video and time
 function addBookmarkForPlayer(playerNum) {
   var videoId;
@@ -952,6 +1238,36 @@ function getBookmarks(playerNum, videoId, title) {
   socket.emit('my event', jsonText);
 
   console.log("Getting Bookmarks For Video ID: " + videoId + "\n" + title);
+}
+
+// function to request track numbers view for the active video of a player
+function showTrackNumbersDialogForPlayer(playerNum) {
+  var videoId;
+  var title;
+
+  if (playerNum == 1) {
+    videoId = player1.getVideoData()['video_id'];
+    title = player1.getVideoData()['title'];
+  } else {
+    videoId = player2.getVideoData()['video_id'];
+    title = player2.getVideoData()['title'];
+  }
+
+  getTrackNumbers(playerNum, videoId, title);
+}
+
+// function to request track numbers list from the server
+function getTrackNumbers(playerNum, videoId, title) {
+  var jsonText = {
+    data: 'View Track Numbers',
+    playerNum: playerNum,
+    videoId: videoId,
+    title: title,
+    clientId: clientId
+  };
+  socket.emit('my event', jsonText);
+
+  console.log("Getting Track Numbers For Video ID: " + videoId + "\n" + title);
 }
 
 // function to display the bookmarks dialog without jump links for a search/playlist row

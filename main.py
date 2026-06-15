@@ -23,6 +23,7 @@ import pickle
 from config import app_port, youtubeApiKey, useYoutube, youtubePL
 from flask import Flask, render_template, request
 from flask_socketio import SocketIO
+from trackext import extract_tracks
 
 os.chdir(os.path.dirname(__file__))
 
@@ -55,6 +56,10 @@ videoTrackLists = dict()
 # dictionary to store the bookmarks for a video
 bookmarksFile = 'data/bookmarks.json'
 videoBookmarks = dict()
+
+# dictionary to store the extracted track numbers for a video
+trackNumbersFile = 'data/tracknums.json'
+videoTrackNumbers = dict()
 
 # dictionary to hold tracks being displayed on /playing html page
 mixTracks = dict()
@@ -235,6 +240,37 @@ def loadQueuePlaylistInBackground(username, url, clientId):
             'clientId': clientId
         })
 
+# background task to run the SciPy track extractor on the backend
+def extractTracksInBackground(videoId, method, min_distance, prominence, adaptive_window, offset, clientId, playerNum, title):
+    try:
+        print(f"Starting track extraction for {videoId} (client: {clientId})...")
+        extract_tracks(
+            video_id=videoId,
+            delete=False,
+            method=method,
+            min_distance=min_distance,
+            prominence=prominence,
+            adaptive_window=adaptive_window,
+            offset=offset
+        )
+        loadTrackNumbers() # Refresh cache from disk
+        socketio.emit('my response', {
+            'data': 'Extract Track Numbers Done',
+            'videoId': videoId,
+            'playerNum': playerNum,
+            'title': title,
+            'trackNumbers': videoTrackNumbers.get(videoId, []),
+            'clientId': clientId
+        })
+        print(f"Track extraction complete for {videoId}.")
+    except Exception as e:
+        print(f"Error in extractTracksInBackground: {e}")
+        socketio.emit('my response', {
+            'data': 'Extract Track Numbers Error',
+            'message': str(e),
+            'clientId': clientId
+        })
+
 # save the tracklists database to json file
 def saveTrackLists():
     global videoTrackLists
@@ -264,6 +300,18 @@ def loadBookmarks():
     if os.path.isfile(bookmarksFile):
         with open(bookmarksFile) as json_file:
             videoBookmarks = json.load(json_file)
+
+# load the track numbers database from json file
+def loadTrackNumbers():
+    global videoTrackNumbers
+    
+    if os.path.isfile(trackNumbersFile):
+        try:
+            with open(trackNumbersFile, 'r', encoding='utf-8') as json_file:
+                videoTrackNumbers = json.load(json_file)
+        except Exception as e:
+            print("Error loading tracknums:", e)
+            videoTrackNumbers = dict()
 
 # function to merge two youtube playlist
 def mergeYouTubePlayList(username, url):
@@ -1240,6 +1288,31 @@ def processMessage(json):
         if videoId in videoBookmarks:
             videoBookmarks[videoId] = []
             saveBookmarks()
+
+    # see if to view track numbers for a video
+    if 'View Track Numbers' in msgTitle:
+        videoId = json['videoId']
+        # Make sure our database cache matches disk
+        loadTrackNumbers()
+        json['trackNumbers'] = videoTrackNumbers.get(videoId, [])
+
+    # see if to trigger track numbers extraction
+    if 'Extract Track Numbers' in msgTitle:
+        videoId = json['videoId']
+        method = json.get('method', 'adaptive')
+        min_distance = int(json.get('min_distance', 45))
+        prominence = float(json.get('prominence', 0.035))
+        adaptive_window = int(json.get('adaptive_window', 150))
+        offset = float(json.get('offset', 0.02))
+        clientId = json['clientId']
+        playerNum = json['playerNum']
+        title = json['title']
+
+        socketio.start_background_task(
+            extractTracksInBackground,
+            videoId, method, min_distance, prominence, adaptive_window, offset,
+            clientId, playerNum, title
+        )
     
     # delete a video from the playlist.
     if 'Delete Video' in msgTitle:
@@ -1360,7 +1433,10 @@ def handle_my_custom_event(json, methods=['GET', 'POST']):
         "View Bookmarks", 
         "Get TrackList Only", 
         "Get Progress", 
-        "Check Video Status"
+        "Check Video Status",
+        "View Track Numbers",
+        "Extract Track Numbers Done",
+        "Extract Track Numbers Error"
     ]
     
     msg_title = json.get('data', '')
@@ -1410,6 +1486,9 @@ if __name__ == '__main__':
     
     # load the bookmarks database
     loadBookmarks()
+    
+    # load the track numbers database
+    loadTrackNumbers()
     
     serverStarted = True
     
