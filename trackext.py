@@ -225,6 +225,84 @@ def segment_audio(wav_path, min_distance_sec, method=DEFAULT_METHOD, prominence=
         
     return valid_transitions
 
+def extract_tracks(video_id, delete=False, method=DEFAULT_METHOD, 
+                   min_distance=DEFAULT_MIN_DISTANCE, prominence=DEFAULT_PROMINENCE, 
+                   adaptive_window=DEFAULT_ADAPTIVE_WINDOW, offset=DEFAULT_THRESHOLD_OFFSET):
+    """
+    Downloads (if not cached), segments the mix, compiles the tracklist,
+    saves the result to data/tracknums.json, and returns the tracklist.
+    """
+    # Download or get audio file path
+    filepath = get_audio_file(video_id)
+    
+    try:
+        # Segment mix and find transition boundaries
+        transitions = segment_audio(
+            filepath, 
+            min_distance_sec=min_distance,
+            method=method,
+            prominence=prominence,
+            adaptive_window_sec=adaptive_window,
+            threshold_offset=offset
+        )
+        
+        # Build tracklist output and prepare list for JSON saving
+        print("\n" + "="*40)
+        print("GENERATED TRACKLIST")
+        print("="*40)
+        
+        # All mixes start with Track 1 at 00:00
+        print(f"00:00 Track 1")
+        track_list = ["00:00 Track 1"]
+        
+        track_num = 2
+        for t in transitions:
+            # Avoid placing a peak at the absolute start
+            if t > 10:
+                track_str = f"{format_timestamp(t)} Track {track_num}"
+                print(track_str)
+                track_list.append(track_str)
+                track_num += 1
+        print("="*40 + "\n")
+        
+        # Save results to data/tracknums.json
+        os.makedirs("data", exist_ok=True)
+        json_path = os.path.join("data", "tracknums.json")
+        
+        # Load existing database if it exists
+        tracknums_data = {}
+        if os.path.exists(json_path):
+            try:
+                with open(json_path, 'r', encoding='utf-8') as f:
+                    tracknums_data = json.load(f)
+            except Exception as e:
+                print(f"Warning: Could not parse existing {json_path} ({e}). Starting fresh.")
+                tracknums_data = {}
+                
+        # Update record for the current video
+        tracknums_data[video_id] = track_list
+        
+        # Write updated database back to disk
+        try:
+            with open(json_path, 'w', encoding='utf-8') as f:
+                json.dump(tracknums_data, f, indent=2)
+            print(f"Saved track listing to {json_path}.")
+        except Exception as e:
+            print(f"Error saving track listing to {json_path}: {e}")
+            
+        return track_list
+        
+    finally:
+        # Perform cleanup if requested
+        if delete:
+            if os.path.exists(filepath):
+                print(f"Cleaning up: deleting {filepath}...")
+                try:
+                    os.remove(filepath)
+                    print("File deleted.")
+                except Exception as e:
+                    print(f"Error deleting file: {e}")
+
 def main():
     parser = argparse.ArgumentParser(
         description="Extract track transition timestamps from a YouTube video mix using JIT-free SciPy."
@@ -273,74 +351,15 @@ def main():
     
     args = parser.parse_args()
     
-    # Download or get audio file path
-    filepath = get_audio_file(args.video_id)
-    
-    try:
-        # Segment mix and find transition boundaries
-        transitions = segment_audio(
-            filepath, 
-            min_distance_sec=args.min_distance,
-            method=args.method,
-            prominence=args.prominence,
-            adaptive_window_sec=args.adaptive_window,
-            threshold_offset=args.offset
-        )
-        
-        # Build tracklist output and prepare list for JSON saving
-        print("\n" + "="*40)
-        print("GENERATED TRACKLIST")
-        print("="*40)
-        
-        # All mixes start with Track 1 at 00:00
-        print(f"00:00 Track 1")
-        track_list = ["00:00 Track 1"]
-        
-        track_num = 2
-        for t in transitions:
-            # Avoid placing a peak at the absolute start
-            if t > 10:
-                track_str = f"{format_timestamp(t)} Track {track_num}"
-                print(track_str)
-                track_list.append(track_str)
-                track_num += 1
-        print("="*40 + "\n")
-        
-        # Save results to data/tracknums.json
-        os.makedirs("data", exist_ok=True)
-        json_path = os.path.join("data", "tracknums.json")
-        
-        # Load existing database if it exists
-        tracknums_data = {}
-        if os.path.exists(json_path):
-            try:
-                with open(json_path, 'r', encoding='utf-8') as f:
-                    tracknums_data = json.load(f)
-            except Exception as e:
-                print(f"Warning: Could not parse existing {json_path} ({e}). Starting fresh.")
-                tracknums_data = {}
-                
-        # Update record for the current video
-        tracknums_data[args.video_id] = track_list
-        
-        # Write updated database back to disk
-        try:
-            with open(json_path, 'w', encoding='utf-8') as f:
-                json.dump(tracknums_data, f, indent=2)
-            print(f"Saved track listing to {json_path}.")
-        except Exception as e:
-            print(f"Error saving track listing to {json_path}: {e}")
-        
-    finally:
-        # Perform cleanup if requested
-        if args.delete:
-            if os.path.exists(filepath):
-                print(f"Cleaning up: deleting {filepath}...")
-                try:
-                    os.remove(filepath)
-                    print("File deleted.")
-                except Exception as e:
-                    print(f"Error deleting file: {e}")
+    extract_tracks(
+        video_id=args.video_id,
+        delete=args.delete,
+        method=args.method,
+        min_distance=args.min_distance,
+        prominence=args.prominence,
+        adaptive_window=args.adaptive_window,
+        offset=args.offset
+    )
 
 if __name__ == "__main__":
     main()
