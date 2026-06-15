@@ -6,10 +6,10 @@ A simple flask/SocketIO for building very simple youtube DJ application that
 can be shared by other users
 
 @author: Nathan
-@version: 1.18.0 (06/08/2026)
+@version: 1.19.0 (06/15/2026)
 """
 # this variables are passed onto the html templates
-appVersion = 'v1.18.0 (06/08/2026)'
+appVersion = 'v1.19.0 (06/15/2026)'
 bgColor = '#b2b2de' # no longer used but will keep for backward compatibility
 
 import os.path
@@ -146,8 +146,10 @@ def loadYouTubePlayList(username, url, forQue=False):
         playlistKey = username.title()
         username = username.lower()
         
+        is_cached = False
         if url in pafyCache.keys():
             youtubeList = pafyCache[url]
+            is_cached = True
         else:
             youtubeList = pafy.get_playlist2(url)
             pafyCache[url] = youtubeList
@@ -166,8 +168,8 @@ def loadYouTubePlayList(username, url, forQue=False):
                 playlist[video.videoid] = [video.title, video.thumb, video.duration, video.published, username]
                 print(loadingText, video.videoid, video.title, video.thumb, video.duration, "\n")
                 
-                # Yield control cooperatively to let the server handle progress polls (only when active)
-                if serverStarted:
+                # Yield control cooperatively to let the server handle progress polls (only when active and not cached)
+                if serverStarted and not is_cached and (videoCount % 5 == 0):
                     socketio.sleep(0.01)
             else:
                 print("Deleted video:", video.videoid)
