@@ -20,6 +20,10 @@ from scipy.io import wavfile
 from scipy.ndimage import median_filter
 import yt_dlp
 import json
+import threading
+
+# Thread lock for saving/writing data/tracknums.json
+save_lock = threading.Lock()
 
 # Global defaults (can be edited to set defaults for script execution)
 DEFAULT_VIDEO_ID = "PnGobxRiN88"
@@ -107,8 +111,7 @@ def get_audio_file(video_id):
             
             return wav_path
     except Exception as e:
-        print(f"Error fetching/downloading video from YouTube: {e}")
-        sys.exit(1)
+        raise RuntimeError(f"Error fetching/downloading video from YouTube: {e}")
 
 def compute_novelty_curve(features, W):
     """
@@ -227,7 +230,8 @@ def segment_audio(wav_path, min_distance_sec, method=DEFAULT_METHOD, prominence=
 
 def extract_tracks(video_id, delete=False, method=DEFAULT_METHOD, 
                    min_distance=DEFAULT_MIN_DISTANCE, prominence=DEFAULT_PROMINENCE, 
-                   adaptive_window=DEFAULT_ADAPTIVE_WINDOW, offset=DEFAULT_THRESHOLD_OFFSET):
+                   adaptive_window=DEFAULT_ADAPTIVE_WINDOW, offset=DEFAULT_THRESHOLD_OFFSET,
+                   save=True):
     """
     Downloads (if not cached), segments the mix, compiles the tracklist,
     saves the result to data/tracknums.json, and returns the tracklist.
@@ -266,29 +270,31 @@ def extract_tracks(video_id, delete=False, method=DEFAULT_METHOD,
         print("="*40 + "\n")
         
         # Save results to data/tracknums.json
-        os.makedirs("data", exist_ok=True)
-        json_path = os.path.join("data", "tracknums.json")
-        
-        # Load existing database if it exists
-        tracknums_data = {}
-        if os.path.exists(json_path):
-            try:
-                with open(json_path, 'r', encoding='utf-8') as f:
-                    tracknums_data = json.load(f)
-            except Exception as e:
-                print(f"Warning: Could not parse existing {json_path} ({e}). Starting fresh.")
-                tracknums_data = {}
+        if save:
+            with save_lock:
+                os.makedirs("data", exist_ok=True)
+                json_path = os.path.join("data", "tracknums.json")
                 
-        # Update record for the current video
-        tracknums_data[video_id] = track_list
-        
-        # Write updated database back to disk
-        try:
-            with open(json_path, 'w', encoding='utf-8') as f:
-                json.dump(tracknums_data, f, indent=2)
-            print(f"Saved track listing to {json_path}.")
-        except Exception as e:
-            print(f"Error saving track listing to {json_path}: {e}")
+                # Load existing database if it exists
+                tracknums_data = {}
+                if os.path.exists(json_path):
+                    try:
+                        with open(json_path, 'r', encoding='utf-8') as f:
+                            tracknums_data = json.load(f)
+                    except Exception as e:
+                        print(f"Warning: Could not parse existing {json_path} ({e}). Starting fresh.")
+                        tracknums_data = {}
+                        
+                # Update record for the current video
+                tracknums_data[video_id] = track_list
+                
+                # Write updated database back to disk
+                try:
+                    with open(json_path, 'w', encoding='utf-8') as f:
+                        json.dump(tracknums_data, f, indent=2)
+                    print(f"Saved track listing to {json_path}.")
+                except Exception as e:
+                    print(f"Error saving track listing to {json_path}: {e}")
             
         return track_list
         
@@ -351,15 +357,19 @@ def main():
     
     args = parser.parse_args()
     
-    extract_tracks(
-        video_id=args.video_id,
-        delete=args.delete,
-        method=args.method,
-        min_distance=args.min_distance,
-        prominence=args.prominence,
-        adaptive_window=args.adaptive_window,
-        offset=args.offset
-    )
+    try:
+        extract_tracks(
+            video_id=args.video_id,
+            delete=args.delete,
+            method=args.method,
+            min_distance=args.min_distance,
+            prominence=args.prominence,
+            adaptive_window=args.adaptive_window,
+            offset=args.offset
+        )
+    except Exception as e:
+        print(f"Error: {e}")
+        sys.exit(1)
 
 if __name__ == "__main__":
     main()

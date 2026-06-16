@@ -6,10 +6,10 @@ A simple flask/SocketIO for building very simple youtube DJ application that
 can be shared by other users
 
 @author: Nathan
-@version: 1.20.0 (06/15/2026)
+@version: 2.0.0 (06/16/2026)
 """
 # this variables are passed onto the html templates
-appVersion = 'v1.20.0 (06/15/2026)'
+appVersion = 'v2.0.0 (06/16/2026)'
 bgColor = '#b2b2de' # no longer used but will keep for backward compatibility
 
 import os.path
@@ -300,6 +300,17 @@ def loadBookmarks():
     if os.path.isfile(bookmarksFile):
         with open(bookmarksFile) as json_file:
             videoBookmarks = json.load(json_file)
+
+# save the track numbers database to json file
+def saveTrackNumbers():
+    global videoTrackNumbers
+    
+    try:
+        with open(trackNumbersFile, 'w', encoding='utf-8') as fp:
+            json.dump(videoTrackNumbers, fp, indent=2)
+        print(f"Saved track numbers to {trackNumbersFile}")
+    except Exception as e:
+        print(f"Error saving track numbers: {e}")
 
 # load the track numbers database from json file
 def loadTrackNumbers():
@@ -1313,6 +1324,17 @@ def processMessage(json):
             videoId, method, min_distance, prominence, adaptive_window, offset,
             clientId, playerNum, title
         )
+
+    # see if to clear/delete track numbers for a video
+    if 'Delete Track Numbers' in msgTitle:
+        videoId = json['videoId']
+        loadTrackNumbers()
+        if videoId in videoTrackNumbers:
+            videoTrackNumbers.pop(videoId)
+            saveTrackNumbers()
+        
+        json['trackNumbers'] = []
+        json['data'] = 'Delete Track Numbers Done'
     
     # delete a video from the playlist.
     if 'Delete Video' in msgTitle:
@@ -1436,7 +1458,8 @@ def handle_my_custom_event(json, methods=['GET', 'POST']):
         "Check Video Status",
         "View Track Numbers",
         "Extract Track Numbers Done",
-        "Extract Track Numbers Error"
+        "Extract Track Numbers Error",
+        "Delete Track Numbers Done"
     ]
     
     msg_title = json.get('data', '')

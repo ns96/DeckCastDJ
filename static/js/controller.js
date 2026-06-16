@@ -133,6 +133,13 @@ socket.on('my response', function (msg) {
     }
   }
 
+  // handle delete track numbers events
+  if (msg.data.includes("Delete Track Numbers Done")) {
+    if (msg.clientId === clientId) {
+      showTrackNumbersDialog(msg);
+    }
+  }
+
   if (msg.data.includes("Get Progress")) {
     updateLoadingProgress(msg);
   }
@@ -1118,10 +1125,36 @@ function showTrackNumbersDialog(msg) {
   // Modal Footer
   var footer = document.createElement("div");
   footer.className = "app-modal-footer";
+  footer.style.justifyContent = "space-between";
+
+  var deleteBtn = document.createElement("button");
+  deleteBtn.className = "danger-btn";
+  deleteBtn.innerText = "Delete Tracks";
+  
+  if (tracks.length === 0) {
+    deleteBtn.disabled = true;
+    deleteBtn.style.opacity = 0.5;
+  }
+
+  deleteBtn.onclick = function () {
+    if (confirm("WARNING: Are you sure you want to permanently delete all extracted track numbers for this video?")) {
+      var jsonText = {
+        data: 'Delete Track Numbers',
+        videoId: videoId,
+        playerNum: playerNum,
+        title: dialogTitle,
+        clientId: clientId
+      };
+      socket.emit('my event', jsonText);
+    }
+  };
+
   var closeBtn = document.createElement("button");
   closeBtn.className = "secondary-btn";
   closeBtn.innerText = "Close";
   closeBtn.onclick = function () { overlay.remove(); };
+
+  footer.appendChild(deleteBtn);
   footer.appendChild(closeBtn);
   content.appendChild(footer);
 
