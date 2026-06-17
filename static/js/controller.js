@@ -136,6 +136,23 @@ socket.on('my response', function (msg) {
   // handle delete track numbers events
   if (msg.data.includes("Delete Track Numbers Done")) {
     if (msg.clientId === clientId) {
+      var videoId = msg.videoId;
+      if (videoId === currentVideoId1) {
+        socket.emit('my event', {
+          data: 'Get TrackList Only',
+          playerNum: 1,
+          videoId: videoId,
+          clientId: clientId
+        });
+      }
+      if (videoId === currentVideoId2) {
+        socket.emit('my event', {
+          data: 'Get TrackList Only',
+          playerNum: 2,
+          videoId: videoId,
+          clientId: clientId
+        });
+      }
       showTrackNumbersDialog(msg);
     }
   }
@@ -628,6 +645,16 @@ function saveVideo(playerNum) {
 
 // socket event response when track extraction finishes successfully
 function handleExtractTrackNumbersDone(msg) {
+  var videoId = msg.videoId;
+  var trackNumbers = msg.trackNumbers || [];
+
+  if (videoId === currentVideoId1 && (!trackList1 || trackList1.length === 0)) {
+    trackList1 = trackNumbers;
+  }
+  if (videoId === currentVideoId2 && (!trackList2 || trackList2.length === 0)) {
+    trackList2 = trackNumbers;
+  }
+
   var overlay = document.getElementById("app-dialog-overlay");
   if (overlay) {
     var methodInput = document.getElementById("tn-method");
@@ -1421,6 +1448,70 @@ function updatePlayerTrackScrollers() {
   updateSinglePlayerScroller(2, player2, trackList2);
 }
 
+function formatTrackItem(item) {
+  if (!item) return "";
+  var trimmed = item.trim();
+  var match = trimmed.match(/^(\d{1,2}:\d{2}(?::\d{2})?)\s+(Track\s+\d+)$/);
+  if (match) {
+    return match[2] + " (" + match[1] + ")";
+  }
+  return item;
+}
+
+function parseTimestamp(str) {
+  if (!str) return null;
+  var trimmed = str.trim();
+  // Match HH:MM:SS or MM:SS at the start of the string
+  var match = trimmed.match(/^(\d{1,2}):(\d{2}):(\d{2})/);
+  if (match) {
+    var hours = parseInt(match[1], 10);
+    var minutes = parseInt(match[2], 10);
+    var seconds = parseInt(match[3], 10);
+    return hours * 3600 + minutes * 60 + seconds;
+  }
+  match = trimmed.match(/^(\d{1,2}):(\d{2})/);
+  if (match) {
+    var minutes = parseInt(match[1], 10);
+    var seconds = parseInt(match[2], 10);
+    return minutes * 60 + seconds;
+  }
+  return null;
+}
+
+function getCurrentTrackIndex(currentSeconds, totalSeconds, trackList) {
+  if (!trackList || trackList.length === 0) return 0;
+
+  var parsedTimes = [];
+  var hasTimestamps = true;
+  for (var i = 0; i < trackList.length; i++) {
+    var t = parseTimestamp(trackList[i]);
+    if (t === null) {
+      hasTimestamps = false;
+      break;
+    }
+    parsedTimes.push(t);
+  }
+
+  if (hasTimestamps) {
+    for (var i = 0; i < parsedTimes.length; i++) {
+      var startTime = parsedTimes[i];
+      var endTime = (i < parsedTimes.length - 1) ? parsedTimes[i + 1] : totalSeconds;
+      if (currentSeconds >= startTime && currentSeconds < endTime) {
+        return i;
+      }
+    }
+    if (currentSeconds < parsedTimes[0]) return 0;
+    return parsedTimes.length - 1;
+  }
+
+  // Fallback to naive equal slice division for manual tracklists without timestamps
+  var step = totalSeconds / trackList.length;
+  var index = Math.floor(currentSeconds / step);
+  if (index < 0) index = 0;
+  if (index >= trackList.length) index = trackList.length - 1;
+  return index;
+}
+
 function updateSinglePlayerScroller(playerNum, player, trackList) {
   var container = document.getElementById("track-scroller-container-" + playerNum);
   var content = document.getElementById("track-scroller-content-" + playerNum);
@@ -1449,18 +1540,15 @@ function updateSinglePlayerScroller(playerNum, player, trackList) {
     if (content.getAttribute("data-text") !== trackDisplay) {
       content.setAttribute("data-text", trackDisplay);
 
-      var step = totalSeconds / trackList.length;
-      var index = Math.floor(currentSeconds / step);
-      if (index < 0) index = 0;
-      if (index >= trackList.length) index = trackList.length - 1;
+      var index = getCurrentTrackIndex(currentSeconds, totalSeconds, trackList);
 
       var parts = [];
       if (index > 0) {
-        parts.push(`<span style="opacity: 0.65;">Prev: ${trackList[index - 1]}</span>`);
+        parts.push(`<span style="opacity: 0.65;">Prev: ${formatTrackItem(trackList[index - 1])}</span>`);
       }
-      parts.push(`<span class="highlight">★ NOW PLAYING: ${trackList[index]} ★</span>`);
+      parts.push(`<span class="highlight">★ NOW PLAYING: ${formatTrackItem(trackList[index])} ★</span>`);
       if (index < trackList.length - 1) {
-        parts.push(`<span style="opacity: 0.75;">Next: ${trackList[index + 1]}</span>`);
+        parts.push(`<span style="opacity: 0.75;">Next: ${formatTrackItem(trackList[index + 1])}</span>`);
       }
 
       content.innerHTML = parts.join(" &nbsp; &nbsp; | &nbsp; &nbsp; ");
@@ -1480,18 +1568,15 @@ function updateSinglePlayerScroller(playerNum, player, trackList) {
 function getStatelessTrackDisplay(currentSeconds, totalSeconds, trackList) {
   if (!trackList || trackList.length === 0 || totalSeconds <= 0) return "";
 
-  var step = totalSeconds / trackList.length;
-  var index = Math.floor(currentSeconds / step);
-  if (index < 0) index = 0;
-  if (index >= trackList.length) index = trackList.length - 1;
+  var index = getCurrentTrackIndex(currentSeconds, totalSeconds, trackList);
 
   var parts = [];
   if (index > 0) {
-    parts.push("Prev: " + trackList[index - 1]);
+    parts.push("Prev: " + formatTrackItem(trackList[index - 1]));
   }
-  parts.push("★ NOW PLAYING: " + trackList[index] + " ★");
+  parts.push("★ NOW PLAYING: " + formatTrackItem(trackList[index]) + " ★");
   if (index < trackList.length - 1) {
-    parts.push("Next: " + trackList[index + 1]);
+    parts.push("Next: " + formatTrackItem(trackList[index + 1]));
   }
   return parts.join("   |   ");
 }

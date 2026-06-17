@@ -6,10 +6,10 @@ A simple flask/SocketIO for building very simple youtube DJ application that
 can be shared by other users
 
 @author: Nathan
-@version: 2.1.0 (06/17/2026)
+@version: 2.2.0 (06/17/2026)
 """
 # this variables are passed onto the html templates
-appVersion = 'v2.1.0 (06/17/2026)'
+appVersion = 'v2.2.0 (06/17/2026)'
 bgColor = '#b2b2de' # no longer used but will keep for backward compatibility
 
 import os.path
@@ -1207,6 +1207,8 @@ def processMessage(json):
 
         if videoId in videoTrackLists:
             json['trackList'] = videoTrackLists[videoId]
+        elif videoId in videoTrackNumbers:
+            json['trackList'] = videoTrackNumbers[videoId]
 
     # see if to add the tracklist for a particular video
     if 'Add TrackList' in msgTitle:
@@ -1235,6 +1237,8 @@ def processMessage(json):
         videoId = json['videoId']
         if videoId in videoTrackLists:
             json['trackList'] = videoTrackLists[videoId]
+        elif videoId in videoTrackNumbers:
+            json['trackList'] = videoTrackNumbers[videoId]
         else:
             json['trackList'] = []
 
