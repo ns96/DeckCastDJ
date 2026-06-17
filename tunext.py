@@ -26,7 +26,7 @@ MIN_LEN = "8:00"                # Default minimum duration threshold (MM:SS or H
 METHOD = "adaptive"
 MIN_DISTANCE_GRID = [20, 25, 45, 75]
 ADAPTIVE_WINDOW_GRID = [45, 75, 100, 150, 200, 250, 300]
-THRESHOLD_OFFSET_RANGE = (0.015, 0.050, 0.001)  # (min, max, increment)
+THRESHOLD_OFFSET_RANGE = (0.010, 0.050, 0.001)  # (min, max, increment)
 
 # Generate grid list dynamically
 _min, _max, _inc = THRESHOLD_OFFSET_RANGE
