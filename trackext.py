@@ -50,7 +50,7 @@ DEFAULT_ADAPTIVE_WINDOW = 150
 # DEFAULT_THRESHOLD_OFFSET: Only used for 'adaptive' method. The height offset added to the rolling median threshold.
 # - Lower values (e.g., 0.03 - 0.04) are more sensitive and catch subtle transitions.
 # - Higher values (e.g., 0.05 - 0.07) are more conservative and filter out local noise.
-DEFAULT_THRESHOLD_OFFSET = 0.02
+DEFAULT_THRESHOLD_OFFSET = 0.04
 
 def format_timestamp(seconds):
     """Converts seconds into HH:MM:SS or MM:SS format."""

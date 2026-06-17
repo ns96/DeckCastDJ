@@ -6,10 +6,10 @@ A simple flask/SocketIO for building very simple youtube DJ application that
 can be shared by other users
 
 @author: Nathan
-@version: 2.0.0 (06/16/2026)
+@version: 2.1.0 (06/17/2026)
 """
 # this variables are passed onto the html templates
-appVersion = 'v2.0.0 (06/16/2026)'
+appVersion = 'v2.1.0 (06/17/2026)'
 bgColor = '#b2b2de' # no longer used but will keep for backward compatibility
 
 import os.path
@@ -1260,15 +1260,20 @@ def processMessage(json):
                 break
                 
         if not duplicate:
+            # Use custom description if provided, otherwise default fallback
+            desc_val = json.get('desc') or f"Bookmark by {uname}"
             # append as sublist: [time, description]
-            videoBookmarks[videoId].append([round(time, 2), f"Bookmark by {uname}"])
+            videoBookmarks[videoId].append([round(time, 2), desc_val])
             # sort chronologically by time
             videoBookmarks[videoId].sort(key=lambda x: x[0])
             saveBookmarks()
             
         json['bookmarks'] = videoBookmarks[videoId]
-        # Redirect data to View Bookmarks so it opens the dialog
-        json['data'] = 'View Bookmarks'
+        if not json.get('silent'):
+            # Redirect data to View Bookmarks so it opens the dialog
+            json['data'] = 'View Bookmarks'
+        else:
+            json['data'] = 'Add Bookmark Silent Done'
 
     # see if to edit a single bookmark's description
     if 'Edit Bookmark' in msgTitle:

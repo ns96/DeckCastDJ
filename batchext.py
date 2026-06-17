@@ -10,12 +10,19 @@ from trackext import extract_tracks
 # =====================================================================
 # GLOBAL CONFIGURATION DEFAULTS (Edit these to adjust default behavior)
 # =====================================================================
-TEST_MODE = True       # If True, extracts tracks but does not write to tracknums.json
+TEST_MODE = False       # If True, extracts tracks but does not write to tracknums.json
 DELETE_WAV = False     # If True, deletes downloaded/converted WAV files after processing
 FORCE_PROCESS = True   # If True, forces reprocessing of already extracted videos
 THREADS = 16           # Default number of concurrent threads
-MIN_LEN = "12:00"      # Default minimum duration threshold (MM:SS or HH:MM:SS)
+MIN_LEN = "8:00"      # Default minimum duration threshold (MM:SS or HH:MM:SS)
 MAX_VIDEOS = 0         # Max number of videos to process (0 = no limit)
+
+# Tuning Parameters
+METHOD = "adaptive"          # 'adaptive' or 'fixed'
+MIN_DISTANCE = 45            # Minimum separation between transition peaks in seconds
+PROMINENCE = 0.035           # Static peak prominence threshold (only for 'fixed' method)
+ADAPTIVE_WINDOW = 150        # Window size in seconds for rolling median filter
+THRESHOLD_OFFSET = 0.04      # Height offset added to rolling median threshold
 # =====================================================================
 
 def parse_duration(dur_str):
@@ -45,10 +52,19 @@ def write_to_log(success_count, failure_count, elapsed):
     except Exception as e:
         print(f"Warning: Could not write to {log_path}: {e}")
 
-def process_video(video_id, title, dur_str, delete_wav, save_to_json):
+def process_video(video_id, title, dur_str, delete_wav, save_to_json, method, min_distance, prominence, adaptive_window, offset):
     print(f"[START] Processing video {video_id} (Length: {dur_str}): {title}")
     try:
-        track_list = extract_tracks(video_id, delete=delete_wav, save=save_to_json)
+        track_list = extract_tracks(
+            video_id, 
+            delete=delete_wav, 
+            save=save_to_json,
+            method=method,
+            min_distance=min_distance,
+            prominence=prominence,
+            adaptive_window=adaptive_window,
+            offset=offset
+        )
         num_tracks = len(track_list)
         print(f"[SUCCESS] Finished video {video_id} (Length: {dur_str}) - Extracted {num_tracks} tracks")
         return video_id, True, num_tracks, None
@@ -65,6 +81,13 @@ def main():
     parser.add_argument("--min-len", "-m", default=MIN_LEN, help=f"Minimum duration threshold (default: {MIN_LEN})")
     parser.add_argument("--limit", "-l", type=int, default=MAX_VIDEOS, help=f"Max number of videos to process (0 = no limit, default: {MAX_VIDEOS})")
     parser.add_argument("--force", "-f", action="store_true", help="Force reprocessing of already extracted videos")
+    
+    # Tuning Parameters CLI options (override defaults)
+    parser.add_argument("--method", default=METHOD, choices=["adaptive", "fixed"], help=f"Peak detection method (default: {METHOD})")
+    parser.add_argument("--min-distance", type=int, default=MIN_DISTANCE, help=f"Minimum separation (seconds) between transition peaks (default: {MIN_DISTANCE})")
+    parser.add_argument("--prominence", type=float, default=PROMINENCE, help=f"Static peak prominence threshold (default: {PROMINENCE})")
+    parser.add_argument("--adaptive-window", type=int, default=ADAPTIVE_WINDOW, help=f"Window size (seconds) for rolling median filter (default: {ADAPTIVE_WINDOW})")
+    parser.add_argument("--offset", type=float, default=THRESHOLD_OFFSET, help=f"Height offset added to rolling median threshold (default: {THRESHOLD_OFFSET})")
     
     # CLI flags to override configuration defaults
     parser.add_argument("--no-test", action="store_true", help="Disable test mode and save extractions to tracknums.json")
@@ -83,6 +106,13 @@ def main():
     print(f"CLEANUP: {'DELETE WAVS' if delete_wav_active else 'KEEP/CACHE WAVS'}")
     print(f"FORCE REPROCESS: {'YES' if force_active else 'NO'}")
     print(f"LIMIT QUEUE: {limit_val if limit_val > 0 else 'NO LIMIT'}")
+    print(f"METHOD: {args.method}")
+    print(f"MIN DISTANCE: {args.min_distance}s")
+    if args.method == "fixed":
+        print(f"PROMINENCE: {args.prominence}")
+    else:
+        print(f"ADAPTIVE WINDOW: {args.adaptive_window}s")
+        print(f"THRESHOLD OFFSET: {args.offset}")
     print("=====================================================================")
 
     # Aggregate and deduplicate all videos
@@ -159,7 +189,19 @@ def main():
     try:
         with ThreadPoolExecutor(max_workers=args.threads) as executor:
             futures = {
-                executor.submit(process_video, vid, title, dur_str, delete_wav_active, save_to_json): vid 
+                executor.submit(
+                    process_video, 
+                    vid, 
+                    title, 
+                    dur_str, 
+                    delete_wav_active, 
+                    save_to_json,
+                    args.method,
+                    args.min_distance,
+                    args.prominence,
+                    args.adaptive_window,
+                    args.offset
+                ): vid 
                 for vid, title, dur_str in queue
             }
             for future in as_completed(futures):
