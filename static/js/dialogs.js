@@ -472,8 +472,9 @@ function showTrackNumbersDialog(msg) {
       var trackLine = tracks[activeIdx];
       var spaceIdx = trackLine.indexOf(' ');
       if (spaceIdx !== -1) {
+        var timeStr = trackLine.substring(0, spaceIdx);
         var label = trackLine.substring(spaceIdx + 1);
-        trackText += " || Playing: " + label;
+        trackText += " || Playing: " + label + " (" + timeStr + ")";
       }
     }
     listHeader.innerText = trackText;
