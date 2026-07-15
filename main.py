@@ -6,10 +6,10 @@ A simple flask/SocketIO for building very simple youtube DJ application that
 can be shared by other users
 
 @author: Nathan
-@version: 2.2.1 (07/12/2026)
+@version: 2.2.2 (07/15/2026)
 """
 # this variables are passed onto the html templates
-appVersion = 'v2.2.1 (07/12/2026)'
+appVersion = 'v2.2.2 (07/15/2026)'
 bgColor = '#b2b2de' # no longer used but will keep for backward compatibility
 
 import os.path
@@ -219,7 +219,7 @@ def loadPlaylistInBackground(username, url, clientId, mobile):
         })
 
 # function to load a youtube playlist and queue all its videos in a background thread
-def loadQueuePlaylistInBackground(username, url, clientId):
+def loadQueuePlaylistInBackground(username, url, clientId, pin):
     try:
         loadYouTubePlayList(username, url, True)
         
@@ -230,7 +230,8 @@ def loadQueuePlaylistInBackground(username, url, clientId):
             'data': 'Video Qued Done',
             'queListHTML': html,
             'queListData': data_list,
-            'clientId': clientId
+            'clientId': clientId,
+            'pin': pin
         })
     except Exception as e:
         print("Error in loadQueuePlaylistInBackground:", e)
@@ -807,6 +808,8 @@ def getQueListData(username):
         # might make more sense to just return json array
         queData.append(videoId + '\t' + videoTitle + '\t' + str(videoSeconds))
 
+    # print the size of the que data
+    print('Size of que data: ', len(queData))
     return queData
    
 # get the title and thumbnail image for the video
@@ -1144,11 +1147,12 @@ def processMessage(json):
         videoId = json['videoId']
         username = json['clientId'].lower().strip()
         clientId = json['clientId']
+        pin = json['pin']
         
         # check to see if to to load a youtube playlist and add to que
         if 'https://www.youtube.com/playlist' in videoId:
             socketio.start_background_task(
-                loadQueuePlaylistInBackground, username, videoId, clientId
+                loadQueuePlaylistInBackground, username, videoId, clientId, pin
             )
         elif 'savedList:' in videoId:
             savedList = videoId.split(":")[1]
