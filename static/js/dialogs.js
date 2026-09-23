@@ -84,6 +84,24 @@ function addOrEditTrackList(msg) {
     };
     socket.emit('my event', jsonText);
     console.log("Sent Add TrackList to backend:", jsonText);
+
+    if (msg.videoId === currentVideoId1) {
+      socket.emit('my event', {
+        data: 'Get TrackList Only',
+        playerNum: 1,
+        videoId: msg.videoId,
+        clientId: clientId
+      });
+    }
+    if (msg.videoId === currentVideoId2) {
+      socket.emit('my event', {
+        data: 'Get TrackList Only',
+        playerNum: 2,
+        videoId: msg.videoId,
+        clientId: clientId
+      });
+    }
+
     overlay.remove();
   };
 

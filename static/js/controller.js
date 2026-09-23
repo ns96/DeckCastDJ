@@ -46,6 +46,10 @@ var loadingPlaylist = false;
 // active tracklists for the dynamic scrolling marquee
 var trackList1 = null;
 var trackList2 = null;
+var rawTrackList1 = null;
+var rawTrackList2 = null;
+var trackNumbers1 = null;
+var trackNumbers2 = null;
 
 // indicate if we are on a mobile device
 var mobile = false;
@@ -115,6 +119,17 @@ socket.on('my response', function (msg) {
 
   // see if to show the track numbers dialog
   if (msg.data.includes("View Track Numbers")) {
+    if (msg.playerNum == 1) {
+      trackNumbers1 = msg.trackNumbers || [];
+      if (!rawTrackList1 || rawTrackList1.length === 0) {
+        trackList1 = trackNumbers1;
+      }
+    } else if (msg.playerNum == 2) {
+      trackNumbers2 = msg.trackNumbers || [];
+      if (!rawTrackList2 || rawTrackList2.length === 0) {
+        trackList2 = trackNumbers2;
+      }
+    }
     if (msg.clientId === clientId) {
       showTrackNumbersDialog(msg);
     }
@@ -278,11 +293,13 @@ function updatePlaybackSpeed(msg) {
   var playerSpeed = msg.speed;
 
   // update the UI radio buttons?
+  var radiobtns;
   if (playerNum == 1) {
     radiobtns = document.getElementsByName("speedA");
-    radiobtns[playerSpeed].checked = true;
   } else {
     radiobtns = document.getElementsByName("speedB");
+  }
+  if (radiobtns && radiobtns[playerSpeed]) {
     radiobtns[playerSpeed].checked = true;
   }
 
@@ -313,10 +330,6 @@ function updatePlayerSpeed(playerNum, playerSpeed) {
     currentPlayer.setPlaybackRate(1.05);
   } else if (playerSpeed == 2) {
     currentPlayer.setPlaybackRate(1.10);
-  } else if (playerSpeed == 3) {
-    currentPlayer.setPlaybackRate(1.15);
-  } else if (playerSpeed == 4) {
-    currentPlayer.setPlaybackRate(1.20);
   } else {
     currentPlayer.setPlaybackRate(1.00);
   }
@@ -585,37 +598,6 @@ function loadVideo(playerNum) {
   input.value = "";
 }
 
-// function to start video after short delay. This is to allow playback even when screen is locked
-async function delayPlay(playerNum) {
-  var currentPlayer;
-  var currentVideoId;
-  var DELAY = 6;
-  var button;
-
-  if (playerNum == 1) {
-    currentPlayer = player1;
-    currentVideoId = currentVideoId1;
-    button = document.getElementById("dp1");
-  } else {
-    currentPlayer = player2;
-    currentVideoId = currentVideoId2;
-    button = document.getElementById("dp2");
-  }
-
-  // change button color to red
-  button.style.backgroundColor = "red";
-
-  // delay a specified number of seconds, playtime, before playing video  
-  await wait(DELAY * 1000);
-  currentPlayer.loadVideoById(currentVideoId, 0);
-  currentPlayer.playVideo();
-
-  // change button color back to green
-  button.style.backgroundColor = "green";
-
-  console.log("Current Video, Player # " + playerNum + ", Started after " + DELAY + "s delay ...");
-}
-
 // functon called by que video button
 function queVideo(playerNum) {
   var input;
@@ -661,11 +643,17 @@ function handleExtractTrackNumbersDone(msg) {
   var videoId = msg.videoId;
   var trackNumbers = msg.trackNumbers || [];
 
-  if (videoId === currentVideoId1 && (!trackList1 || trackList1.length === 0)) {
-    trackList1 = trackNumbers;
+  if (videoId === currentVideoId1) {
+    trackNumbers1 = trackNumbers;
+    if (!rawTrackList1 || rawTrackList1.length === 0) {
+      trackList1 = trackNumbers;
+    }
   }
-  if (videoId === currentVideoId2 && (!trackList2 || trackList2.length === 0)) {
-    trackList2 = trackNumbers;
+  if (videoId === currentVideoId2) {
+    trackNumbers2 = trackNumbers;
+    if (!rawTrackList2 || rawTrackList2.length === 0) {
+      trackList2 = trackNumbers;
+    }
   }
 
   var overlay = document.getElementById("app-dialog-overlay");
@@ -1417,8 +1405,13 @@ function handleCurrentVideoTracklistUpdate(msg) {
   var trackList = msg.trackList || null;
 
   if (playerNum == 1) {
-    trackList1 = trackList;
-    if (!trackList || trackList.length === 0) {
+    rawTrackList1 = (msg.rawTrackList && msg.rawTrackList.length > 0) ? msg.rawTrackList : null;
+    if (msg.trackNumbers && msg.trackNumbers.length > 0) {
+      trackNumbers1 = msg.trackNumbers;
+    }
+    trackList1 = (trackList && trackList.length > 0) ? trackList : (trackNumbers1 || null);
+
+    if (!trackList1 || trackList1.length === 0) {
       var container1 = document.getElementById("track-scroller-container-1");
       if (container1) {
         if (mobile) {
@@ -1434,8 +1427,13 @@ function handleCurrentVideoTracklistUpdate(msg) {
       }
     }
   } else if (playerNum == 2) {
-    trackList2 = trackList;
-    if (!trackList || trackList.length === 0) {
+    rawTrackList2 = (msg.rawTrackList && msg.rawTrackList.length > 0) ? msg.rawTrackList : null;
+    if (msg.trackNumbers && msg.trackNumbers.length > 0) {
+      trackNumbers2 = msg.trackNumbers;
+    }
+    trackList2 = (trackList && trackList.length > 0) ? trackList : (trackNumbers2 || null);
+
+    if (!trackList2 || trackList2.length === 0) {
       var container2 = document.getElementById("track-scroller-container-2");
       if (container2) {
         if (mobile) {
@@ -1451,14 +1449,17 @@ function handleCurrentVideoTracklistUpdate(msg) {
       }
     }
   }
+  updatePlayerTrackScrollers();
 }
 
 // Set up interval for updating track scrollers
 setInterval(updatePlayerTrackScrollers, 1000);
 
 function updatePlayerTrackScrollers() {
-  updateSinglePlayerScroller(1, player1, trackList1);
-  updateSinglePlayerScroller(2, player2, trackList2);
+  var activeList1 = (trackList1 && trackList1.length > 0) ? trackList1 : trackNumbers1;
+  var activeList2 = (trackList2 && trackList2.length > 0) ? trackList2 : trackNumbers2;
+  updateSinglePlayerScroller(1, player1, activeList1);
+  updateSinglePlayerScroller(2, player2, activeList2);
 }
 
 function formatTrackItem(item) {
@@ -1491,7 +1492,7 @@ function parseTimestamp(str) {
   return null;
 }
 
-function getCurrentTrackIndex(currentSeconds, totalSeconds, trackList) {
+function getCurrentTrackIndex(currentSeconds, totalSeconds, trackList, fallbackTrackNumbers) {
   if (!trackList || trackList.length === 0) return 0;
 
   var parsedTimes = [];
@@ -1505,6 +1506,7 @@ function getCurrentTrackIndex(currentSeconds, totalSeconds, trackList) {
     parsedTimes.push(t);
   }
 
+  // 1. If trackList has its own timestamps, use them
   if (hasTimestamps) {
     for (var i = 0; i < parsedTimes.length; i++) {
       var startTime = parsedTimes[i];
@@ -1517,7 +1519,30 @@ function getCurrentTrackIndex(currentSeconds, totalSeconds, trackList) {
     return parsedTimes.length - 1;
   }
 
-  // Fallback to naive equal slice division for manual tracklists without timestamps
+  // 2. Fallback: If trackList lacks timestamps, use Track Number (TN) timestamps if available
+  if (fallbackTrackNumbers && fallbackTrackNumbers.length > 0) {
+    var tnTimes = [];
+    for (var j = 0; j < fallbackTrackNumbers.length; j++) {
+      var tTime = parseTimestamp(fallbackTrackNumbers[j]);
+      if (tTime !== null) {
+        tnTimes.push(tTime);
+      }
+    }
+
+    if (tnTimes.length > 0) {
+      for (var k = 0; k < tnTimes.length; k++) {
+        var startTime = tnTimes[k];
+        var endTime = (k < tnTimes.length - 1) ? tnTimes[k + 1] : totalSeconds;
+        if (currentSeconds >= startTime && currentSeconds < endTime) {
+          return Math.min(k, trackList.length - 1);
+        }
+      }
+      if (currentSeconds < tnTimes[0]) return 0;
+      return Math.min(tnTimes.length - 1, trackList.length - 1);
+    }
+  }
+
+  // 3. Fallback to naive equal slice division if neither has timestamps
   var step = totalSeconds / trackList.length;
   var index = Math.floor(currentSeconds / step);
   if (index < 0) index = 0;
@@ -1548,12 +1573,13 @@ function updateSinglePlayerScroller(playerNum, player, trackList) {
       totalSeconds = 300; // Fallback to 5 minutes so calculations work for cued/unstarted videos
     }
 
-    var trackDisplay = getStatelessTrackDisplay(currentSeconds, totalSeconds, trackList);
+    var fallbackTrackNumbers = (playerNum == 1) ? trackNumbers1 : trackNumbers2;
+    var trackDisplay = getStatelessTrackDisplay(currentSeconds, totalSeconds, trackList, fallbackTrackNumbers);
 
     if (content.getAttribute("data-text") !== trackDisplay) {
       content.setAttribute("data-text", trackDisplay);
 
-      var index = getCurrentTrackIndex(currentSeconds, totalSeconds, trackList);
+      var index = getCurrentTrackIndex(currentSeconds, totalSeconds, trackList, fallbackTrackNumbers);
 
       var parts = [];
       if (index > 0) {
@@ -1578,10 +1604,10 @@ function updateSinglePlayerScroller(playerNum, player, trackList) {
   }
 }
 
-function getStatelessTrackDisplay(currentSeconds, totalSeconds, trackList) {
+function getStatelessTrackDisplay(currentSeconds, totalSeconds, trackList, fallbackTrackNumbers) {
   if (!trackList || trackList.length === 0 || totalSeconds <= 0) return "";
 
-  var index = getCurrentTrackIndex(currentSeconds, totalSeconds, trackList);
+  var index = getCurrentTrackIndex(currentSeconds, totalSeconds, trackList, fallbackTrackNumbers);
 
   var parts = [];
   if (index > 0) {
@@ -1599,8 +1625,13 @@ function handleTracklistOnlyResponse(msg) {
   var videoId = msg.videoId;
 
   if (videoId === currentVideoId1) {
-    trackList1 = trackList;
-    if (!trackList || trackList.length === 0) {
+    rawTrackList1 = (msg.rawTrackList && msg.rawTrackList.length > 0) ? msg.rawTrackList : null;
+    if (msg.trackNumbers && msg.trackNumbers.length > 0) {
+      trackNumbers1 = msg.trackNumbers;
+    }
+    trackList1 = (trackList && trackList.length > 0) ? trackList : (trackNumbers1 || null);
+
+    if (!trackList1 || trackList1.length === 0) {
       var container1 = document.getElementById("track-scroller-container-1");
       if (container1) {
         if (mobile) {
@@ -1617,8 +1648,13 @@ function handleTracklistOnlyResponse(msg) {
     }
   }
   if (videoId === currentVideoId2) {
-    trackList2 = trackList;
-    if (!trackList || trackList.length === 0) {
+    rawTrackList2 = (msg.rawTrackList && msg.rawTrackList.length > 0) ? msg.rawTrackList : null;
+    if (msg.trackNumbers && msg.trackNumbers.length > 0) {
+      trackNumbers2 = msg.trackNumbers;
+    }
+    trackList2 = (trackList && trackList.length > 0) ? trackList : (trackNumbers2 || null);
+
+    if (!trackList2 || trackList2.length === 0) {
       var container2 = document.getElementById("track-scroller-container-2");
       if (container2) {
         if (mobile) {
@@ -1634,6 +1670,7 @@ function handleTracklistOnlyResponse(msg) {
       }
     }
   }
+  updatePlayerTrackScrollers();
 }
 
 // update the star selection indicators in the playlist and queue tables
@@ -1660,3 +1697,113 @@ function updateSelectedStars() {
     }
   });
 }
+
+// =====================================================================
+// TRACK NAVIGATION (Prev / Next) WITH TIMECODES FALLBACK
+// =====================================================================
+
+function getActiveTimecodesForPlayer(playerNum) {
+  var rawTrackList = (playerNum == 1) ? rawTrackList1 : rawTrackList2;
+  var trackNumbers = (playerNum == 1) ? trackNumbers1 : trackNumbers2;
+
+  // 1. Check if tracklist exists with time codes
+  if (rawTrackList && rawTrackList.length > 0) {
+    var tlCodes = [];
+    for (var i = 0; i < rawTrackList.length; i++) {
+      var item = rawTrackList[i];
+      var secs = parseTimestamp(item);
+      if (secs !== null) {
+        tlCodes.push({ time: secs, label: item });
+      }
+    }
+    if (tlCodes.length > 0) {
+      return tlCodes;
+    }
+  }
+
+  // 2. Otherwise, check if track numbers exist with time codes
+  if (trackNumbers && trackNumbers.length > 0) {
+    var tnCodes = [];
+    for (var j = 0; j < trackNumbers.length; j++) {
+      var item = trackNumbers[j];
+      var secs = parseTimestamp(item);
+      if (secs !== null) {
+        tnCodes.push({ time: secs, label: item });
+      }
+    }
+    if (tnCodes.length > 0) {
+      return tnCodes;
+    }
+  }
+
+  // 3. Neither has time codes
+  return null;
+}
+
+function prevTrackForPlayer(playerNum) {
+  var player = (playerNum == 1) ? player1 : player2;
+  if (!player || typeof player.getCurrentTime !== "function" || typeof player.seekTo !== "function") {
+    console.log("Player " + playerNum + " is not ready.");
+    return;
+  }
+
+  var timecodes = getActiveTimecodesForPlayer(playerNum);
+  if (!timecodes || timecodes.length === 0) {
+    console.log("No tracklist or track numbers with time codes available for Player " + playerNum);
+    return;
+  }
+
+  var currentTime = player.getCurrentTime() || 0;
+  var currentIdx = -1;
+  for (var i = 0; i < timecodes.length; i++) {
+    if (currentTime >= timecodes[i].time) {
+      currentIdx = i;
+    } else {
+      break;
+    }
+  }
+
+  if (currentIdx === -1 || currentIdx === 0) {
+    player.seekTo(0, true);
+    console.log("Player " + playerNum + " jump to start (00:00)");
+    return;
+  }
+
+  var prevIdx = currentIdx - 1;
+  var targetTime = timecodes[prevIdx].time;
+  player.seekTo(targetTime, true);
+  console.log("Player " + playerNum + " prev track -> " + timecodes[prevIdx].label + " (" + targetTime + "s)");
+}
+
+function nextTrackForPlayer(playerNum) {
+  var player = (playerNum == 1) ? player1 : player2;
+  if (!player || typeof player.getCurrentTime !== "function" || typeof player.seekTo !== "function") {
+    console.log("Player " + playerNum + " is not ready.");
+    return;
+  }
+
+  var timecodes = getActiveTimecodesForPlayer(playerNum);
+  if (!timecodes || timecodes.length === 0) {
+    console.log("No tracklist or track numbers with time codes available for Player " + playerNum);
+    return;
+  }
+
+  var currentTime = player.getCurrentTime() || 0;
+  var currentIdx = -1;
+  for (var i = 0; i < timecodes.length; i++) {
+    if (currentTime >= timecodes[i].time) {
+      currentIdx = i;
+    } else {
+      break;
+    }
+  }
+
+  var targetIdx = (currentIdx === -1) ? 0 : currentIdx + 1;
+  if (targetIdx < timecodes.length) {
+    var targetTime = timecodes[targetIdx].time;
+    player.seekTo(targetTime, true);
+    console.log("Player " + playerNum + " next track -> " + timecodes[targetIdx].label + " (" + targetTime + "s)");
+  } else {
+    console.log("Player " + playerNum + " is already at the last track.");
+  }
+}
