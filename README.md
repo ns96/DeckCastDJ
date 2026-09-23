@@ -17,7 +17,48 @@ Based on the requirements, a workable webapp was built using the YouTube Player 
 * Ability to create a Que video list and play all back to back
 * Basic Automixing of Qued Videos
 * Basic pitch control
+* Dynamic scrolling marquee displaying the currently playing, previous, and upcoming tracks.
+* Track extraction (TN) using audio signal processing with adaptive and fixed peak detection.
+* Navigation buttons (Prev / Next) synchronized with tracklist and track number timecodes.
 * Basic mobile interface at http://the.server.ip.addr:5054/mobile 
+
+## Track Extraction (TN) Prerequisites & Troubleshooting
+
+The **Track Numbers (TN)** feature automatically downloads audio from YouTube and analyzes energy transitions using SciPy signal processing to detect track changes and timecodes.
+
+### 1. JavaScript Engine Required (Deno or Node.js)
+YouTube's streaming endpoints require solving JavaScript signature challenges (n-sig deciphering). To enable `yt-dlp` to download audio streams for track extraction, you must have either **Deno** (recommended) or **Node.js** available:
+
+* **Windows**:
+  * **Deno (Recommended)**: Run `winget install DenoLand.Deno` or download `deno.exe` from [deno.com](https://deno.com/) and place it in your system PATH or directly in the DeckCastDJ directory.
+  * **Node.js**: Run `winget install OpenJS.NodeJS` or download from [nodejs.org](https://nodejs.org/).
+* **macOS**:
+  * Run `brew install deno` or `brew install node`.
+* **Linux (openSUSE / Ubuntu / Debian)**:
+  * **openSUSE**: Run `sudo zypper install nodejs` or install Deno via `curl -fsSL https://deno.land/install.sh | sh`.
+  * **Ubuntu / Debian**: Run `sudo apt install nodejs` or install Deno via `curl -fsSL https://deno.land/install.sh | sh`.
+
+> **Note:** DeckCastDJ automatically detects Deno or Node.js if installed in your system PATH, common user directories (`~/.deno/bin`), or placed directly in the application folder (`deno.exe`).
+
+### 2. Audio Processing Tool (`ffmpeg`)
+`ffmpeg` is required to convert downloaded audio to mono 11025Hz WAV format for SciPy peak analysis:
+* **Windows**: Placed in `C:\Windows\System32\ffmpeg.exe` or bundled next to `DeckCastDJ.exe`.
+* **macOS**: `brew install ffmpeg`
+* **Linux**: `sudo zypper install ffmpeg` (openSUSE) or `sudo apt install ffmpeg` (Ubuntu/Debian).
+
+### 3. YouTube Bot Detection & Authentication (`cookies.txt`)
+Occasionally, YouTube may flag certain IP addresses (especially data centers, cloud servers, or networks with heavy traffic) with automated bot checks, producing errors such as:
+* `Sign in to confirm you're not a bot`
+* `HTTP Error 429: Too Many Requests`
+* `Sign in to confirm your age`
+
+#### How to Fix:
+1. In your desktop browser (Chrome, Firefox, Edge, or Brave) where you are logged into YouTube, install the extension **"Get cookies.txt LOCALLY"**.
+2. Navigate to [https://www.youtube.com](https://www.youtube.com).
+3. Open the extension and export your cookies in standard Netscape format.
+4. Save the file as **`cookies.txt`** in the root directory of DeckCastDJ (the same directory as `main.py` or `DeckCastDJ.exe`).
+
+> **Security Note:** `cookies.txt` contains your personal YouTube session tokens. Do **not** commit `cookies.txt` to version control or share it in public software distributions. It is already added to `.gitignore`.
 
 ## TO-DOS
 * A modern user interface instead if the current barebones interface.
