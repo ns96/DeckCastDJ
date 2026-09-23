@@ -11,6 +11,7 @@ then assigns this changes as track 1 ... N for the various sections
 
 import os
 import sys
+import shutil
 import argparse
 import glob
 import subprocess
@@ -80,12 +81,60 @@ def get_audio_file(video_id):
     print(f"Cached WAV file not found. Fetching info and downloading YouTube ID: {video_id}...")
     url = f"https://www.youtube.com/watch?v={video_id}"
     try:
+        # Search candidate locations for cookies.txt
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        candidate_cookies = [
+            os.path.join(script_dir, "cookies.txt"),
+            os.path.join(os.getcwd(), "cookies.txt"),
+            os.path.join(script_dir, "ytd", "cookies.txt"),
+        ]
+        cookie_file = next((p for p in candidate_cookies if os.path.isfile(p)), None)
+
         ydl_opts = {
             'format': 'bestaudio/best',
             'outtmpl': os.path.join('ytd', f'{video_id}.%(ext)s'),
             'quiet': False,
             'no_warnings': True,
+            'remote_components': ['ejs:github', 'ejs:npm'],
+            'extractor_args': {
+                'youtube': {
+                    'player_client': ['web', 'android', 'ios']
+                }
+            },
         }
+
+        # Search candidate locations for Deno or Node JS runtime (Windows, macOS, Linux)
+        deno_candidates = [
+            shutil.which("deno"),
+            os.path.join(script_dir, "deno.exe"),
+            os.path.join(script_dir, "deno"),
+            os.path.expandvars(r"%USERPROFILE%\.deno\bin\deno.exe"),
+            os.path.expandvars(r"%LOCALAPPDATA%\Programs\deno\deno.exe"),
+            os.path.expanduser("~/.deno/bin/deno"),
+            "/opt/homebrew/bin/deno",  # Apple Silicon Mac
+            "/usr/local/bin/deno",     # Intel Mac / Linux
+            "/usr/bin/deno",           # Linux package manager
+        ]
+        deno_path = next((p for p in deno_candidates if p and os.path.isfile(p)), None)
+        if deno_path:
+            ydl_opts['js_runtimes'] = {'deno': {'path': deno_path}}
+        else:
+            # Fall back to Node.js if present (very common on Linux servers)
+            node_candidates = [
+                shutil.which("node"),
+                "/usr/bin/node",
+                "/usr/local/bin/node",
+            ]
+            node_path = next((p for p in node_candidates if p and os.path.isfile(p)), None)
+            if node_path:
+                ydl_opts['js_runtimes'] = {'node': {'path': node_path}}
+
+        if cookie_file:
+            print(f"Using YouTube cookies from: {cookie_file}")
+            ydl_opts['cookiefile'] = cookie_file
+        else:
+            print("Note: No 'cookies.txt' found in project root. If YouTube triggers bot checks, add cookies.txt.")
+
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             info = ydl.extract_info(url, download=True)
             title = info.get('title', 'Unknown Title')
@@ -97,9 +146,9 @@ def get_audio_file(video_id):
             print(f"Duration: {format_timestamp(duration)}")
             print("Download complete.")
             
-            # Convert to standard mono 11025Hz WAV
             print(f"Converting audio to standard mono 11025Hz WAV using ffmpeg...")
-            cmd = f'ffmpeg -i "{raw_filepath}" -ar 11025 -ac 1 "{wav_path}" -y -loglevel quiet'
+            ffmpeg_bin = "ffmpeg.exe" if os.path.isfile("ffmpeg.exe") else "ffmpeg"
+            cmd = f'"{ffmpeg_bin}" -i "{raw_filepath}" -ar 11025 -ac 1 "{wav_path}" -y -loglevel quiet'
             subprocess.run(cmd, shell=True, check=True)
             
             # Delete the raw downloaded audio file
@@ -111,28 +160,47 @@ def get_audio_file(video_id):
             
             return wav_path
     except Exception as e:
+        err_str = str(e)
+        if "Sign in to confirm" in err_str or "bot" in err_str.lower() or "429" in err_str:
+            target_cookie_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "cookies.txt")
+            print("\n" + "=" * 72)
+            print("[YOUTUBE BOT DETECTION / AUTHENTICATION REQUIRED]")
+            print("YouTube is blocking automated requests from your IP address:")
+            print(f"  {err_str}")
+            print("\nHow to fix:")
+            print("1. In your browser (where you are logged into YouTube), install")
+            print("   the extension 'Get cookies.txt LOCALLY'.")
+            print("2. Navigate to https://www.youtube.com and export your cookies.")
+            print(f"3. Save the exported file as 'cookies.txt' at:")
+            print(f"   {target_cookie_path}")
+            print("4. (If format/signature error also occurs) Ensure Deno or Node.js is installed")
+            print("   so yt-dlp can solve YouTube JS challenges.")
+            print("=" * 72 + "\n")
         raise RuntimeError(f"Error fetching/downloading video from YouTube: {e}")
 
 def compute_novelty_curve(features, W):
     """
     Computes Foote's novelty curve on the feature matrix using cosine distance.
-    Fully JIT-free and vectorized using cumulative sum moving averages.
+    Fully JIT-free and vectorized using cumulative sum moving averages in float32.
     """
     d, T = features.shape
     
     # Pad features to handle start/end boundary frames nicely
     features_padded = np.pad(features, ((0, 0), (W, W)), mode='edge')
-    cumsum = np.cumsum(features_padded, axis=1)
+    cumsum = np.cumsum(features_padded, axis=1, dtype=np.float32)
+    del features_padded
     
     # Left window averages for padded index range [t, t + W - 1]
-    left_means = (cumsum[:, W:T+W] - cumsum[:, 0:T]) / W
+    left_means = (cumsum[:, W:T+W] - cumsum[:, 0:T]) / np.float32(W)
     # Right window averages for padded index range [t + W, t + 2*W - 1]
-    right_means = (cumsum[:, 2*W:T+2*W] - cumsum[:, W:T+W]) / W
+    right_means = (cumsum[:, 2*W:T+2*W] - cumsum[:, W:T+W]) / np.float32(W)
+    del cumsum
     
     # Cosine distance computation: 1.0 - (A . B) / (||A|| * ||B||)
     dot_products = np.sum(left_means * right_means, axis=0)
     norms_left = np.linalg.norm(left_means, axis=0)
     norms_right = np.linalg.norm(right_means, axis=0)
+    del left_means, right_means
     
     # Avoid division by zero
     norms_left[norms_left == 0] = 1e-10
@@ -169,18 +237,23 @@ def segment_audio(wav_path, min_distance_sec, method=DEFAULT_METHOD, prominence=
     print("Computing Short-Time Fourier Transform (STFT)...")
     n_fft = 2048
     hop_length = 512
+    win = scipy.signal.get_window('hann', n_fft).astype(np.float32)
     
-    # Compute STFT using scipy
+    # Compute STFT using scipy with single-precision float32 window to prevent float64 promotion
     frequencies, times, Zxx = scipy.signal.stft(
         y, 
         fs=sr, 
+        window=win,
         nperseg=n_fft, 
         noverlap=n_fft - hop_length
     )
+    del y
     magnitude = np.abs(Zxx)
+    del Zxx
     
     # Use log-magnitude spectrogram for structural analysis
     features = np.log1p(magnitude * 100)
+    del magnitude
     
     # Sliding block size: 10 seconds
     window_sec = 10
@@ -188,6 +261,7 @@ def segment_audio(wav_path, min_distance_sec, method=DEFAULT_METHOD, prominence=
     print(f"Analyzing transitions with a sliding window of {window_sec} seconds (W={W} frames)...")
     
     novelty = compute_novelty_curve(features, W)
+    del features
     
     # Track separation constraints:
     # Minimum track length (in frames)

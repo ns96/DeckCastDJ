@@ -821,3 +821,138 @@ function showBookmarksDialogNoLinks(videoId, title) {
 
   console.log("Getting Bookmarks (No Links) For Video ID: " + videoId + "\n" + title);
 }
+
+// =====================================================================
+// SETTINGS DIALOG (YouTube API Key & App Configuration)
+// =====================================================================
+
+// Request current settings from server and open dialog
+function showSettingsDialog() {
+  if (typeof socket !== "undefined" && socket.connected) {
+    socket.emit('my event', {
+      data: 'Get Settings',
+      clientId: clientId
+    });
+  } else {
+    // Fallback if socket not yet connected
+    renderSettingsDialog("");
+  }
+}
+
+// Render the Settings Modal
+function renderSettingsDialog(apiKey) {
+  // 1. Remove any existing dialog
+  var oldModal = document.getElementById("app-dialog-overlay");
+  if (oldModal) oldModal.remove();
+
+  // 2. Create Modal Overlay
+  var overlay = document.createElement("div");
+  overlay.id = "app-dialog-overlay";
+  overlay.className = "app-modal-overlay";
+
+  var content = document.createElement("div");
+  content.className = "app-modal-content";
+  content.style.maxWidth = "520px";
+
+  // Header
+  var header = document.createElement("div");
+  header.className = "app-modal-header";
+  header.innerHTML = `<h3>⚙️ DeckCastDJ Settings</h3><button class="app-modal-close-btn">&times;</button>`;
+  content.appendChild(header);
+
+  header.querySelector(".app-modal-close-btn").onclick = function () { overlay.remove(); };
+
+  // Body
+  var body = document.createElement("div");
+  body.className = "app-modal-body";
+
+  var currentKey = apiKey || "";
+
+  body.innerHTML = `
+    <div style="margin-bottom: 15px;">
+      <label for="settingsApiKey" style="display: block; font-weight: bold; margin-bottom: 6px;">
+        Google YouTube Data API v3 Key:
+      </label>
+      <input type="text" id="settingsApiKey" value="${currentKey}" placeholder="AIzaSy..." 
+        style="width: 95%; padding: 8px 10px; font-family: monospace; font-size: 13px; background-color: var(--bg-input); color: var(--text-main); border: 1px solid var(--border-color); border-radius: 5px; outline: none;" />
+      <small style="display: block; margin-top: 6px; opacity: 0.8; font-size: 12px; line-height: 1.4;">
+        Enables high-speed playlist loading (50 songs/request) without rate-limiting.
+      </small>
+    </div>
+
+    <div style="background-color: var(--bg-control); border-left: 4px solid var(--accent-primary); padding: 10px 14px; border-radius: 4px; margin-bottom: 15px; font-size: 12px; line-height: 1.5;">
+      <b>Need a free API key?</b><br>
+      1. Go to <a href="https://console.cloud.google.com/" target="_blank" style="color: var(--accent-primary); font-weight: bold;">Google Cloud Console</a>.<br>
+      2. Enable <i>YouTube Data API v3</i> on a project.<br>
+      3. Create an API Key under <i>Credentials</i> and paste it above.
+    </div>
+
+    <div id="settingsStatusMsg" style="min-height: 20px; font-size: 13px; font-weight: bold; transition: all 0.2s;"></div>
+  `;
+  content.appendChild(body);
+
+  // Footer
+  var footer = document.createElement("div");
+  footer.className = "app-modal-footer";
+
+  var cancelBtn = document.createElement("button");
+  cancelBtn.type = "button";
+  cancelBtn.className = "secondary-btn";
+  cancelBtn.textContent = "Cancel";
+  cancelBtn.style.cssText = "padding: 8px 16px; border-radius: 4px; border: none; cursor: pointer;";
+  cancelBtn.onclick = function () { overlay.remove(); };
+
+  var saveBtn = document.createElement("button");
+  saveBtn.type = "button";
+  saveBtn.textContent = "Save & Apply";
+  saveBtn.style.cssText = "padding: 8px 18px; border-radius: 4px; border: none; cursor: pointer; font-weight: bold;";
+  saveBtn.onclick = function () {
+    var keyVal = document.getElementById("settingsApiKey").value.trim();
+    var statusEl = document.getElementById("settingsStatusMsg");
+    if (!keyVal) {
+      statusEl.style.color = "#ff5555";
+      statusEl.textContent = "Please enter a valid API key.";
+      return;
+    }
+
+    statusEl.style.color = "var(--text-main)";
+    statusEl.textContent = "Saving...";
+
+    socket.emit('my event', {
+      data: 'Save Settings',
+      youtubeApiKey: keyVal,
+      clientId: clientId
+    });
+  };
+
+  footer.appendChild(cancelBtn);
+  footer.appendChild(saveBtn);
+  content.appendChild(footer);
+
+  overlay.appendChild(content);
+  document.body.appendChild(overlay);
+
+  // Focus input
+  setTimeout(function () {
+    var input = document.getElementById("settingsApiKey");
+    if (input) input.focus();
+  }, 100);
+}
+
+// Handle save confirmation from server
+function handleSettingsSaved(msg) {
+  var statusEl = document.getElementById("settingsStatusMsg");
+  if (!statusEl) return;
+
+  if (msg.success) {
+    statusEl.style.color = "#4CAF50";
+    statusEl.textContent = "✓ " + (msg.message || "Saved successfully!");
+    setTimeout(function () {
+      var overlay = document.getElementById("app-dialog-overlay");
+      if (overlay) overlay.remove();
+    }, 1200);
+  } else {
+    statusEl.style.color = "#ff5555";
+    statusEl.textContent = "✗ " + (msg.message || "Failed to save.");
+  }
+}

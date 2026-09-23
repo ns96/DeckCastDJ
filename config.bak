@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 """
-Store the youtube api key and playlist.
+Store the youtube api key and playlists.
 
-***This file should be renamed to config.py and saved with desired values***
+***This file should not be uploaded to the git repo***
 
 Created on Thu Feb 22 12:16:58 2024
 
@@ -12,18 +12,20 @@ Created on Thu Feb 22 12:16:58 2024
 # what port the server should run on
 app_port = 5054
 
-# change to your youtube api key
-# https://www.youtube.com/watch?v=uz7dY8qTFJw 
-youtubeApiKey = 'yourAPIKeyHere'
+youtubeApiKey = '[ENCRYPTION_KEY]'
 
 # used for loading playlist from youtube. 
-# If false, a backup is loaded from disk if previously loaded
+# If false, a backup is loaded from disk of previously loaded playlist
 useYoutube = True
 
 # change/add urls to your own youtube playlist of interest
 youtubePL = dict()
-youtubePL['70s Hits'] = 'https://www.youtube.com/playlist?list=PLLFWrh68-XMRGLYQUafmGbi48uT7uOrRU'
+
+#youtubePL['Denvers Favorite'] = 'https://www.youtube.com/playlist?list=PLgASkX6vGzmBGM1RYaiS2Ga2vcz-C1AZQ'
+#youtubePL['70s Hits'] = 'https://www.youtube.com/playlist?list=PLLFWrh68-XMRGLYQUafmGbi48uT7uOrRU'
+youtubePL['90s Soul'] = 'https://www.youtube.com/playlist?list=PLT-BPKLQJNoV0XXEXV35RvI8jjeyKaz3Q'
 youtubePL['80s Hits'] = 'https://www.youtube.com/playlist?list=PLmXxqSJJq-yXrCPGIT2gn8b34JjOrl4Xf'
+youtubePL['Nathan Likes'] = 'https://www.youtube.com/playlist?list=PL9nM-OJA81WAhh0jaDiT228tPzJeSS-OP'
 youtubePL['90s Hits'] = 'https://www.youtube.com/playlist?list=PLmXxqSJJq-yUvMWKuZQAB_8yxnjZaOZUp'
 
 

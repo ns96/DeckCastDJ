@@ -531,6 +531,31 @@
             color: white;
         }
 
+        .settings-nav-btn {
+            background-color: var(--bg-control);
+            color: var(--text-main);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            padding: 6px 12px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            transition: background-color 0.2s, border-color 0.2s, transform 0.1s;
+        }
+
+        .settings-nav-btn:hover {
+            background-color: var(--accent-primary);
+            color: #ffffff;
+            border-color: var(--accent-primary);
+        }
+
+        .settings-nav-btn:active {
+            transform: scale(0.97);
+        }
+
         /* --- Modern CSS Loader Card --- */
         .modern-loader-container {
             background-color: var(--bg-panel);
@@ -705,6 +730,10 @@
                 <input type="checkbox" id="isPrivate" checked="checked">
                 <span class="checkmark"></span>
             </label>
+
+            <div>
+                <button type="button" class="settings-nav-btn" onclick="showSettingsDialog()" title="Settings & YouTube API Key">⚙️ Settings</button>
+            </div>
         </div>
 
         <div class="decks-container">

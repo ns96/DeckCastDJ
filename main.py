@@ -6,13 +6,15 @@ A simple flask/SocketIO for building very simple youtube DJ application that
 can be shared by other users
 
 @author: Nathan
-@version: 2.2.2 (07/15/2026)
+@version: 2.4.0 (09/07/2026)
 """
 # this variables are passed onto the html templates
-appVersion = 'v2.2.2 (07/15/2026)'
+appVersion = 'v2.4.0 (09/07/2026)'
 bgColor = '#b2b2de' # no longer used but will keep for backward compatibility
 
+import os
 import os.path
+import sys
 from datetime import datetime, timedelta
 from urllib.request import urlopen
 from urllib.error import HTTPError
@@ -20,17 +22,63 @@ import json
 import pafy
 import qrcode
 import pickle
+
+if getattr(sys, 'frozen', False):
+    base_dir = os.path.dirname(sys.executable)
+else:
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+if base_dir:
+    os.chdir(base_dir)
+    if base_dir not in sys.path:
+        sys.path.insert(0, base_dir)
+
 from config import app_port, youtubeApiKey, useYoutube, youtubePL
 from flask import Flask, render_template, request
 from flask_socketio import SocketIO
 from trackext import extract_tracks
 
-os.chdir(os.path.dirname(__file__))
+settingsFile = 'data/settings.json'
+
+def loadSettings():
+    global youtubeApiKey
+    if os.path.isfile(settingsFile):
+        try:
+            with open(settingsFile, 'r', encoding='utf-8') as f:
+                s = json.load(f)
+                if 'youtubeApiKey' in s and s['youtubeApiKey'].strip():
+                    youtubeApiKey = s['youtubeApiKey'].strip()
+                    print("Loaded youtubeApiKey from settings.json:", youtubeApiKey[:6] + "..." if len(youtubeApiKey) > 6 else youtubeApiKey)
+        except Exception as e:
+            print("Error reading settings.json:", e)
+
+def saveSettings(newApiKey):
+    global youtubeApiKey
+    youtubeApiKey = newApiKey.strip()
+    try:
+        s = {}
+        if os.path.isfile(settingsFile):
+            try:
+                with open(settingsFile, 'r', encoding='utf-8') as f:
+                    s = json.load(f)
+            except Exception:
+                s = {}
+        s['youtubeApiKey'] = youtubeApiKey
+        os.makedirs(os.path.dirname(settingsFile), exist_ok=True)
+        with open(settingsFile, 'w', encoding='utf-8') as f:
+            json.dump(s, f, indent=2)
+        print("Saved youtubeApiKey to settings.json")
+    except Exception as e:
+        print("Error saving settings.json:", e)
+
+# load settings from settings.json if present
+loadSettings()
 
 # set the youtube api key. 
 pafy.set_api_key(youtubeApiKey)
 
-app = Flask(__name__)
+app = Flask(__name__,
+            template_folder=os.path.join(base_dir, 'templates'),
+            static_folder=os.path.join(base_dir, 'static'))
 app.config['SECRET_KEY'] = 'secret12345#'
 socketio = SocketIO(app)
 
@@ -1415,6 +1463,24 @@ def processMessage(json):
         json['qlist'] = filterSavedQueList('MP3DJ@')
         json['data'] = 'MP3DJ Load QueList'
 
+    # get settings
+    if 'Get Settings' in msgTitle:
+        json['youtubeApiKey'] = youtubeApiKey
+        json['data'] = 'Settings Loaded'
+
+    # save settings
+    if 'Save Settings' in msgTitle:
+        newKey = json.get('youtubeApiKey', '').strip()
+        if newKey:
+            saveSettings(newKey)
+            pafy.set_api_key(newKey)
+            json['success'] = True
+            json['message'] = 'YouTube API Key saved and applied successfully!'
+        else:
+            json['success'] = False
+            json['message'] = 'API Key cannot be empty.'
+        json['data'] = 'Settings Saved'
+
     # reset the stored values
     if 'RESET' in msgTitle:
         userCount = 1
@@ -1472,7 +1538,9 @@ def handle_my_custom_event(json, methods=['GET', 'POST']):
         "View Track Numbers",
         "Extract Track Numbers Done",
         "Extract Track Numbers Error",
-        "Delete Track Numbers Done"
+        "Delete Track Numbers Done",
+        "Settings Loaded",
+        "Settings Saved"
     ]
     
     msg_title = json.get('data', '')

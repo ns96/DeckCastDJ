@@ -532,6 +532,28 @@
             background-color: var(--accent-hover);
         }
 
+        .settings-nav-btn {
+            background-color: var(--bg-control);
+            color: var(--text-main);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            padding: 8px 14px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            transition: background-color 0.2s, border-color 0.2s;
+            margin-top: 5px;
+        }
+
+        .settings-nav-btn:hover {
+            background-color: var(--accent-primary);
+            color: #ffffff;
+            border-color: var(--accent-primary);
+        }
+
         /* --- Bookmarks Table Elements --- */
         .bm-table {
             width: 100%;
@@ -718,6 +740,10 @@
                 <input type="checkbox" id="isPrivate" checked="checked">
                 <span class="checkmark"></span>
             </label>
+
+            <div>
+                <button type="button" class="settings-nav-btn" onclick="showSettingsDialog()" title="Settings & YouTube API Key">⚙️ Settings</button>
+            </div>
         </div>
 
         <div class="deck">

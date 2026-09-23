@@ -76,20 +76,26 @@ def compute_video_novelty_once(wav_path):
     
     n_fft = 2048
     hop_length = 512
+    win = scipy.signal.get_window('hann', n_fft).astype(np.float32)
     
     frequencies, times, Zxx = scipy.signal.stft(
         y, 
         fs=sr, 
+        window=win,
         nperseg=n_fft, 
         noverlap=n_fft - hop_length
     )
+    del y
     magnitude = np.abs(Zxx)
+    del Zxx
     features = np.log1p(magnitude * 100)
+    del magnitude
     
     window_sec = 10
     W = int(round(window_sec * sr / hop_length))
     
     novelty = compute_novelty_curve(features, W)
+    del features
     return novelty, times, sr, duration
 
 def evaluate_grid_combination(novelty, times, sr, duration, min_distance_sec, adaptive_window_sec, offset):

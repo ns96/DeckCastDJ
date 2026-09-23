@@ -1,0 +1,11 @@
+{
+  "default_playlist": {
+    "name": "Guest",
+    "url": "https://www.youtube.com/playlist?list=PLmXxqSJJq-yXrCPGIT2gn8b34JjOrl4Xf"
+  },
+  "user_playlists": {
+    "90s Hits": "https://www.youtube.com/playlist?list=PLmXxqSJJq-yUvMWKuZQAB_8yxnjZaOZUp",
+    "90s Soul": "https://www.youtube.com/playlist?list=PLT-BPKLQJNoV0XXEXV35RvI8jjeyKaz3Q",
+    "70s Hits": "https://www.youtube.com/playlist?list=PLLFWrh68-XMRGLYQUafmGbi48uT7uOrRU"
+  }
+}

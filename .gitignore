@@ -184,3 +184,12 @@ queList.json
 
 # ignore files in ytd 
 ytd/
+
+# clean distribution cache
+data_clean/
+
+# YouTube session cookies & JS runtime
+cookies.txt
+deno.exe
+
+

@@ -133,6 +133,19 @@ socket.on('my response', function (msg) {
     }
   }
 
+  // handle settings events
+  if (msg.data.includes("Settings Loaded")) {
+    if (msg.clientId === clientId) {
+      renderSettingsDialog(msg.youtubeApiKey);
+    }
+  }
+
+  if (msg.data.includes("Settings Saved")) {
+    if (msg.clientId === clientId) {
+      handleSettingsSaved(msg);
+    }
+  }
+
   // handle delete track numbers events
   if (msg.data.includes("Delete Track Numbers Done")) {
     if (msg.clientId === clientId) {
