@@ -638,6 +638,7 @@
             width: 560px;
             max-width: 100%;
             box-sizing: border-box;
+            min-height: 28px;
         }
 
         .track-scroller-content {
@@ -647,6 +648,15 @@
             color: var(--text-main);
             font-size: 13px;
             font-weight: 500;
+        }
+
+        /* Always-visible empty state for the track marquee */
+        .track-scroller-container.is-empty .track-scroller-content {
+            display: block;
+            padding-left: 0;
+            animation: none;
+            text-align: center;
+            opacity: 0.6;
         }
 
         .track-scroller-content .highlight {
@@ -740,7 +750,7 @@
                 </div>
 
                 <div id="player1"></div>
-                <div id="track-scroller-container-1" class="track-scroller-container" style="display: none;">
+                <div id="track-scroller-container-1" class="track-scroller-container">
                     <div id="track-scroller-content-1" class="track-scroller-content"></div>
                 </div>
 
@@ -775,7 +785,7 @@
                 </div>
 
                 <div id="player2"></div>
-                <div id="track-scroller-container-2" class="track-scroller-container" style="display: none;">
+                <div id="track-scroller-container-2" class="track-scroller-container">
                     <div id="track-scroller-content-2" class="track-scroller-content"></div>
                 </div>
 

@@ -372,6 +372,7 @@
             box-shadow: 0 2px 10px var(--shadow-color);
             width: 100%;
             box-sizing: border-box;
+            min-height: 28px;
         }
 
         .track-scroller-content {
@@ -381,6 +382,15 @@
             color: var(--text-main);
             font-size: 13px;
             font-weight: 500;
+        }
+
+        /* Always-visible empty state for the track marquee */
+        .track-scroller-container.is-empty .track-scroller-content {
+            display: block;
+            padding-left: 0;
+            animation: none;
+            text-align: center;
+            opacity: 0.6;
         }
 
         .track-scroller-content .highlight {

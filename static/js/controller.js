@@ -1414,16 +1414,8 @@ function handleCurrentVideoTracklistUpdate(msg) {
     if (!trackList1 || trackList1.length === 0) {
       var container1 = document.getElementById("track-scroller-container-1");
       if (container1) {
-        if (mobile) {
-          container1.style.display = "block";
-          var content1 = document.getElementById("track-scroller-content-1");
-          if (content1) {
-            content1.innerHTML = "";
-            content1.removeAttribute("data-text");
-          }
-        } else {
-          container1.style.display = "none";
-        }
+        var content1 = document.getElementById("track-scroller-content-1");
+        showScrollerEmptyState(container1, content1);
       }
     }
   } else if (playerNum == 2) {
@@ -1436,20 +1428,27 @@ function handleCurrentVideoTracklistUpdate(msg) {
     if (!trackList2 || trackList2.length === 0) {
       var container2 = document.getElementById("track-scroller-container-2");
       if (container2) {
-        if (mobile) {
-          container2.style.display = "block";
-          var content2 = document.getElementById("track-scroller-content-2");
-          if (content2) {
-            content2.innerHTML = "";
-            content2.removeAttribute("data-text");
-          }
-        } else {
-          container2.style.display = "none";
-        }
+        var content2 = document.getElementById("track-scroller-content-2");
+        showScrollerEmptyState(container2, content2);
       }
     }
   }
   updatePlayerTrackScrollers();
+}
+
+// text shown in the marquee panel when no tracklist is available
+var SCROLLER_EMPTY_TEXT = "No tracklist \u2014 load a video to see tracks";
+
+// keep the marquee panel visible and show a placeholder when there is no tracklist
+function showScrollerEmptyState(container, content) {
+  if (content && content.getAttribute("data-text") !== "__empty__") {
+    content.setAttribute("data-text", "__empty__");
+    content.textContent = SCROLLER_EMPTY_TEXT;
+  }
+  if (container) {
+    container.classList.add("is-empty");
+    container.style.display = "block";
+  }
 }
 
 // Set up interval for updating track scrollers
@@ -1592,15 +1591,10 @@ function updateSinglePlayerScroller(playerNum, player, trackList) {
 
       content.innerHTML = parts.join(" &nbsp; &nbsp; | &nbsp; &nbsp; ");
     }
+    container.classList.remove("is-empty");
     container.style.display = "block";
   } else {
-    content.innerHTML = "";
-    content.removeAttribute("data-text");
-    if (mobile) {
-      container.style.display = "block";
-    } else {
-      container.style.display = "none";
-    }
+    showScrollerEmptyState(container, content);
   }
 }
 
@@ -1634,16 +1628,8 @@ function handleTracklistOnlyResponse(msg) {
     if (!trackList1 || trackList1.length === 0) {
       var container1 = document.getElementById("track-scroller-container-1");
       if (container1) {
-        if (mobile) {
-          container1.style.display = "block";
-          var content1 = document.getElementById("track-scroller-content-1");
-          if (content1) {
-            content1.innerHTML = "";
-            content1.removeAttribute("data-text");
-          }
-        } else {
-          container1.style.display = "none";
-        }
+        var content1 = document.getElementById("track-scroller-content-1");
+        showScrollerEmptyState(container1, content1);
       }
     }
   }
@@ -1657,16 +1643,8 @@ function handleTracklistOnlyResponse(msg) {
     if (!trackList2 || trackList2.length === 0) {
       var container2 = document.getElementById("track-scroller-container-2");
       if (container2) {
-        if (mobile) {
-          container2.style.display = "block";
-          var content2 = document.getElementById("track-scroller-content-2");
-          if (content2) {
-            content2.innerHTML = "";
-            content2.removeAttribute("data-text");
-          }
-        } else {
-          container2.style.display = "none";
-        }
+        var content2 = document.getElementById("track-scroller-content-2");
+        showScrollerEmptyState(container2, content2);
       }
     }
   }
@@ -1806,4 +1784,4 @@ function nextTrackForPlayer(playerNum) {
   } else {
     console.log("Player " + playerNum + " is already at the last track.");
   }
-}
+}
