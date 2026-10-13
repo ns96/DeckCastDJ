@@ -92,7 +92,7 @@ if [ "$CLEAN_BUILD" -eq 1 ]; then
         REFRESH_ARG="--refresh"
     fi
     
-    $PYTHON prepare_clean_distro.py --dest "dist/DeckCastDJ/data" --config-dest "dist/DeckCastDJ/config.py" $REFRESH_ARG
+    $PYTHON "tools/prepare_clean_distro.py" --dest "dist/DeckCastDJ/data" --config-dest "dist/DeckCastDJ/config.py" $REFRESH_ARG
 else
     if [ ! -f "dist/DeckCastDJ/config.py" ]; then
         cp "config.py" "dist/DeckCastDJ/config.py"
@@ -118,7 +118,18 @@ else
     echo "[NOTE] ffmpeg not found in PATH. Track extraction works best when ffmpeg is installed (brew install ffmpeg)."
 fi
 
-# 5. Create 1-click double-clickable macOS launcher (run.command)
+# 5. YouTube credentials. Developer builds only: the clean build is meant to be
+#    handed to other people, and cookies.txt is a signed-in session.
+if [ "$CLEAN_BUILD" -eq 1 ]; then
+    echo "[NOTE] Clean build: cookies.txt is deliberately NOT included (it holds a signed-in YouTube session)."
+elif [ -f "cookies.txt" ]; then
+    cp "cookies.txt" "dist/DeckCastDJ/cookies.txt"
+    echo "Copied cookies.txt (your YouTube session - keep this build private)."
+else
+    echo "[WARNING] cookies.txt not found - downloads may hit YouTube bot checks."
+fi
+
+# 6. Create 1-click double-clickable macOS launcher (run.command)
 cat << 'EOF' > "dist/DeckCastDJ/run.command"
 #!/bin/bash
 DIR="$(cd "$(dirname "$0")" && pwd)"

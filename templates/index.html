@@ -161,6 +161,80 @@
             text-align: left;
         }
 
+        /* Check / Burn / Download MP3, kept to the left under the que table.
+           Hidden until the que has a video in it - see
+           updateQueActionsVisibility() in controller.js */
+        .que-actions {
+            display: none;
+            text-align: left;
+            margin: 6px 0 12px 4px;
+        }
+
+        .que-actions button {
+            margin-right: 6px;
+        }
+
+        .que-actions button:disabled {
+            opacity: 0.5;
+            cursor: default;
+        }
+
+        /* Progress card for Download MP3 - floats in the corner like the
+           burner page's progress bar, so the page stays usable while a que
+           downloads.  Shown by updateDownloadDialog() in controller.js */
+        .download-dialog {
+            position: fixed;
+            right: 18px;
+            bottom: 18px;
+            z-index: 40;
+            width: 320px;
+            padding: 12px 14px 14px;
+            text-align: left;
+            background-color: var(--bg-panel);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.45);
+        }
+
+        .download-dialog-head {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+
+        .download-dialog-head button {
+            padding: 0 6px;
+            line-height: 18px;
+        }
+
+        .download-dialog .progress {
+            height: 14px;
+            border-radius: 7px;
+            background-color: var(--bg-control);
+            overflow: hidden;
+        }
+
+        .download-dialog .progress > span {
+            display: block;
+            height: 100%;
+            width: 0;
+            background-color: var(--accent-primary);
+            transition: width 0.2s;
+        }
+
+        .download-dialog-line {
+            margin-top: 8px;
+            font-size: 13px;
+            word-break: break-word;
+        }
+
+        .download-dialog-counts {
+            margin-top: 4px;
+            font-size: 12px;
+            opacity: 0.65;
+        }
+
         .footer-section {
             display: flex;
             justify-content: space-between;
@@ -824,13 +898,32 @@
 
         <div class="playlist-section">
             <p><span id="queList"></span></p>
+            <!-- The three que actions live below the table so the que header
+                 stays compact.  Static markup: the table above is re-rendered
+                 on every refresh, and buttons rebuilt mid-click get lost. -->
+            <div class="que-actions">
+                <button type="button" onclick="checkQueList()">Check</button>
+                <button type="button" onclick="burnQueList()">Burn</button>
+                <button type="button" onclick="downloadQueList()">Download MP3</button>
+            </div>
+            <!-- Download MP3 progress: hidden until a download runs -->
+            <div id="downloadDialog" class="download-dialog" style="display: none;">
+                <div class="download-dialog-head">
+                    <b>Download MP3</b>
+                    <button type="button" onclick="closeDownloadDialog()" title="Close">&#10005;</button>
+                </div>
+                <div class="progress"><span id="downloadBar"></span></div>
+                <div id="downloadText" class="download-dialog-line">Starting ...</div>
+                <div id="downloadCounts" class="download-dialog-counts"></div>
+            </div>
             <p><span id="playList"></span></p>
             <hr style="border-color: var(--border-color);">
             <div>
                 <b>Username: </b>
                 <input type="text" id="uname" name="uname" value="Guest" size="15">
                 <b id="filter_list">Filter/Playlist Url: </b>
-                <input type="text" id="filter" name="filter" value="" size="45">
+                <input type="text" id="filter" name="filter" value="" size="45"
+                    onkeydown="if(event.key==='Enter') loadPlayList();">
                 <button type="button" onclick="loadPlayList()">Load</button>
                 <button type="button" onclick="addPlayListToQueList()">Que</button>
                 <button type="button" onclick="mergePlayList()">Merge</button>

@@ -1,0 +1,1106 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>DeckCastDJ - CD Burner</title>
+    <style>
+        /* --- THEME DEFINITIONS (mirrors the DJ page) --- */
+        :root {
+            --bg-body: #1e1e1e;
+            --bg-panel: #2a2a2a;
+            --bg-control: #333333;
+            --bg-input: #333333;
+            --text-main: #f0f0f0;
+            --text-header: #04AA6D;
+            --accent-primary: #04AA6D;
+            --accent-hover: #05c47d;
+            --border-color: #555555;
+            --shadow-color: rgba(0, 0, 0, 0.3);
+            --warn-color: #ffb300;
+            --err-color: #ef5350;
+            --ok-color: #66bb6a;
+        }
+
+        .theme-light {
+            --bg-body: #e0e0e0; --bg-panel: #ffffff; --bg-control: #eeeeee;
+            --bg-input: #ffffff; --text-main: #111111; --text-header: #2e7d32;
+            --accent-primary: #2e7d32; --accent-hover: #43a047; --border-color: #cccccc;
+            --shadow-color: rgba(0, 0, 0, 0.1); --warn-color: #b26a00;
+            --err-color: #c62828; --ok-color: #2e7d32;
+        }
+
+        .theme-blue {
+            --bg-body: #0f172a; --bg-panel: #1e293b; --bg-control: #334155;
+            --bg-input: #0f172a; --text-main: #e2e8f0; --text-header: #38bdf8;
+            --accent-primary: #0ea5e9; --accent-hover: #38bdf8; --border-color: #475569;
+            --shadow-color: rgba(0, 0, 0, 0.4); --warn-color: #fbbf24;
+            --err-color: #fb7185; --ok-color: #4ade80;
+        }
+
+        .theme-orange {
+            --bg-body: #291d18; --bg-panel: #3e2c24; --bg-control: #5d4037;
+            --bg-input: #291d18; --text-main: #ffe0b2; --text-header: #ff9800;
+            --accent-primary: #fb8c00; --accent-hover: #ffa726; --border-color: #6d4c41;
+            --shadow-color: rgba(0, 0, 0, 0.4); --warn-color: #ffcc80;
+            --err-color: #ff7043; --ok-color: #aed581;
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+            background-color: var(--bg-body);
+            color: var(--text-main);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            margin: 0;
+            padding: 16px;
+            transition: background-color 0.3s, color 0.3s;
+        }
+
+        .app-container { max-width: 1180px; margin: auto; }
+
+        h3 {
+            color: var(--text-header);
+            margin: 0 0 10px 0;
+            font-size: 15px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .global-controls {
+            display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+            background-color: var(--bg-panel); padding: 12px 16px;
+            border-radius: 8px; margin-bottom: 14px;
+        }
+
+        .global-controls .title {
+            color: var(--text-header); font-weight: bold; font-size: 17px;
+            margin-right: auto;
+        }
+
+        .global-controls a, .global-controls select, .global-controls input {
+            font-size: 13px;
+        }
+
+        a.navlink {
+            color: var(--text-main); text-decoration: none; padding: 4px 9px;
+            border: 1px solid var(--border-color); border-radius: 5px;
+            background: var(--bg-control);
+        }
+        a.navlink:hover { border-color: var(--accent-primary); }
+
+        .panel {
+            background-color: var(--bg-panel);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 14px 16px;
+            margin-bottom: 14px;
+            box-shadow: 0 1px 3px var(--shadow-color);
+        }
+
+        button, input[type="button"] {
+            background-color: var(--bg-control);
+            color: var(--text-main);
+            border: 1px solid var(--border-color);
+            border-radius: 5px;
+            padding: 6px 12px;
+            font-size: 13px;
+            cursor: pointer;
+            transition: border-color 0.2s, background-color 0.2s;
+        }
+        button:hover:not(:disabled) { border-color: var(--accent-primary); }
+        button:disabled { opacity: 0.45; cursor: not-allowed; }
+
+        button.primary {
+            background-color: var(--accent-primary);
+            color: #fff;
+            border-color: var(--accent-primary);
+            font-weight: bold;
+        }
+        button.primary:hover:not(:disabled) { background-color: var(--accent-hover); }
+
+        button.danger { border-color: var(--err-color); color: var(--err-color); }
+
+        input[type="text"], select {
+            background-color: var(--bg-input);
+            color: var(--text-main);
+            border: 1px solid var(--border-color);
+            border-radius: 5px;
+            padding: 6px 9px;
+            font-size: 13px;
+        }
+
+        .row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+
+        .hint { font-size: 12px; opacity: 0.7; }
+
+        .status-pill {
+            display: inline-block; padding: 2px 9px; border-radius: 10px;
+            font-size: 12px; border: 1px solid var(--border-color);
+            background: var(--bg-control);
+        }
+        .status-ok { color: var(--ok-color); border-color: var(--ok-color); }
+        .status-warn { color: var(--warn-color); border-color: var(--warn-color); }
+        .status-err { color: var(--err-color); border-color: var(--err-color); }
+
+        table.tracks { width: 100%; border-collapse: collapse; font-size: 13px; }
+        table.tracks th {
+            text-align: left; color: var(--text-header); font-size: 12px;
+            text-transform: uppercase; padding: 5px 6px;
+            border-bottom: 1px solid var(--border-color);
+        }
+        table.tracks td { padding: 5px 6px; border-bottom: 1px solid var(--bg-control); }
+        table.tracks tr:hover td { background: var(--bg-control); }
+        table.tracks tr.playing td { background: var(--bg-control); font-weight: 600; }
+        table.tracks td.act button.play { min-width: 24px; }
+        td.num { width: 34px; opacity: 0.7; }
+        td.time { width: 70px; white-space: nowrap; }
+        td.disc { width: 46px; white-space: nowrap; }
+        td.act { width: 92px; text-align: center; white-space: nowrap; }
+        td.act button { padding: 1px 6px; margin: 0 1px; }
+        .src-tag {
+            font-size: 11px; padding: 1px 7px; border-radius: 9px;
+            border: 1px solid var(--border-color); opacity: 0.85;
+        }
+        .src-youtube { color: #ff6b6b; border-color: #ff6b6b; }
+        .src-musichost { color: #4dabf7; border-color: #4dabf7; }
+
+        .disc-line { margin: 6px 0; font-size: 13px; }
+        .disc-head { display: flex; justify-content: space-between; gap: 10px; }
+        .bar {
+            height: 12px; border-radius: 6px; background: var(--bg-control);
+            overflow: hidden; margin-top: 3px;
+        }
+        .bar > span { display: block; height: 100%; background: var(--accent-primary); }
+        .bar > span.over { background: var(--err-color); }
+
+        .fit-line { font-size: 14px; margin-bottom: 8px; }
+
+        .progress-wrap { margin-top: 10px; }
+        .progress {
+            height: 14px; border-radius: 7px; background: var(--bg-control);
+            overflow: hidden;
+        }
+        .progress > span { display: block; height: 100%; width: 0; background: var(--accent-primary); transition: width 0.2s; }
+
+        .log {
+            font-family: ui-monospace, Menlo, Consolas, monospace;
+            font-size: 12px; background: var(--bg-control); border-radius: 5px;
+            padding: 8px 10px; margin-top: 10px; max-height: 130px; overflow-y: auto;
+            white-space: pre-wrap; word-break: break-word;
+        }
+        .log .err { color: var(--err-color); }
+        .log .ok { color: var(--ok-color); }
+
+        .muted { opacity: 0.65; font-size: 12px; }
+        .empty { opacity: 0.6; font-style: italic; padding: 10px 0; }
+
+        .footer-note { text-align: center; font-size: 12px; opacity: 0.6; margin: 18px 0 6px; }
+
+        .conn-badge {
+            font-size: 11px; padding: 2px 8px; border-radius: 9px;
+            background: var(--bg-control); opacity: 0.75;
+        }
+        .conn-badge.live { color: var(--ok-color); opacity: 1; }
+        .conn-badge.down { color: var(--err-color); opacity: 1; font-weight: bold; }
+
+        .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+        @media (max-width: 820px) { .two-col { grid-template-columns: 1fr; } }
+    </style>
+</head>
+
+<body>
+    <div class="app-container">
+
+        <div class="global-controls">
+            <span class="title">DeckCastDJ — CD Burner</span>
+            <span class="muted">{{ version }}</span>
+            <span id="connBadge" class="conn-badge">connecting…</span>
+            <a class="navlink" href="/" target="_blank" rel="noopener">DJ</a>
+            <a class="navlink" href="/mp3" target="_blank" rel="noopener">MP3</a>
+            <select id="themeSelect" onchange="setTheme(this.value)">
+                <option value="theme-dark">Dark</option>
+                <option value="theme-light">Light</option>
+                <option value="theme-blue">Blue Night</option>
+                <option value="theme-orange">Warm Orange</option>
+            </select>
+        </div>
+
+        <!-- DRIVE ------------------------------------------------------------ -->
+        <div class="panel">
+            <h3>Burner Drive</h3>
+            <div class="row">
+                <span>Drive:</span>
+                <select id="driveSelect"></select>
+                <span id="mediaStatus" class="status-pill">checking…</span>
+                <button onclick="refreshDrive()">Refresh</button>
+            </div>
+            <div id="driveDetail" class="muted" style="margin-top:6px;"></div>
+        </div>
+
+        <!-- SOURCE ----------------------------------------------------------- -->
+        <div class="panel">
+            <h3>1. Add From YouTube</h3>
+            <div class="row">
+                <input type="text" id="urlInput" style="flex:1; min-width:280px;"
+                    placeholder="https://www.youtube.com/watch?v=... or playlist URL"
+                    onkeydown="if(event.key==='Enter') addUrl();">
+                <button class="primary" onclick="addUrl()">Add</button>
+            </div>
+            <div class="muted" style="margin-top:6px;">
+                A single video URL or a playlist URL. Tracks pushed from the DJ or MP3
+                pages using their <b>Burn</b> buttons appear here automatically.
+            </div>
+            <div id="importNotice" class="muted" style="margin-top:6px;"></div>
+        </div>
+
+        <!-- TRACKS ----------------------------------------------------------- -->
+        <div class="panel">
+            <h3>2. Tracks <span id="trackCount" class="muted"></span></h3>
+            <div id="tracksWrap"></div>
+            <div class="row" style="margin-top:10px;">
+                <button onclick="clearTracks()">Clear All</button>
+                <button onclick="sendBurner('Burner Sort Tracks')">Sort A-Z</button>
+                <button onclick="stopPreview('Preview stopped.')" data-always-on="1">Stop Play</button>
+                <span class="hint" id="tracksHint"></span>
+            </div>
+        </div>
+
+        <audio id="preview" preload="none" style="display:none;"></audio>
+
+        <!-- DISC PLAN -------------------------------------------------------- -->
+        <div class="panel">
+            <h3>3. Disc Plan</h3>
+            <div class="row" style="margin-bottom:10px;">
+                <span>Blank:</span>
+                <select id="blankSelect" onchange="onBlankChange()">
+                    <option value="80">80 min (700 MB)</option>
+                    <option value="74">74 min (650 MB)</option>
+                </select>
+                <span id="trackLimit" class="muted"></span>
+            </div>
+            <div id="planWrap"></div>
+        </div>
+
+        <!-- BUILD & BURN ----------------------------------------------------- -->
+        <div class="panel">
+            <h3>4. Build &amp; Burn</h3>
+            <div class="row">
+                <button onclick="acquireAudio()">1 · Acquire Audio</button>
+                <span>Disc:</span>
+                <select id="burnDiscSelect" title="Which disc to burn" onchange="onBurnDiscPick()"></select>
+                <button onclick="burnDisc(true)">2 · Test Burn</button>
+                <button class="primary" onclick="burnDisc(false)" id="burnBtn">Burn Disc</button>
+            </div>
+            <div class="row" style="margin-top:10px;">
+                <label class="hint">
+                    <input type="checkbox" id="autoClean"> Delete downloaded audio after a successful burn
+                </label>
+                <select id="cleanTier">
+                    <option value="wav">WAV only</option>
+                    <option value="all">WAV + sources</option>
+                </select>
+            </div>
+            <div class="progress-wrap">
+                <div class="progress"><span id="progressBar"></span></div>
+                <div id="progressText" class="muted" style="margin-top:5px;">Idle</div>
+            </div>
+            <div class="row" style="margin-top:12px;">
+                <span class="muted" style="flex:1;">Activity log</span>
+                <button onclick="clearLog()" data-always-on="1"
+                        style="padding:2px 10px; font-size:12px;">Clear Log</button>
+            </div>
+            <div id="logBox" class="log" style="margin-top:6px;">Ready.</div>
+            <div id="bgNotice" class="hint" style="display:none; margin-top:6px;"></div>
+        </div>
+
+        <!-- SAVED PROJECTS --------------------------------------------------- -->
+        <div class="panel">
+            <h3>5. Saved CD Projects</h3>
+            <div id="savedWrap"></div>
+            <div class="row" style="margin-top:10px;">
+                <span>Project name:</span>
+                <input type="text" id="projectName" placeholder="Road Trip 2026">
+                <button onclick="saveProject()">Save Project</button>
+                <button onclick="newProject()">New</button>
+            </div>
+        </div>
+
+        <!-- CACHE ------------------------------------------------------------ -->
+        <div class="panel">
+            <h3>Cache</h3>
+            <div class="row">
+                <span id="cacheInfo" class="muted">—</span>
+                <button class="danger" onclick="cleanCache(true)">Clear CD Cache (dry run)</button>
+                <button class="danger" onclick="cleanCache(false)">Clear CD Cache</button>
+                <label class="hint"><input type="checkbox" id="cleanSources"> include sources</label>
+            </div>
+            <div id="cacheDetail" class="muted" style="margin-top:6px;"></div>
+        </div>
+
+        <div class="footer-note">
+            Audio CD (Red Book) · 44.1 kHz / 16-bit / stereo · titles appear in file names only
+            (neither native burner writes CD-TEXT)
+            <div id="instanceInfo" class="muted"></div>
+        </div>
+    </div>
+
+    <script src="https://cdn.socket.io/4.5.3/socket.io.min.js"
+        integrity="sha384-WPFUvHkB1aHA5TDSZi6xtDgkF0wXJcIIxXhC6h8OT8EH3fC5PWro5pWJ1THjcfEi"
+        crossorigin="anonymous"></script>
+
+    <script>
+        // ---------------------------------------------------------------------
+        // theme handling (same contract as the other pages)
+        // ---------------------------------------------------------------------
+        function setTheme(themeName) {
+            document.body.classList.remove('theme-light', 'theme-blue', 'theme-orange');
+            if (themeName !== 'theme-dark') {
+                document.body.classList.add(themeName);
+            }
+            localStorage.setItem('djTheme', themeName);
+        }
+
+        (function () {
+            const savedTheme = localStorage.getItem('djTheme');
+            if (savedTheme) {
+                setTheme(savedTheme);
+                const select = document.getElementById('themeSelect');
+                if (select) select.value = savedTheme;
+            }
+        })();
+
+        // ---------------------------------------------------------------------
+        // socket
+        // ---------------------------------------------------------------------
+        var socket = io('http://' + document.domain + ':' + location.port);
+
+        // last full state received from the server
+        var state = null;
+        var busy = false;
+
+        // highest log line shown, so catching up after a dropped connection
+        // never repeats a line
+        var lastLogSeq = 0;
+        var logReady = false;
+        var serverBusy = '';
+        var jobStartedLocally = false;
+        var localJobStartedAt = 0;
+
+        function setConn(level, text) {
+            var badge = document.getElementById('connBadge');
+            if (!badge) return;
+            badge.textContent = text;
+            badge.className = 'conn-badge ' + (level || '');
+        }
+
+        socket.on('connect', function () {
+            setConn('live', 'Live');
+            socket.emit('my event', { data: 'Burner Get State' });
+        });
+
+        // a background tab can be throttled and dropped by the server, so say
+        // so rather than leaving the page looking alive but stale
+        socket.on('disconnect', function () {
+            setConn('down', 'Disconnected - reconnecting…');
+        });
+
+        socket.on('connect_error', function () {
+            setConn('down', 'No server connection - retrying…');
+        });
+
+        socket.on('my response', function (msg) {
+            if (!msg || typeof msg.data !== 'string') return;
+
+            if (msg.data.indexOf('Burner State') !== -1) {
+                applyState(msg);
+            } else if (msg.data.indexOf('Burner Progress') !== -1) {
+                setProgress(msg.current, msg.total, msg.message);
+            } else if (msg.data.indexOf('Burner Log') !== -1) {
+                appendLog(msg.message, msg.level);
+                noteLogSeq(msg.seq);
+            } else if (msg.data.indexOf('Burner Busy') !== -1) {
+                // the server logs the job name itself, so do not repeat it here
+                setBusy(true);
+            } else if (msg.data.indexOf('Burner Idle') !== -1) {
+                setBusy(false);
+            } else if (msg.data.indexOf('Burner Imported') !== -1) {
+                document.getElementById('importNotice').textContent =
+                    'Received ' + msg.count + ' track(s) from ' + msg.origin + '.';
+            } else if (msg.data.indexOf('Burner Error') !== -1) {
+                appendLog(msg.message, 'err');
+                setBusy(false);
+            }
+        });
+
+        // These actions run as background jobs on the server.  Mark the UI busy
+        // as soon as the click happens and start polling, so progress appears
+        // even if the server's pushes are being held back by the browser.
+        var backgroundActions = ['Burner Acquire', 'Burner Burn', 'Burner Clean'];
+
+        function sendBurner(data, extra) {
+            const payload = Object.assign({ data: data }, extra || {});
+            socket.emit('my event', payload);
+            if (backgroundActions.indexOf(data) !== -1) {
+                jobStartedLocally = true;
+                localJobStartedAt = Date.now();
+                setBusy(true);
+                setProgress(0, 0, 'Starting ...');
+                lastPollAt = 0;
+                pollState();
+            }
+        }
+
+        // ---------------------------------------------------------------------
+        // project name
+        // ---------------------------------------------------------------------
+        // The server names its media folder after the project, so a typed name
+        // is pushed as soon as it changes instead of waiting for "Save Project"
+        // - otherwise the downloads land in ytd/cd/Untitled/ and get stranded
+        // when the project is renamed later.
+        var nameDirty = false;
+        var serverProjectName = '';
+        // which disc the burn buttons target: follows the plan until the disc
+        // dropdown is used, then that choice sticks until the project changes
+        var burnDiscDirty = false;
+        var burnDiscProject = null;
+
+        function projectNameValue() {
+            var el = document.getElementById('projectName');
+            return el ? (el.value || '').trim() : '';
+        }
+
+        function pushProjectName() {
+            if (!nameDirty) return;
+            var name = projectNameValue();
+            if (!name) return;
+            sendBurner('Burner Set Name', { name: name });
+        }
+
+        // The name rides along with Acquire as well, so a rename cannot be
+        // missed even if the input's change event did not fire first.
+        function acquireAudio() {
+            sendBurner('Burner Acquire', { name: nameDirty ? projectNameValue() : '' });
+        }
+
+        document.getElementById('projectName').addEventListener('input', function () {
+            nameDirty = true;
+        });
+        document.getElementById('projectName').addEventListener('change', pushProjectName);
+
+        // ---------------------------------------------------------------------
+        // actions
+        // ---------------------------------------------------------------------
+        function addUrl() {
+            const input = document.getElementById('urlInput');
+            const url = (input.value || '').trim();
+            if (!url) return;
+            input.value = '';
+            sendBurner('Burner Add Url', { url: url, source: 'youtube' });
+        }
+
+        function refreshDrive() { sendBurner('Burner Refresh Drive'); }
+        function clearTracks() { if (confirm('Remove all tracks from this project?')) sendBurner('Burner Clear Tracks'); }
+        function removeTrack(i) { sendBurner('Burner Remove Track', { index: i }); }
+        function moveTrack(i, delta) { sendBurner('Burner Move Track', { index: i, delta: delta }); }
+
+        // ---------------------------------------------------------------------
+        // track preview
+        // ---------------------------------------------------------------------
+        // One <audio> element is reused, so starting a track always stops the
+        // previous one.  Playback is capped at PREVIEW_SECONDS, and the Stop
+        // Play button (or pressing play again) ends it early.  The audio comes
+        // from /burner/audio, which addresses a track by its position in the
+        // project - so only premastered tracks can be previewed.
+        var PREVIEW_SECONDS = 60;
+        var previewTimer = null;
+        var previewUrl = null;
+        var playingKey = null;
+
+        function trackKey(t) {
+            return (t.source || '') + ':' + (t.ref || '') + ':' + (t.title || '');
+        }
+
+        function releasePreview() {
+            if (previewTimer) { clearTimeout(previewTimer); previewTimer = null; }
+            var audio = document.getElementById('preview');
+            if (audio) {
+                audio.pause();
+                audio.removeAttribute('src');
+                audio.load();
+            }
+            playingKey = null;
+        }
+
+        function stopPreview(message) {
+            var wasPlaying = playingKey !== null;
+            releasePreview();
+            if (wasPlaying) {
+                if (message) appendLog(message, 'ok');
+                renderTracks((state && state.project) || {});
+            }
+        }
+
+        function previewTrack(i) {
+            var project = (state && state.project) || {};
+            var track = (project.tracks || [])[i];
+            if (!track) return;
+            if (playingKey !== null && playingKey === trackKey(track)) {
+                stopPreview('Preview stopped.');
+                return;
+            }
+            var audio = document.getElementById('preview');
+            if (!audio) return;
+            releasePreview();
+            playingKey = trackKey(track);
+            previewUrl = '/burner/audio?index=' + i + '&t=' + Date.now();
+            audio.src = previewUrl;
+            var started = audio.play();
+            if (started && started.catch) started.catch(function () { /* reported below */ });
+            previewTimer = setTimeout(function () {
+                stopPreview('Preview finished (' + PREVIEW_SECONDS + 's limit).');
+            }, PREVIEW_SECONDS * 1000);
+            appendLog('Previewing "' + (track.title || track.ref) + '".');
+            renderTracks(project);
+        }
+
+        document.getElementById('preview').addEventListener('ended', function () {
+            stopPreview('Preview finished.');
+        });
+
+        document.getElementById('preview').addEventListener('error', function () {
+            if (playingKey === null) return;
+            // what the server said about this track (it names the file it looked
+            // for) is more use than "not there", which is what sent the last
+            // hunt after a file that was sitting in the folder all along
+            var url = previewUrl;
+            var note = 'Nothing to preview there yet - run Acquire Audio first.';
+            stopPreview();
+            if (!url) { appendLog(note, 'err'); return; }
+            fetch(url, {cache: 'no-store'}).then(function (r) {
+                return r.text();
+            }).then(function (text) {
+                var said = (text || '').replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+                appendLog(said ? said.slice(0, 300) : note, 'err');
+            }).catch(function () { appendLog(note, 'err'); });
+        });
+
+        function onBlankChange() {
+            sendBurner('Burner Set Blank', { blank: parseInt(document.getElementById('blankSelect').value, 10) });
+        }
+
+        function burnDisc(testBurn) {
+            const disc = selectedDisc();
+            if (!disc) {
+                alert('No disc to burn yet - add tracks first.');
+                return;
+            }
+            if (testBurn) {
+                // the drive does the whole burn without writing: same time, same
+                // progress, disc left blank - so it can be repeated on the disc
+                // you are about to use
+                if (!confirm('Test burn disc ' + disc + '?\n\n' +
+                        'The drive runs the whole burn without writing anything, ' +
+                        'so the disc stays blank, and it takes about as long as a ' +
+                        'real burn.\n\nWith no blank disc inserted you get the ' +
+                        'command instead.')) return;
+            } else if (!confirm('Write disc ' + disc + ' to the optical drive? This cannot be undone.')) {
+                return;
+            }
+            sendBurner('Burner Burn', {
+                dryRun: false,
+                testBurn: testBurn,
+                disc: disc,
+                verify: true,
+                device: currentDevice(),
+                autoClean: document.getElementById('autoClean').checked,
+                cleanTier: document.getElementById('cleanTier').value
+            });
+        }
+
+        function selectedDisc() {
+            const sel = document.getElementById('burnDiscSelect');
+            if (!sel || sel.value === '') return null;
+            return parseInt(sel.value, 10);
+        }
+
+        function onBurnDiscPick() {
+            // an explicit pick sticks, so the same disc can be written again
+            burnDiscDirty = true;
+        }
+
+        // One option per disc in the plan, so any disc can be written at any
+        // time - including re-writing one that is already marked burned.
+        function renderBurnDiscSelect(project) {
+            const sel = document.getElementById('burnDiscSelect');
+            if (!sel) return;
+            const selected = sel.value;
+
+            if (burnDiscProject !== (project.name || '')) {
+                // a different project: forget any previous pick
+                burnDiscProject = project.name || '';
+                burnDiscDirty = false;
+            }
+
+            const discs = project.discs || [];
+            if (discs.length === 0) {
+                sel.innerHTML = '<option value="">no discs planned</option>';
+                sel.disabled = true;
+                return;
+            }
+            sel.disabled = false;
+
+            let html = '';
+            discs.forEach(function (d) {
+                html += '<option value="' + d.index + '">Disc ' + d.index + ' - '
+                    + d.trackCount + ' track(s) - ' + hms(d.totalSeconds)
+                    + (d.burnedAt ? ' - burned' : '') + '</option>';
+            });
+            sel.innerHTML = html;
+
+            const next = discs.find(function (d) { return !d.burnedAt; }) || discs[0];
+            const keep = burnDiscDirty && selected
+                && sel.querySelector('option[value="' + selected + '"]');
+            sel.value = keep ? selected : String(next.index);
+            if (!keep) burnDiscDirty = false;
+        }
+
+        function currentDevice() {
+            const sel = document.getElementById('driveSelect');
+            return sel && sel.value !== '' ? sel.value : null;
+        }
+
+        function saveProject() {
+            const name = (document.getElementById('projectName').value || '').trim();
+            if (!name) { alert('Give the project a name first.'); return; }
+            sendBurner('Burner Save Project', { name: name });
+        }
+
+        function loadProject(name) {
+            var el = document.getElementById('projectName');
+            if (el) el.value = name;
+            nameDirty = false;
+            sendBurner('Burner Load Project', { name: name });
+        }
+        function newProject() {
+            document.getElementById('projectName').value = '';
+            nameDirty = false;
+            sendBurner('Burner New Project');
+        }
+        function deleteProject(name) {
+            if (confirm('Delete saved project "' + name + '"?')) {
+                sendBurner('Burner Delete Project', { name: name });
+            }
+        }
+
+        function cleanCache(dryRun) {
+            sendBurner('Burner Clean', {
+                dryRun: dryRun,
+                tier: document.getElementById('cleanSources').checked ? 'all' : 'wav'
+            });
+        }
+
+        // ---------------------------------------------------------------------
+        // rendering
+        // ---------------------------------------------------------------------
+        function render() {
+            if (!state) return;
+            const project = state.project || {};
+            const summary = state.summary || {};
+
+            // blank selector should mirror the project
+            const blankSel = document.getElementById('blankSelect');
+            if (blankSel && project.blank) blankSel.value = String(project.blank);
+
+            serverProjectName = project.name || '';
+            document.getElementById('projectName').placeholder = serverProjectName || 'Untitled';
+            if (nameDirty && serverProjectName === projectNameValue()) nameDirty = false;
+
+            renderDrive(state.drive || {});
+            renderTracks(project);
+            renderPlan(project, summary);
+            renderBurnDiscSelect(project);
+            renderSaved(state.saved || {}, project);
+            renderCache(state.cache || {});
+        }
+
+        function renderDrive(drive) {
+            const sel = document.getElementById('driveSelect');
+            const devices = drive.devices || [];
+            const chosen = sel.value;
+            sel.innerHTML = '';
+            if (devices.length === 0) {
+                const opt = document.createElement('option');
+                opt.value = '';
+                opt.textContent = '(no burner detected)';
+                sel.appendChild(opt);
+            } else {
+                devices.forEach(function (d, i) {
+                    const opt = document.createElement('option');
+                    opt.value = d.id;
+                    opt.textContent = d.name || ('Drive ' + i);
+                    sel.appendChild(opt);
+                });
+            }
+            if (chosen) sel.value = chosen;
+
+            const pill = document.getElementById('mediaStatus');
+            const present = drive.present;
+            const blank = drive.blank;
+            pill.textContent = !present ? 'No media'
+                : (blank === true ? 'Blank media' : (blank === false ? 'Not blank' : 'Media present'));
+            pill.className = 'status-pill ' + (!present ? 'status-warn'
+                : (blank === true ? 'status-ok' : 'status-err'));
+
+            document.getElementById('driveDetail').textContent =
+                (state.platform || '') + (drive.text ? '  ·  ' + drive.text.split('\n')[0] : '');
+        }
+
+        function renderTracks(project) {
+            const tracks = project.tracks || [];
+            document.getElementById('trackCount').textContent = '(' + tracks.length + ')';
+
+            const wrap = document.getElementById('tracksWrap');
+            if (tracks.length === 0) {
+                releasePreview();                      // nothing left to listen to
+                wrap.innerHTML = '<div class="empty">No tracks yet. Add a YouTube URL above '
+                    + 'or press Burn on the DJ / MP3 page.</div>';
+                document.getElementById('tracksHint').textContent = '';
+                return;
+            }
+
+            // the previewed track may have been removed or replaced by a Load
+            if (playingKey !== null && !tracks.some(function (t) {
+                    return trackKey(t) === playingKey; })) {
+                releasePreview();
+            }
+
+            let html = '<table class="tracks"><thead><tr>'
+                + '<th>#</th><th>Title</th><th>Artist</th><th>Source</th>'
+                + '<th>Time</th><th>Disc</th><th></th></tr></thead><tbody>';
+
+            tracks.forEach(function (t, i) {
+                const srcClass = t.source === 'musichost' ? 'src-musichost' : 'src-youtube';
+                const srcLabel = t.source === 'musichost' ? 'music' : 'youtube';
+                const playing = playingKey !== null && trackKey(t) === playingKey;
+                html += '<tr' + (playing ? ' class="playing"' : '') + '>'
+                    + '<td class="num">' + (i + 1) + '</td>'
+                    + '<td>' + esc(t.title || t.ref) + '</td>'
+                    + '<td class="muted">' + esc(t.artist || '') + '</td>'
+                    + '<td><span class="src-tag ' + srcClass + '">' + srcLabel + '</span></td>'
+                    + '<td class="time">' + hms(t.seconds) + '</td>'
+                    + '<td class="disc">D' + (t.discIndex || 1) + '</td>'
+                    + '<td class="act">'
+                    + '<button class="play" title="'
+                    + (playing ? 'Stop this preview' : 'Preview this track (' + PREVIEW_SECONDS + 's)')
+                    + '" onclick="previewTrack(' + i + ')">'
+                    + (playing ? '&#9632;' : '&#9654;') + '</button>'
+                    + '<button title="Move up" onclick="moveTrack(' + i + ',-1)"'
+                    + (i === 0 ? ' disabled' : '') + '>&#9650;</button>'
+                    + '<button title="Move down" onclick="moveTrack(' + i + ',1)"'
+                    + (i === tracks.length - 1 ? ' disabled' : '') + '>&#9660;</button>'
+                    + '<button title="Remove" onclick="removeTrack(' + i + ')">&times;</button>'
+                    + '</td>'
+                    + '</tr>';
+            });
+            html += '</tbody></table>';
+            wrap.innerHTML = html;
+
+            renderReadyHint(state || {});
+        }
+
+        function renderPlan(project, summary) {
+            document.getElementById('trackLimit').textContent =
+                summary.trackCount + ' / ' + summary.maxTracks + ' tracks  ·  '
+                + summary.totalTime + ' total  ·  ' + summary.discCount + ' disc(s)  ·  limit '
+                + summary.limitTime + ' per disc';
+
+            const wrap = document.getElementById('planWrap');
+            const discs = project.discs || [];
+            if (discs.length === 0) {
+                wrap.innerHTML = '<div class="empty">No disc plan yet.</div>';
+                return;
+            }
+
+            let html = '<div class="fit-line">Total <b>' + summary.totalTime + '</b> / '
+                + summary.limitTime + ' per disc &nbsp;→&nbsp; <b>'
+                + (summary.discCount > 1 ? 'NEEDS ' + summary.discCount + ' DISCS' : 'FITS ON 1 DISC')
+                + '</b></div>';
+
+            discs.forEach(function (d) {
+                const pct = Math.round((d.fill || 0) * 100);
+                const over = d.totalSeconds > d.limitSeconds;
+                const burned = d.burnedAt ? ' <span class="status-pill status-ok">burned</span>' : '';
+                html += '<div class="disc-line">'
+                    + '<div class="disc-head">'
+                    + '<span>Disc ' + d.index + ' &nbsp; ' + hms(d.totalSeconds) + ' &nbsp; '
+                    + d.trackCount + ' track(s)' + burned + '</span>'
+                    + '<span class="muted">' + pct + '% full</span>'
+                    + '</div>'
+                    + '<div class="bar"><span class="' + (over ? 'over' : '') + '" style="width:'
+                    + Math.min(100, pct) + '%"></span></div>'
+                    + '</div>';
+            });
+
+            wrap.innerHTML = html;
+        }
+
+        function renderSaved(saved, project) {
+            const names = Object.keys(saved).sort();
+            const wrap = document.getElementById('savedWrap');
+            if (names.length === 0) {
+                wrap.innerHTML = '<div class="empty">No saved CD projects yet.</div>';
+                return;
+            }
+            let html = '<table class="tracks"><thead><tr><th>Name</th><th>Tracks</th>'
+                + '<th>Time</th><th>Discs</th><th>Status</th><th></th></tr></thead><tbody>';
+            names.forEach(function (name) {
+                const p = saved[name] || {};
+                const s = p.summary || {};
+                const current = project && p.name === project.name;
+                html += '<tr>'
+                    + '<td>' + esc(name) + (current ? ' <span class="muted">(open)</span>' : '') + '</td>'
+                    + '<td>' + (s.trackCount || 0) + '</td>'
+                    + '<td>' + (s.totalTime || '0:00') + '</td>'
+                    + '<td>' + (s.discCount || 0) + '</td>'
+                    + '<td class="muted">' + esc(p.status || '') + '</td>'
+                    + '<td class="act" style="width:120px; white-space:nowrap;">'
+                    + '<button onclick="loadProject(\'' + esc(name).replace(/'/g, "\\'") + '\')">Load</button> '
+                    + '<button class="danger" onclick="deleteProject(\''
+                    + esc(name).replace(/'/g, "\\'") + '\')">Del</button>'
+                    + '</td></tr>';
+            });
+            html += '</tbody></table>';
+            wrap.innerHTML = html;
+        }
+
+        function renderCache(cache) {
+            const mb = ((cache.bytes || 0) / 1048576).toFixed(1);
+            document.getElementById('cacheInfo').textContent =
+                mb + ' MB in ' + (cache.files || 0) + ' file(s)';
+        }
+
+        function renderReadyHint(msg) {
+            const project = (msg && msg.project) || {};
+            const tracks = project.tracks || [];
+            const el = document.getElementById('tracksHint');
+            if (!el) return;
+            if (tracks.length === 0) {
+                el.textContent = '';
+                return;
+            }
+            const ready = typeof msg.premastered === 'number' ? msg.premastered : 0;
+            el.textContent = ready + ' of ' + tracks.length + ' track(s) ready to burn'
+                + (ready < tracks.length ? ' - press Acquire Audio' : '');
+        }
+
+        // ---------------------------------------------------------------------
+        // helpers
+        // ---------------------------------------------------------------------
+        function esc(s) {
+            return String(s === undefined || s === null ? '' : s)
+                .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;');
+        }
+
+        function hms(seconds) {
+            let s = Math.round(Number(seconds) || 0);
+            const h = Math.floor(s / 3600); s -= h * 3600;
+            const m = Math.floor(s / 60); s -= m * 60;
+            const mm = (h > 0 ? String(m).padStart(2, '0') : String(m));
+            return (h > 0 ? h + ':' : '') + mm + ':' + String(s).padStart(2, '0');
+        }
+
+        function setProgress(current, total, message) {
+            const pct = total > 0 ? Math.round((current / total) * 100) : 0;
+            document.getElementById('progressBar').style.width = pct + '%';
+            // a burn reports a percentage of the disc and its message already
+            // says which track that is; the other jobs count tracks instead
+            let text = message || '';
+            if (total === 100) {
+                text = text || pct + '%';
+            } else if (total) {
+                text = (text ? text + '  ' : '') + '(' + current + '/' + total + ')';
+            }
+            document.getElementById('progressText').textContent = text;
+        }
+
+        function setBusy(isBusy, message) {
+            busy = isBusy;
+            document.querySelectorAll('button').forEach(function (b) {
+                if (b.dataset.alwaysOn === '1') return;
+                b.disabled = isBusy;
+            });
+            if (message) appendLog(message, isBusy ? '' : 'ok');
+            if (!isBusy) setProgress(0, 0, 'Idle');
+        }
+
+        function appendLog(message, level) {
+            if (!message) return;
+            const box = document.getElementById('logBox');
+            const cls = level === 'err' ? 'err' : (level === 'ok' ? 'ok' : '');
+            const line = document.createElement('div');
+            if (cls) line.className = cls;
+            line.textContent = message;
+            box.appendChild(line);
+            box.scrollTop = box.scrollHeight;
+        }
+
+        // A burner job keeps running while this page is throttled or dropped, so
+        // the server keeps the recent log lines and we show the ones we missed.
+        // Every line shown - live or replayed - advances lastLogSeq, so nothing
+        // is ever displayed twice.
+        function noteLogSeq(seq) {
+            if (typeof seq === 'number' && seq > lastLogSeq) lastLogSeq = seq;
+        }
+
+        function syncLog(msg) {
+            var entries = msg.log || [];
+            if (!logReady) {
+                logReady = true;
+                if (!msg.busy) {
+                    // fresh page: start clean rather than dumping past runs
+                    noteLogSeq(msg.logSeq || 0);
+                    return;
+                }
+                // page loaded while a job was already running
+                entries = entries.slice(-60);
+            }
+            entries.forEach(function (entry) {
+                if (!entry || entry.seq <= lastLogSeq) return;
+                appendLog(entry.message, entry.level);
+                noteLogSeq(entry.seq);
+            });
+        }
+
+        function syncBusy(name) {
+            name = name || '';
+            // The first poll sent right after starting a job can still describe
+            // the moment before the server picked it up.  Do not trust "idle"
+            // that soon, or the UI stops polling exactly when it should not.
+            if (!name && jobStartedLocally && Date.now() - localJobStartedAt < 3000) return;
+            if (name === serverBusy && busy === !!name) return;
+            // only say "already running" when this page did not start the job
+            var announce = !!name && !jobStartedLocally;
+            jobStartedLocally = false;
+            serverBusy = name;
+            if (name) setBusy(true, announce ? name + ' is already running ...' : '');
+            else setBusy(false);
+            updateBackgroundNotice();
+        }
+
+        // Clearing only forgets what is already shown: the sequence marker
+        // moves to the newest line so nothing deleted comes back on the next
+        // state or replay.
+        function clearLog() {
+            var box = document.getElementById('logBox');
+            box.innerHTML = '';
+            noteLogSeq((state && state.logSeq) || 0);
+            appendLog('Log cleared.', 'ok');
+        }
+
+        // Progress is polled over plain HTTP.  The server's Socket.IO pushes
+        // from a worker thread can sit in the socket queue until the client
+        // happens to send something, so a job running for minutes could report
+        // nothing until it finished.  A normal request/response always answers
+        // at once.  Pushes are still applied when they do arrive; sequence
+        // numbers keep the two paths from duplicating lines.
+        var lastPollAt = 0;
+        var pollInFlight = false;
+        var lastSignature = null;
+
+        function projectSignature(msg) {
+            var project = msg.project || {};
+            var tracks = project.tracks || [];
+            var discs = project.discs || [];
+            // The name and the running order belong in the signature: loading
+            // another project, or reordering this one, has to rebuild the table
+            // even when the track count and total time are unchanged.
+            var order = tracks.map(function (t) {
+                return (t.title || t.ref || '') + '@' + (t.discIndex || 1);
+            }).join('|');
+            // burned flags belong here too, or the plan and the disc dropdown
+            // would keep showing "needs burn" for a disc that has just been
+            // written (project.status only flips once every disc is done)
+            var burned = discs.map(function (d) {
+                return d.index + ':' + (d.burnedAt ? 1 : 0);
+            }).join('|');
+            return [project.name || '', tracks.length, discs.length,
+                    (msg.summary && msg.summary.totalSeconds) || 0,
+                    project.status || '', order, burned].join('/');
+        }
+
+        function applyState(msg) {
+            state = msg;
+            syncLog(msg);
+            syncBusy(msg.busy);
+            if (msg.busy) {
+                var p = msg.progress || {};
+                setProgress(p.current || 0, p.total || 0, p.message || '');
+            }
+            var info = document.getElementById('instanceInfo');
+            if (info) info.textContent = 'instance ' + (msg.instance || '?');
+
+            // Cheap readouts follow every message, so the cache size and the
+            // "ready to burn" count do not wait for the tables to be rebuilt.
+            renderCache(msg.cache || {});
+            renderReadyHint(msg);
+
+            // Rebuild the tables only when something actually changed, so
+            // polling cannot fight with a selection being made (a pushed state
+            // always rebuilds, as before).
+            var sig = projectSignature(msg);
+            if (!msg.poll || sig !== lastSignature) {
+                lastSignature = sig;
+                render();
+            }
+        }
+
+        function pollState() {
+            var interval = busy ? 1000 : 3000;
+            var now = Date.now();
+            if (pollInFlight || now - lastPollAt < interval) return;
+            lastPollAt = now;
+            pollInFlight = true;
+            fetch('/burner/state', { cache: 'no-store' })
+                .then(function (r) { return r.ok ? r.json() : null; })
+                .then(function (msg) {
+                    if (msg && msg.data === 'Burner State') applyState(msg);
+                })
+                .catch(function () { /* restarting - the badge reports it */ })
+                .then(function () { pollInFlight = false; });
+        }
+
+        setInterval(pollState, 500);
+
+        document.addEventListener('visibilitychange', function () {
+            if (!document.hidden) {
+                // tab is usable again - catch up at once
+                lastPollAt = 0;
+                pollState();
+            }
+            updateBackgroundNotice();
+        });
+
+        function updateBackgroundNotice() {
+            var el = document.getElementById('bgNotice');
+            if (!el) return;
+            var stalled = document.hidden && !!serverBusy;
+            el.style.display = stalled ? 'block' : 'none';
+            el.textContent = stalled
+                ? 'This tab is in the background, so the browser is holding back '
+                  + 'live updates. They appear as soon as you switch back.'
+                : '';
+        }
+
+        // keep the theme dropdown in sync when toggling
+        window.addEventListener('storage', function (e) {
+            if (e.key === 'djTheme' && e.newValue) {
+                setTheme(e.newValue);
+                document.getElementById('themeSelect').value = e.newValue;
+            }
+        });
+    </script>
+</body>
+
+</html>

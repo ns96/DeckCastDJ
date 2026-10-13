@@ -56,6 +56,8 @@ var mobile = false;
 
 // keep track of the current track number for the video playing. Used to display current track info
 var trackNum = -1;
+var lastDownloadStatus = { text: '', at: 0 };
+var downloadDialogHidden = false;
 
 /**
  * Functions and variables here are for socketio
@@ -101,6 +103,12 @@ socket.on('my response', function (msg) {
   // see if to update the user count
   if (msg.data.includes("User Connected")) {
     updateConnectedUsers(msg);
+  }
+
+  // the burner refuses every action from a client that is not on the machine
+  // running DeckCastDJ, including the queue pushed by the button below
+  if (msg.data.includes("Burner Error")) {
+    alert(msg.message);
   }
 
   // see if to show the tracklist edit dialog
@@ -207,6 +215,15 @@ socket.on('my response', function (msg) {
 
   console.log(msg);
   messageText.innerHTML = msg.data + " (Users: " + connectedUsers + ")";
+
+  // after the line above, so a download's status text is what stays on screen
+  if (msg.data.includes("Download Status")) {
+    handleDownloadStatus(msg);
+  } else if (lastDownloadStatus.text && Date.now() - lastDownloadStatus.at < 3000) {
+    // a request echo ("Download Que (Users: 2)") arrives just after an instant
+    // status like "already running", and must not wipe it off the screen
+    messageText.innerHTML = lastDownloadStatus.text;
+  }
 })
 
 // update the que list or playList if needed
@@ -222,6 +239,7 @@ function updatePlayList(msg) {
     if (msgClientId === clientId) {
       if (queListOutput) {
         queListOutput.innerHTML = msg.queListHTML;
+        updateQueActionsVisibility();
       }
     } else {
       console.log("Que Client Id doesn't match ...");
@@ -785,6 +803,122 @@ function checkQueList() {
   document.getElementById("mixButton").click();
 }
 
+// the three que actions only make sense with something in the que, so they
+// appear once the que table has a video row and go away when it is emptied
+function updateQueActionsVisibility() {
+  var bar = document.querySelector('.que-actions');
+
+  if (!bar || !queListOutput) {
+    return;
+  }
+
+  bar.style.display = queListOutput.querySelectorAll('.video-number-cell').length > 0 ? 'block' : 'none';
+}
+
+// send the current que list to the CD burner
+function burnQueList() {
+  socket.emit('my event', {
+    data: 'Burner Import Que',
+    source: 'youtube',
+    origin: 'the DJ queue',
+    clientId: clientId
+  });
+}
+
+// download the current que list to the server as MP3 files.
+// Local machine only: the files are written where the app runs.
+function downloadQueList() {
+  if (document.querySelector('.que-actions button').disabled) {
+    messageText.innerHTML = "A download is already running - wait for it to finish.";
+    return;
+  }
+
+  // show the progress card straight away, before the first status arrives
+  downloadDialogHidden = false;
+  document.getElementById('downloadText').textContent = 'Starting ...';
+  document.getElementById('downloadCounts').textContent = '';
+  document.getElementById('downloadBar').style.width = '0%';
+  document.getElementById('downloadDialog').style.display = 'block';
+
+  socket.emit('my event', {
+    data: 'Download Que',
+    clientId: clientId
+  });
+}
+
+// draw the progress card: how far through the que we are, what is happening to
+// the current video, and the running totals
+function updateDownloadDialog(msg) {
+  var dialog = document.getElementById('downloadDialog');
+
+  if (!dialog) {
+    return;
+  }
+
+  var total = Number(msg.total) || 0;
+  var percent = Number(msg.percent) || 0;
+  var index = Number(msg.index) || 0;
+  var overall = 0;
+
+  // index is 1-based, so a finished track 3 of 10 is 20% plus its own progress
+  if (total > 0 && index > 0) {
+    overall = Math.round(((index - 1) + percent / 100) * 100 / total);
+  }
+
+  document.getElementById('downloadBar').style.width = Math.max(0, Math.min(100, overall)) + '%';
+  document.getElementById('downloadText').textContent = msg.text || '';
+
+  var counts = [];
+  if (msg.downloaded) counts.push(msg.downloaded + ' downloaded');
+  if (msg.skipped) counts.push(msg.skipped + ' already there');
+  if (msg.failed) counts.push(msg.failed + ' failed');
+  document.getElementById('downloadCounts').textContent = counts.join('  |  ');
+
+  if (!downloadDialogHidden) {
+    dialog.style.display = 'block';
+  }
+}
+
+function closeDownloadDialog() {
+  var dialog = document.getElementById('downloadDialog');
+
+  if (dialog) {
+    dialog.style.display = 'none';
+  }
+
+  // stays closed for the rest of this run; the next Download MP3 reopens it
+  downloadDialogHidden = true;
+}
+
+// progress from a que download: keep the console line current, the progress
+// card up to date and the three que action buttons off while the job runs
+function handleDownloadStatus(msg) {
+  if (msg.clientId && msg.clientId !== clientId) {
+    return;
+  }
+
+  if (msg.refused) {
+    alert(msg.text);
+    return;
+  }
+
+  if (msg.stage === 'empty') {
+    closeDownloadDialog();
+  } else {
+    updateDownloadDialog(msg);
+  }
+
+  if (msg.text) {
+    messageText.innerHTML = msg.text;
+    lastDownloadStatus.text = msg.text;
+    lastDownloadStatus.at = Date.now();
+  }
+
+  document.querySelectorAll('.que-actions button').forEach(function (button) {
+    button.disabled = !!msg.running;
+  });
+}
+
 // function to mix the que list
 async function mixQueList(queListString, queListTimesString) {
   var queList = queListString.split(",");
@@ -1205,6 +1339,13 @@ function loadPlayListForMobile() {
   }
 }
 
+// true for the common YouTube playlist URL shapes (mirrors the server side)
+function isYouTubePlaylistUrl(text) {
+  if (!text) return false;
+  var t = text.trim().toLowerCase();
+  return t.indexOf('list=') !== -1 || t.indexOf('youtube.com/playlist') !== -1;
+}
+
 // function to load a playlist for a user or youtube playlist linked to user
 function loadPlayListForUser(username, filter, showUsername = false, mobile = false) {
   jsonText = {
@@ -1216,8 +1357,8 @@ function loadPlayListForUser(username, filter, showUsername = false, mobile = fa
   }
   socket.emit('my event', jsonText);
 
-  // if we loaded a youtube playlist clear filter input
-  if (filter.startsWith("https")) {
+  // if we loaded a youtube playlist show the loading dialog and clear the input
+  if (isYouTubePlaylistUrl(filter)) {
     playListOutput.innerHTML = getLoadingText(filter);
     document.getElementById("filter").value = "";
 

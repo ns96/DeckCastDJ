@@ -161,6 +161,8 @@ cython_debug/
 
 # ignore the config file containing api keys
 config.py
+# per-machine settings (can hold the youtubeApiKey written by the UI)
+data/settings.json
 
 # ignore flask settings
 .flaskenv
@@ -175,6 +177,9 @@ static/*.png
 pafyCache.pkl
 mixTrack.json
 queList.json
+
+# ignore the CD burner project store
+burner.json
 
 # ignore files with _old suffix
 *_old.html

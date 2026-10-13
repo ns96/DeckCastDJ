@@ -62,7 +62,7 @@ if "%CLEAN_BUILD%"=="1" (
     set REFRESH_ARG=
     if "%REFRESH_CACHE%"=="1" set REFRESH_ARG=--refresh
     
-    "C:\ProgramData\anaconda3\python.exe" prepare_clean_distro.py --dest "dist\DeckCastDJ\data" --config-dest "dist\DeckCastDJ\config.py" %REFRESH_ARG%
+    "C:\ProgramData\anaconda3\python.exe" "tools\prepare_clean_distro.py" --dest "dist\DeckCastDJ\data" --config-dest "dist\DeckCastDJ\config.py" %REFRESH_ARG%
     if %ERRORLEVEL% NEQ 0 (
         echo [ERROR] Clean distribution data generation failed!
         if "%NO_PAUSE%"=="0" pause
@@ -90,6 +90,23 @@ if not exist "dist\DeckCastDJ\run.bat" (
         echo timeout /t 2 ^>nul
         echo start http://localhost:5054
     ) > "dist\DeckCastDJ\run.bat"
+)
+
+REM 5. YouTube credentials. Developer builds only: the clean build is meant to be
+REM    handed to other people, and cookies.txt is a signed-in session.
+if "%CLEAN_BUILD%"=="1" (
+    echo.
+    echo [NOTE] Clean build: cookies.txt is deliberately NOT included ^(it holds a
+    echo        signed-in YouTube session^).
+) else (
+    if exist "cookies.txt" (
+        copy /Y "cookies.txt" "dist\DeckCastDJ\cookies.txt" >nul
+        echo.
+        echo Copied cookies.txt ^(your YouTube session - keep this build private^).
+    ) else (
+        echo.
+        echo [WARNING] cookies.txt not found - downloads may hit YouTube bot checks.
+    )
 )
 
 echo.

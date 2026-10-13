@@ -1243,7 +1243,7 @@ ul li {
             <!-- Hidden Audio Engine -->
             <div class="deck-audio-engine">
                 <audio id="player1" crossorigin playsinline>
-                    <source src="http://pi86.sytes.net:8080/music/Various_Artists-80s-90s_Songs_MP3/01-01-Annie_Lennox-No_More_I_Love_You_s-LLS.mp3" type="audio/mp3">
+                    <source src="{{ musicBaseUrl }}Various_Artists-80s-90s_Songs_MP3/01-01-Annie_Lennox-No_More_I_Love_You_s-LLS.mp3" type="audio/mp3">
                 </audio>
             </div>
         </div>
@@ -1306,7 +1306,7 @@ ul li {
             <!-- Hidden Audio Engine -->
             <div class="deck-audio-engine">
                 <audio id="player2" crossorigin playsinline>
-                    <source src="http://pi86.sytes.net:8080/music/Various_Artists-80s-90s_Songs_MP3/01-01-Annie_Lennox-Why-LLS.mp3" type="audio/mp3">
+                    <source src="{{ musicBaseUrl }}Various_Artists-80s-90s_Songs_MP3/01-01-Annie_Lennox-Why-LLS.mp3" type="audio/mp3">
                 </audio>
             </div>
         </div>
@@ -1381,7 +1381,7 @@ ul li {
 // DECKCAST DJ CLIENT LOGIC
 // ==========================================================================
 
-const mp3BaseUrl = 'http://pi86.sytes.net:8080/music/';
+const mp3BaseUrl = {{ musicBaseUrl | tojson }};
 var mp3DB;
 const infoDictionary = {};
 
@@ -1757,6 +1757,11 @@ socket.on('my response', function (msg) {
         savedQueList = msg.qlist;
         displaySavedQueList();
     }
+
+    // the burner only works on the machine running DeckCastDJ
+    if (msg.data.includes("Burner Error")) {
+        alert(msg.message);
+    }
 });
 
 // ==========================================================================
@@ -1923,6 +1928,33 @@ function removeMP3(mp3Name, queListName = '') {
     }
 }
 
+// send the queued music-host tracks to the CD burner
+function burnMp3Que() {
+    if (!queTracks || queTracks.length === 0) {
+        alert('The queue is empty - add some tracks first.');
+        return;
+    }
+
+    const tracks = queTracks.map(function (path) {
+        const info = infoDictionary[path] || [];
+        const base = String(path).split('/').pop()
+            .replace(/\.[^.]+$/, '').replace(/_/g, ' ').trim();
+        return {
+            ref: path,
+            title: base || path,
+            seconds: parseInt(info[1], 10) || 0,
+            bitrate: parseInt(info[2], 10) || 0
+        };
+    });
+
+    socket.emit('my event', {
+        data: 'Burner Import Que',
+        source: 'musichost',
+        origin: 'the MP3 queue',
+        tracks: tracks
+    });
+}
+
 // ==========================================================================
 // ==========================================================================
 // DISPLAY QUED MP3S (COMPACT PROFESSIONAL FORMAT)
@@ -1939,7 +1971,8 @@ function displayQuedMP3s(saveQueListKey = '') {
         <button type="button" class="btn-compact-action" onclick="playQuedMP3s()">▶ Play All</button>
         <button type="button" class="btn-compact-action" onclick="saveQue()">💾 Save Que</button>
         <input type="text" id="que_name" name="que_name" value="${defaultName}" size="10" style="padding: 4px 8px; font-size: 12px;">
-        <button type="button" class="btn-compact-action btn-clear-dim" onclick="clearQue()">✕ Clear</button>`;
+        <button type="button" class="btn-compact-action btn-clear-dim" onclick="clearQue()">✕ Clear</button>
+        <button type="button" class="btn-compact-action" onclick="burnMp3Que()">🔥 Burn to CD</button>`;
 
     let inputHtml = `
         <button type="button" class="btn-compact-action" onclick="startMixPlay()">▶ Play Mix</button> 
@@ -2474,6 +2507,11 @@ function clearSearch() {
 async function readFileAndCreateDirectoryDictionary(fileUrl) {
     try {
         const response = await fetch(fileUrl);
+        if (!response.ok) {
+            // fetch() resolves for 404/403 too, and parsing that error page
+            // would quietly produce an empty library instead
+            throw new Error('HTTP ' + response.status + ' ' + response.statusText);
+        }
         const fileContent = await response.text();
 
         const directoryDictionary = {};
@@ -2527,16 +2565,36 @@ async function readFileAndCreateDirectoryDictionary(fileUrl) {
 
     } catch (error) {
         console.error('Error reading file from URL:', error);
-        return {}; 
+        return null;
     }
 }
 
 // Initial DB load from unified audiodb.txt
-const fileUrl = 'http://pi86.sytes.net:8080/music/player/audiodb.txt'; 
+const fileUrl = mp3BaseUrl + 'player/audiodb.txt';
 readFileAndCreateDirectoryDictionary(fileUrl)
     .then(dictionary => {
+        if (dictionary === null) {
+            reportMusicServerUnavailable(fileUrl);
+            return;
+        }
         processDB(dictionary);
     });
+
+// The whole library is read straight from the music host, so a host that has
+// moved - or a network that cannot reach it - would otherwise just show an
+// empty list with no explanation.
+function reportMusicServerUnavailable(fileUrl) {
+    console.error('DeckCastDJ: could not load the music database from', fileUrl);
+    const msgEl = document.getElementById('messageText');
+    if (msgEl) {
+        msgEl.innerHTML = 'Music server unreachable at ' + mp3BaseUrl +
+            ' - its library cannot be listed.';
+    }
+    const selectEl = document.getElementById('dirSelect');
+    if (selectEl) {
+        selectEl.innerHTML = '<option value="">music server unreachable</option>';
+    }
+}
 
 function setTheme(themeName) {
     document.body.classList.remove('theme-light', 'theme-blue', 'theme-orange');

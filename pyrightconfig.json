@@ -1,0 +1,4 @@
+{
+  "//": "main.py adds src/ to sys.path at runtime; this tells the analyzer the same thing.",
+  "extraPaths": ["src"]
+}

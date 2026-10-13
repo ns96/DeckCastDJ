@@ -6,19 +6,22 @@ A simple flask/SocketIO for building very simple youtube DJ application that
 can be shared by other users
 
 @author: Nathan
-@version: 2.5.2 (09/24/2026)
+@version: 2.7.8 (10/13/2026)
 """
 # this variables are passed onto the html templates
-appVersion = 'v2.5.2 (09/24/2026)'
+appVersion = 'v2.7.10 (10/13/2026)'
 bgColor = '#b2b2de' # no longer used but will keep for backward compatibility
 
 import os
 import os.path
 import sys
+import threading
+import time
 from datetime import datetime, timedelta
 from urllib.request import urlopen
 from urllib.error import HTTPError
 import json
+import logging
 import pafy
 import qrcode
 import pickle
@@ -32,10 +35,18 @@ if base_dir:
     if base_dir not in sys.path:
         sys.path.insert(0, base_dir)
 
+    # the application modules live in src/ so the project root stays tidy;
+    # config.py and main.py are the only python files kept at the root
+    app_code_dir = os.path.join(base_dir, 'src')
+    if os.path.isdir(app_code_dir) and app_code_dir not in sys.path:
+        sys.path.insert(0, app_code_dir)
+
 from config import app_port, youtubeApiKey, useYoutube, youtubePL
-from flask import Flask, render_template, request
+from flask import Flask, render_template, request, jsonify, send_file
 from flask_socketio import SocketIO
 from trackext import extract_tracks
+import acquire
+import cdburn
 
 settingsFile = 'data/settings.json'
 
@@ -80,7 +91,36 @@ app = Flask(__name__,
             template_folder=os.path.join(base_dir, 'templates'),
             static_folder=os.path.join(base_dir, 'static'))
 app.config['SECRET_KEY'] = 'secret12345#'
-socketio = SocketIO(app)
+# async_mode is pinned deliberately.  gevent is installed in this environment,
+# so flask-socketio would auto-select it - but nothing calls
+# gevent.monkey.patch_all(), and without that patching a blocking download in
+# the worker task freezes the whole event loop: Socket.IO packets and even
+# plain HTTP requests then sit unanswered until the job finishes, which made a
+# running job look frozen in the UI.  Real threads do not have that problem.
+socketio = SocketIO(app, async_mode='threading',
+                    ping_interval=25, ping_timeout=60)
+
+
+class _PollAccessLogFilter(logging.Filter):
+    """Hide access-log lines for the endpoint the UI polls for live updates.
+
+    The burner page asks /burner/state for a snapshot every 1-3 seconds, which
+    would otherwise add one line per second per open page to the console and
+    to nohup.out.  Everything else - including errors and every other request -
+    is still logged.
+    """
+
+    QUIET_PATHS = ('/burner/state',)
+
+    def filter(self, record):
+        try:
+            message = record.getMessage()
+        except Exception:
+            return True
+        return not any(path in message for path in self.QUIET_PATHS)
+
+
+logging.getLogger('werkzeug').addFilter(_PollAccessLogFilter())
 
 defaultPlayListFile = 'data/playlist.json'
 userPlayListFile = 'data/userPlaylist.json'
@@ -115,6 +155,10 @@ mixTracksFile = 'data/mixTrack.json'
 
 # keys for playlist that holds all the videoIds
 mergedPlayListKey = ''
+
+# playlist categories that could not be refreshed from YouTube and are being
+# served from the cached data/userPlaylist.json instead
+stalePlayListKeys = set()
 
 # keep track of the number of connected users
 userCount = 0
@@ -191,14 +235,43 @@ def loadBackupUserPlayList():
                 
                 youtubePlayListUrls[playlistKey.title()] = 'N/A -- Disk Backup'    
 
+# seed the in-memory playlists from the cached file before refreshing from
+# YouTube, so a playlist that fails to load keeps its previous contents
+def seedUserPlayListFromCache():
+    global userPlayList
+    
+    if not os.path.isfile(userPlayListFile):
+        return 0
+    
+    try:
+        with open(userPlayListFile, 'r', encoding='utf-8') as json_file:
+            cached = json.load(json_file)
+    except Exception as e:
+        print("Could not seed playlists from cache:", e)
+        return 0
+    
+    if not isinstance(cached, dict):
+        return 0
+    
+    seeded = 0
+    for key, value in cached.items():
+        # the merged playlist is derived from the others, so never seed it
+        if 'all merged' in key.lower():
+            continue
+        if value and key not in userPlayList:
+            userPlayList[key] = value
+            seeded += 1
+    return seeded
+
 # function to load a youtube playlist 
 def loadYouTubePlayList(username, url, forQue=False):
     global userPlayList, youtubePlayListUrls
     
+    # Bound before the try so the error handler can always report on them.
+    playlistKey = username.title()
+    username = username.lower()
+    
     try:
-        playlistKey = username.title()
-        username = username.lower()
-        
         is_cached = False
         if url in pafyCache.keys():
             youtubeList = pafyCache[url]
@@ -211,9 +284,16 @@ def loadYouTubePlayList(username, url, forQue=False):
         playlist = dict()
         playlistSize = youtubeList._len
         videoCount = 0
+        unreadableVideos = 0
 
         for video in youtubeList:
-            if video.videoid not in invalidVideosList:
+            if video.videoid in invalidVideosList:
+                print("Deleted video:", video.videoid)
+                continue
+
+            # A single video that cannot be read must not abort the whole
+            # playlist - skip it and carry on with the rest.
+            try:
                 videoCount += 1
                 loadingText = f'Loading {videoCount} / {playlistSize} ...'
                 loadingMessages[url] = loadingText
@@ -224,9 +304,27 @@ def loadYouTubePlayList(username, url, forQue=False):
                 # Yield control cooperatively to let the server handle progress polls (only when active and not cached)
                 if serverStarted and not is_cached and (videoCount % 5 == 0):
                     socketio.sleep(0.01)
-            else:
-                print("Deleted video:", video.videoid)
-    
+            except Exception as videoError:
+                unreadableVideos += 1
+                print("Skipping unreadable video:", getattr(video, 'videoid', '?'), videoError)
+
+        if unreadableVideos:
+            print(f"Skipped {unreadableVideos} unreadable video(s) in {playlistKey}.")
+
+        cachedPlaylist = userPlayList.get(username)
+
+        # Never wipe a category with an empty refresh: if YouTube returned
+        # nothing usable, keep whatever was seeded from the cache instead.
+        if not playlist and cachedPlaylist:
+            print(f"YouTube returned no usable videos for {playlistKey}; "
+                  f"keeping the {len(cachedPlaylist)} cached entries.")
+            stalePlayListKeys.add(playlistKey)
+            return
+
+        if cachedPlaylist and len(playlist) < len(cachedPlaylist):
+            print(f"Note: {playlistKey} refreshed to {len(playlist)} videos "
+                  f"(cached copy had {len(cachedPlaylist)}).")
+
         userPlayList[username] = playlist
         
         if not forQue:
@@ -242,6 +340,10 @@ def loadYouTubePlayList(username, url, forQue=False):
         print("YouTube playlist loaded: " + youtubeList.title + " / " + str(len(playlist)))
     except Exception as e:
         loadingMessages[url] = 'Error Loading YouTube Playlist ...'
+        # The playlist could not be fetched at all - if we have cached
+        # contents for it they are kept, so record that clearly.
+        if userPlayList.get(username):
+            stalePlayListKeys.add(playlistKey)
         print("Error loading YouTube playlist ...\n", url, "\n" , e)
 
 # function to load a youtube playlist in a background thread and emit results back to the client
@@ -657,8 +759,9 @@ def getHTMLTable(username = "", filter_text = "", que_list = False, sort = True,
         tableHtml += 'Start @ Video: <input type="text" id="startMixAt" name="startMixAt" value="1" size="1"> '
         tableHtml += 'Overlap: <input type="text" id="mixOverlap" name="mixOverlap" value="20" size="2"> Seconds || '
         tableHtml += 'Play Percent: <input type="text" id="mixPlayPercent" name="mixPlayPercent" value="60" size="2"> '
-        tableHtml += '<input type="button" onclick="stopMixPlay()" value="Stop Mix"> '
-        tableHtml += '<input type="button" onclick="checkQueList()" value="Check"><br>'
+        tableHtml += '<input type="button" onclick="stopMixPlay()" value="Stop Mix"><br>'
+        # Check / Burn / Download MP3 live in the action row below the table
+        # (static markup in index.html), so they are not rebuilt with it
         tableHtml += '<span id="queMixMessage"><b>Curent Mix Track: 0 / Playtime: 0000 seconds</b></span>'
     
     # add the main table for tracks here
@@ -864,7 +967,10 @@ def getQueListData(username):
 # https://stackoverflow.com/questions/59627108/retrieve-youtube-video-title-using-api-python
 def getVideoInfo(videoId, username):        
     url = "http://www.youtube.com/watch?v=" + videoId
-    video = pafy.new(url)            
+    # pafy runs yt-dlp with its own options, so it needs the app's cookies and
+    # JS runtime handed to it explicitly - otherwise this one lookup goes to
+    # YouTube anonymously and gets the "confirm you're not a bot" refusal
+    video = pafy.new(url, ydl_opts=acquire.ytdlp_shared_opts())            
     return [video.title, video.thumb, video.duration, video.published, username]
     
 # add a video to the default playlist and save it
@@ -1134,6 +1240,793 @@ def getMixTracksHTML(mixId):
     return htmlString
 
 # process socket io messages from clients and perform appropriate updates
+# True for the common YouTube playlist URL shapes.  Using one helper keeps the
+# DJ page, the queue and the burner consistent, and accepts http://, a missing
+# "www.", music.youtube.com and watch URLs that carry a list= parameter.
+def isYouTubePlaylistUrl(text):
+    t = (text or '').strip().lower()
+    if not t:
+        return False
+    return ('list=' in t) or ('youtube.com/playlist' in t)
+
+
+# ---------------------------------------------------------------------------
+# CD burner (/burner) support
+#
+# The burner is intentionally isolated from the DJ player logic: its socket
+# messages all start with "Burner " and are handled by handleBurnerMessage()
+# before the normal message dispatch runs, so none of the existing
+# "if 'x' in msgTitle" branches can be affected.
+# ---------------------------------------------------------------------------
+
+# the project currently open on the burner page (not necessarily saved)
+burnerWorking = None
+
+# Identifies this run of the app.  The burner page shows it, so a page that is
+# connected to a different instance than the one printing the log is obvious.
+BURNER_INSTANCE = '{0}-{1:04x}'.format(os.getpid(),
+                                       int.from_bytes(os.urandom(2), 'big'))
+
+# Recent burner log lines.  A job keeps running while its page is throttled or
+# disconnected, so the lines are kept here and replayed to it on reconnect.
+BURNER_LOG_HISTORY = 200
+# how many of those lines travel in a state payload (the page only needs a tail)
+BURNER_LOG_REPLAY = 60
+burnerLogHistory = []
+burnerLogSeq = 0
+
+# Name of the job currently running, or '' when idle.
+burnerBusy = ''
+
+# Progress of the running job, so a page that polls (or returns from the
+# background) can restore the bar without waiting for the next push.
+burnerProgressState = {'current': 0, 'total': 0, 'message': ''}
+
+# short lived cache so the UI can be refreshed without hammering the drive
+_burnerDriveCache = {'t': 0, 'data': None}
+BURNER_DRIVE_TTL = 10
+
+
+# Actions that change the working project.  Once a project has been saved, any
+# of these writes the change straight back to the store.
+BURNER_AUTOSAVE_ACTIONS = (
+    'Burner Add Url',
+    'Burner Remove Track',
+    'Burner Clear Tracks',
+    'Burner Sort Tracks',
+    'Burner Move Track',
+    'Burner Set Blank',
+    'Burner Import Que',
+)
+
+
+def getBurnerWorking():
+    global burnerWorking
+    if burnerWorking is None:
+        burnerWorking = cdburn.new_project('Untitled')
+    return burnerWorking
+
+
+def emitBurner(payload):
+    # burner messages are broadcast rather than private: the burner page is a
+    # separate client from the DJ page that pushes a queue to it.
+    try:
+        socketio.emit('my response', payload)
+    except Exception as e:
+        # never let a send failure take down a background burner job
+        print('burner: emit failed:', e)
+
+
+def burnerLog(message, level=''):
+    global burnerLogSeq
+    # flush explicitly: when the app is piped to a file or run as a service
+    # (like deckcast.service) Python block-buffers stdout and the log lines
+    # would otherwise appear much later, or not at all
+    print('[burner]', message, flush=True)
+    burnerLogSeq += 1
+    burnerLogHistory.append({'seq': burnerLogSeq, 'message': str(message),
+                             'level': level})
+    if len(burnerLogHistory) > BURNER_LOG_HISTORY:
+        del burnerLogHistory[0]
+    try:
+        emitBurner({'data': 'Burner Log', 'message': str(message),
+                    'level': level, 'seq': burnerLogSeq})
+    except Exception:
+        pass
+
+
+def burnerProgress(current, total, message=''):
+    burnerProgressState.update({'current': current, 'total': total,
+                                'message': message or ''})
+    try:
+        emitBurner({'data': 'Burner Progress', 'current': current, 'total': total,
+                    'message': message})
+    except Exception:
+        pass
+
+
+def burnerIsLocal():
+    """True when the request comes from this machine (loopback)."""
+    try:
+        addr = request.remote_addr or ''
+    except Exception:
+        # no request context (background job, CLI, tests) - allow
+        return True
+    return addr in ('127.0.0.1', '::1', 'localhost') or addr.startswith('127.')
+
+
+def burnerMayUse():
+    """Whether this client may use the burner at all.
+
+    The burner drives the machine it runs on, so there is nothing for a remote
+    client to do with it - and acquiring audio would let anyone who can reach
+    the page fill that machine's disk.  The page and every action in it are
+    therefore limited to loopback.  Set "burnerAllowRemote": true in
+    data/settings.json to open it up to a trusted network, or reach a remote
+    server through an ssh tunnel so the browser talks to 127.0.0.1.
+    """
+    if burnerIsLocal():
+        return True
+    try:
+        return bool(acquire.load_settings().get('burnerAllowRemote'))
+    except Exception:
+        return False
+
+
+def burnerRefusalMessage():
+    return ('The CD burner is only available on the machine running DeckCastDJ '
+            '- open http://127.0.0.1:{0}/burner there, tunnel the port with ssh, '
+            'or set "burnerAllowRemote": true in data/settings.json.'.format(app_port))
+
+
+# ---------------------------------------------------------------------------
+# Que download (MP3)
+# ---------------------------------------------------------------------------
+
+# Only one download run at a time: the que is per client but the disk is not.
+downloadBusy = ''
+
+
+def downloadRefusalMessage():
+    """Same rule as the burner: this writes files to *this* machine."""
+    return ('Downloading is only available on the machine running DeckCastDJ, '
+            'because the MP3 files are written to that machine. Open '
+            'http://127.0.0.1:{0}/ there, tunnel the port with ssh, or set '
+            '"burnerAllowRemote": true in data/settings.json.'.format(app_port))
+
+
+def emitDownloadStatus(clientId, text, **extra):
+    """Report download progress to the client that asked for it.
+
+    The extra fields drive the DJ page's progress card: index/total/percent for
+    the bar, stage to say what is happening, and the running counts.
+    """
+    payload = {
+        'data': 'Download Status',
+        'clientId': clientId,
+        'text': text,
+        'running': bool(downloadBusy),
+    }
+    payload.update(extra)
+    socketio.emit('my response', payload)
+
+
+def _downloadQue(username, clientId):
+    """Download every video in a client's que as an MP3, off the request thread."""
+
+    def runner():
+        global downloadBusy
+
+        downloadBusy = 'Downloading que'
+        print('[download] que download started for {0}'.format(username), flush=True)
+        total = 0
+        finalStage = 'done'
+        counts = {'downloaded': 0, 'skipped': 0, 'failed': 0}
+        try:
+            que = userPlayList.get(username) or {}
+            videoIds = list(que.keys())
+            total = len(videoIds)
+
+            if not videoIds:
+                summary = 'The que is empty - nothing to download.'
+                finalStage = 'empty'
+            else:
+                done = skipped = 0
+                failures = []
+
+                emitDownloadStatus(clientId, 'Preparing {0} video(s) ...'.format(total),
+                                   index=0, total=total, percent=0, stage='start',
+                                   **counts)
+
+                for index, videoId in enumerate(videoIds, start=1):
+                    title = (que.get(videoId) or [videoId])[0]
+                    label = '{0} / {1} - {2}'.format(index, total, title)
+
+                    if acquire.mp3_path(videoId):
+                        skipped += 1
+                        counts['skipped'] = skipped
+                        print('[download] {0} - already downloaded'.format(label), flush=True)
+                        emitDownloadStatus(clientId, 'Already downloaded {0}'.format(label),
+                                           index=index, total=total, percent=100,
+                                           stage='skip', **counts)
+                        continue
+
+                    print('[download] {0}'.format(label), flush=True)
+                    emitDownloadStatus(clientId, 'Downloading {0}'.format(label),
+                                       index=index, total=total, percent=0,
+                                       stage='download', **counts)
+
+                    # yt-dlp reports whole percents twice a second, which is far
+                    # too much for a terminal, so the log gets one line per 10%
+                    logged = {'step': -1}
+
+                    def on_progress(percent, status_text, _label=label, _index=index,
+                                    _logged=logged):
+                        converting = percent >= 100
+                        emitDownloadStatus(
+                            clientId,
+                            '{0} - converting to MP3'.format(_label) if converting
+                            else '{0} ({1}%)'.format(_label, percent),
+                            index=_index, total=total, percent=percent,
+                            stage='convert' if converting else 'download', **counts)
+                        step = percent // 10
+                        if step > _logged['step'] or converting:
+                            _logged['step'] = step
+                            print('[download] {0} - {1}%'.format(_label, percent), flush=True)
+
+                    try:
+                        acquire.download_mp3(videoId, title, progress=on_progress)
+                    except Exception as e:
+                        # the terminal gets the full reason, the page a short one
+                        print('[download] {0} failed: {1}'.format(videoId, e), flush=True)
+                        reason = str(e).splitlines()[0].strip()
+                        if len(reason) > 90:
+                            reason = reason[:87] + '...'
+                        failures.append('{0} - {1}'.format(title, reason))
+                        counts['failed'] = len(failures)
+                        emitDownloadStatus(clientId, 'Failed {0}: {1}'.format(label, reason),
+                                           index=index, total=total, percent=100,
+                                           stage='fail', **counts)
+                    else:
+                        done += 1
+                        counts['downloaded'] = done
+                        print('[download] {0} - saved'.format(label), flush=True)
+                        emitDownloadStatus(clientId, 'Saved {0}'.format(label),
+                                           index=index, total=total, percent=100,
+                                           stage='saved', **counts)
+
+                summaryParts = []
+                if done:
+                    summaryParts.append('{0} downloaded'.format(done))
+                if skipped:
+                    summaryParts.append('{0} already there'.format(skipped))
+                if failures:
+                    summaryParts.append('{0} failed'.format(len(failures)))
+                summary = 'Download MP3 finished: ' + (', '.join(summaryParts) or 'nothing to do') + '.'
+                if failures:
+                    summary += ' ' + '; '.join(failures[:2])
+        except Exception as e:
+            print('[download] failed: {0}'.format(e), flush=True)
+            summary = 'Download failed: {0}'.format(e)
+
+        # clear the flag first, so the message below reports running=False and
+        # the page re-enables its buttons
+        downloadBusy = ''
+        emitDownloadStatus(clientId, summary[:300], index=total, total=total, percent=100,
+                           stage=finalStage, **counts)
+        print('[download] {0}'.format(summary), flush=True)
+
+    socketio.start_background_task(runner)
+
+
+def burnerDriveInfo(force=False, cached_only=False):
+    """Detected recorders plus a short media status, cached for a few seconds.
+
+    cached_only serves the progress polls: a real scan shells out to PowerShell
+    on Windows and takes ~250ms per call, which is far too slow to run every
+    second while a job is reporting progress.
+    """
+    now = time.time()
+    cached = _burnerDriveCache.get('data')
+    if not force and cached and (now - _burnerDriveCache.get('t', 0)) < BURNER_DRIVE_TTL:
+        return cached
+    if cached_only:
+        return cached if cached else {
+            'devices': [], 'present': False, 'blank': None, 'text': 'checking...',
+        }
+
+    devices = []
+    media = {'present': False, 'blank': False, 'text': ''}
+    try:
+        devices = cdburn.list_devices()
+    except Exception as e:
+        print('burner: device scan failed:', e)
+    try:
+        media = cdburn.media_status()
+    except Exception as e:
+        media = {'present': False, 'blank': False, 'text': str(e)}
+
+    info = {
+        'devices': devices,
+        'present': bool(media.get('present')),
+        'blank': media.get('blank'),
+        'text': media.get('text', ''),
+    }
+    _burnerDriveCache['t'] = now
+    _burnerDriveCache['data'] = info
+    return info
+
+
+def burnerStatePayload(poll=False):
+    """Everything the burner page needs to render itself.
+
+    poll=True is the cheap variant served to the progress polls: it never
+    triggers a device scan and is marked so the page does not rebuild its
+    whole UI on every poll.
+    """
+    project = getBurnerWorking()
+    cdburn.apply_plan(project)
+
+    saved = {}
+    try:
+        for name, savedProject in cdburn.list_projects(project.get('username')).items():
+            saved[name] = {
+                'name': savedProject.get('name'),
+                'status': savedProject.get('status'),
+                'summary': cdburn.project_summary(savedProject),
+            }
+    except Exception as e:
+        print('burner: could not list saved projects:', e)
+
+    try:
+        # matches what Clear CD Cache frees: the whole CD cache, not just the
+        # open project's folder
+        cacheBytes, cacheFiles = cdburn.cache_usage(None, tier='wav')
+    except Exception:
+        cacheBytes, cacheFiles = 0, 0
+
+    return {
+        'data': 'Burner State',
+        'poll': bool(poll),
+        'project': project,
+        'summary': cdburn.project_summary(project),
+        'premastered': cdburn.premastered_count(project),
+        'saved': saved,
+        'drive': burnerDriveInfo(cached_only=poll),
+        'platform': sys.platform,
+        'cache': {'bytes': cacheBytes, 'files': cacheFiles},
+        'instance': BURNER_INSTANCE,
+        'busy': burnerBusy,
+        'progress': dict(burnerProgressState),
+        'log': burnerLogHistory[-BURNER_LOG_REPLAY:],
+        'logSeq': burnerLogSeq,
+    }
+
+
+def emitBurnerState():
+    try:
+        emitBurner(burnerStatePayload())
+    except Exception as e:
+        print('burner: state build failed:', e)
+        emitBurner({'data': 'Burner Error', 'message': str(e)})
+
+
+def _burnerBackground(name, fn):
+    """Run a slow burner job off the request thread."""
+    def runner():
+        # the assignment below is inside a nested function, so the global
+        # declaration has to live here - one in the enclosing body does not
+        # apply to this scope
+        global burnerBusy
+
+        # log immediately so the terminal shows that the job actually started
+        burnerLog(name + ' ...')
+        burnerBusy = name
+        emitBurner({'data': 'Burner Busy', 'message': name})
+        try:
+            fn()
+        except Exception as e:
+            print('burner: {0} failed: {1}'.format(name, e), flush=True)
+            burnerLog('{0} failed: {1}'.format(name, e), 'err')
+        finally:
+            burnerBusy = ''
+            burnerProgressState.update({'current': 0, 'total': 0, 'message': ''})
+            # logged (not just emitted) so a page that reconnects sees the job
+            # finish in the replayed log too
+            burnerLog(name + ' finished')
+            emitBurner({'data': 'Burner Idle', 'message': name + ' finished'})
+            emitBurnerState()
+    socketio.start_background_task(runner)
+
+
+def _burnerReplan(project):
+    """Recompute the disc layout and forget stale premaster paths."""
+    cdburn.apply_plan(project)
+    for track in project.get('tracks', []):
+        track['wavFile'] = None
+    return project
+
+
+def _burnerApplyName(project, name):
+    """Adopt a project name typed on the page, before the project is saved.
+
+    The media folder is named after the project, so the name has to reach the
+    server before the first download or the WAVs land in ytd/cd/Untitled/ and
+    are stranded there when the project is later renamed.
+    """
+    name = str(name or '').strip()
+    if not name or name == project.get('name'):
+        return False
+    return cdburn.set_project_name(project, name, log=burnerLog)
+
+
+def _burnerAddUrl(project, source, url):
+    trackSource = acquire.get_source(source)
+    tracks = trackSource.resolve(url, log=burnerLog)
+
+    existing = set((t.get('source'), t.get('ref')) for t in project.get('tracks', []))
+    added = 0
+    duplicates = 0
+    unknownDurations = 0
+
+    for track in tracks:
+        if (track.get('source'), track.get('ref')) in existing:
+            duplicates += 1
+            continue
+        if not track.get('seconds'):
+            unknownDurations += 1
+        project.setdefault('tracks', []).append(track)
+        added += 1
+
+    _burnerReplan(project)
+
+    message = 'Added {0} track(s) from {1}.'.format(added, source)
+    if duplicates:
+        message += ' {0} were already in the project.'.format(duplicates)
+    burnerLog(message, 'ok')
+    if unknownDurations:
+        burnerLog('{0} track(s) have no known duration yet; they are measured '
+                  'when the audio is downloaded.'.format(unknownDurations))
+
+
+def _burnerAcquire(project):
+    """Download the audio and premaster every disc - one button, two stages."""
+    _burnerReplan(project)
+
+    def progress(i, n, track, text=None):
+        burnerProgress(i, n, text or
+                       ('Downloading ' + ((track or {}).get('title') or '')))
+
+    ok, errors = cdburn.acquire_project(project, progress=progress, log=burnerLog)
+    for err in errors:
+        burnerLog(err, 'err')
+    if not ok:
+        burnerLog('Some tracks could not be downloaded; premastering the rest.',
+                  'err')
+    cdburn.save_projects()
+
+    # Converting straight after the download is what lets each downloaded
+    # original be deleted as soon as its CD-ready WAV exists.
+    _burnerPremaster(project, None)
+
+
+def _burnerPremaster(project, disc):
+    _burnerReplan(project)
+    indices = [int(disc)] if disc else [d['index'] for d in project.get('discs', [])]
+    for index in indices:
+        def progress(i, n, track, text=None, _idx=index):
+            burnerProgress(i, n, text or 'Premastering disc {0}: {1}'.format(
+                _idx, (track or {}).get('title') or ''))
+        ok, errors = cdburn.premaster_disc(project, index, progress=progress,
+                                           log=burnerLog)
+        for err in errors:
+            burnerLog(err, 'err')
+        if ok:
+            burnerLog('Disc {0} premastered.'.format(index), 'ok')
+        else:
+            burnerLog('Disc {0} finished with errors.'.format(index), 'err')
+    cdburn.save_projects()
+
+
+def _burnerBurn(project, msg):
+    dryRun = bool(msg.get('dryRun'))
+    testBurn = bool(msg.get('testBurn'))
+    verify = msg.get('verify', True)
+    device = msg.get('device') or None
+
+    discs = project.get('discs', [])
+    target = None
+    if msg.get('disc') not in (None, ''):
+        # the page offers every disc, so burning them out of order - or writing
+        # the same one twice - is deliberate
+        try:
+            wanted = int(msg['disc'])
+        except (TypeError, ValueError):
+            wanted = None
+        target = next((d['index'] for d in discs
+                       if int(d.get('index', 0)) == wanted), None)
+        if target is None:
+            burnerLog('Disc {0} is not part of this plan.'.format(msg['disc']), 'err')
+            return
+    if target is None:
+        for disc in discs:
+            if not disc.get('burnedAt'):
+                target = disc['index']
+                break
+    if target is None and discs:
+        target = discs[0]['index']
+    if target is None:
+        burnerLog('Nothing to burn - no discs planned yet.', 'err')
+        return
+
+    result = cdburn.burn_disc(project, target, dry_run=dryRun, verify=verify,
+                              device=device, log=burnerLog, progress=burnerProgress,
+                              test_burn=testBurn)
+    burnerLog('Disc {0}: {1}'.format(target, result.get('message', '')),
+              'ok' if result.get('success') else 'err')
+    if result.get('command'):
+        burnerLog('  command: ' + ' '.join(str(c) for c in result['command']))
+    # everything the burner printed was already streamed through the log above
+    if not result.get('streamed'):
+        for key in ('stdout', 'stderr', 'output'):
+            if result.get(key):
+                burnerLog(result[key].strip(), 'err' if key == 'stderr' else '')
+
+    # a test burn writes nothing, so the disc is not burned and its audio is
+    # not cleared
+    if result.get('success') and not result.get('dryRun') and not testBurn:
+        for disc in discs:
+            if int(disc.get('index', 0)) == int(target):
+                disc['burnedAt'] = time.strftime('%Y-%m-%dT%H:%M:%S')
+        if all(d.get('burnedAt') for d in discs):
+            project['status'] = 'burned'
+
+        if msg.get('autoClean'):
+            tier = msg.get('cleanTier') or 'wav'
+            # only this disc's audio: the rest of the set is still waiting
+            freed, paths, errors = cdburn.clean(project, tier=tier, dry_run=False,
+                                                disc=target, log=burnerLog)
+            burnerLog('Auto-cleaned {0} file(s), {1:.1f} MB from disc {2}.'.format(
+                len(paths), freed / 1048576.0, target), 'ok')
+            for err in errors:
+                burnerLog(err, 'err')
+    cdburn.save_projects()
+
+
+def _burnerClean(project, msg):
+    dryRun = bool(msg.get('dryRun'))
+    tier = msg.get('tier') or 'wav'
+    # the button clears the whole CD cache: a working project that has been
+    # renamed (or never named) would otherwise leave other projects' media on
+    # the disk, folders and all
+    freed, paths, errors = cdburn.clean(project, tier=tier, dry_run=dryRun,
+                                        log=burnerLog, all_projects=True)
+    burnerLog('{0} {1} file(s), {2:.1f} MB from the CD cache.'.format(
+        'Would free' if dryRun else 'Freed', len(paths), freed / 1048576.0),
+        'ok' if not errors else 'err')
+    for err in errors:
+        burnerLog(err, 'err')
+
+
+def _burnerImportQue(project, msg):
+    """Accept a queue pushed here by the Burn button on another page."""
+    source = str(msg.get('source') or 'youtube').lower()
+    origin = msg.get('origin') or 'another page'
+    incoming = msg.get('tracks')
+
+    existing = set((t.get('source'), t.get('ref')) for t in project.get('tracks', []))
+    added = 0
+
+    if incoming:
+        # the sender already knew the titles/durations (mp3 page)
+        for item in incoming:
+            ref = str(item.get('ref') or '').strip()
+            if not ref or (source, ref) in existing:
+                continue
+            project.setdefault('tracks', []).append({
+                'source': source,
+                'ref': ref,
+                'title': item.get('title') or ref,
+                'artist': item.get('artist') or '',
+                'seconds': int(item.get('seconds') or 0),
+                'bitrate': int(item.get('bitrate') or 0),
+                'srcFile': None,
+            })
+            existing.add((source, ref))
+            added += 1
+    else:
+        # the DJ page queues by client id; reuse the titles/times it already has
+        queKey = str(msg.get('clientId') or msg.get('username') or '').lower().strip()
+        try:
+            rows = getQueListData(queKey)
+        except Exception as e:
+            burnerLog('Could not read the DJ queue ({0}): {1}'.format(queKey, e), 'err')
+            rows = []
+        for row in rows:
+            parts = row.split('\t')
+            if len(parts) < 3:
+                continue
+            videoId, title, seconds = parts[0], parts[1], parts[2]
+            if ('youtube', videoId) in existing:
+                continue
+            project.setdefault('tracks', []).append({
+                'source': 'youtube',
+                'ref': videoId,
+                'title': title,
+                'artist': '',
+                'seconds': int(float(seconds)),
+                'bitrate': 0,
+                'srcFile': None,
+            })
+            existing.add(('youtube', videoId))
+            added += 1
+
+    _burnerReplan(project)
+    emitBurner({'data': 'Burner Imported', 'count': added, 'origin': origin})
+    burnerLog('Imported {0} track(s) from {1}.'.format(added, origin), 'ok')
+    emitBurnerState()
+
+
+def handleBurnerMessage(msg):
+    """Handle any message whose data field starts with 'Burner '."""
+    global burnerWorking
+
+    action = str(msg.get('data', ''))
+
+    if not burnerMayUse():
+        # Not written to the burner log on purpose: a remote caller must not be
+        # able to write into the local page's activity log.
+        message = burnerRefusalMessage()
+        print('[burner] refused {0} from a remote client'.format(action), flush=True)
+        try:
+            socketio.emit('my response', {'data': 'Burner Error', 'message': message},
+                          room=request.sid)
+        except Exception:
+            pass
+        return
+
+    project = getBurnerWorking()
+
+    if action == 'Burner Get State':
+        emitBurnerState()
+
+    elif action == 'Burner Refresh Drive':
+        burnerDriveInfo(force=True)
+        emitBurnerState()
+
+    elif action == 'Burner Add Url':
+        url = str(msg.get('url') or '').strip()
+        source = str(msg.get('source') or 'youtube').lower()
+        if url:
+            _burnerBackground('Looking up ' + source,
+                              lambda: _burnerAddUrl(project, source, url))
+
+    elif action == 'Burner Remove Track':
+        try:
+            index = int(msg.get('index', -1))
+        except (TypeError, ValueError):
+            index = -1
+        tracks = project.get('tracks', [])
+        if 0 <= index < len(tracks):
+            before = cdburn.premaster_paths(project)
+            tracks.pop(index)
+            _burnerReplan(project)
+            cdburn.carry_premasters(project, before, log=burnerLog)
+        emitBurnerState()
+
+    elif action == 'Burner Clear Tracks':
+        project['tracks'] = []
+        _burnerReplan(project)
+        emitBurnerState()
+
+    elif action == 'Burner Sort Tracks':
+        before = cdburn.premaster_paths(project)
+        project['tracks'] = sorted(project.get('tracks', []),
+                                   key=lambda t: (t.get('title') or '').lower())
+        _burnerReplan(project)
+        cdburn.carry_premasters(project, before, log=burnerLog)
+        emitBurnerState()
+
+    elif action == 'Burner Move Track':
+        try:
+            index = int(msg.get('index'))
+            delta = -1 if int(msg.get('delta', 1)) < 0 else 1
+        except (TypeError, ValueError):
+            emitBurnerState()
+            return
+        if cdburn.move_track(project, index, delta, log=burnerLog):
+            _burnerReplan(project)
+            emitBurnerState()
+
+    elif action == 'Burner Set Blank':
+        before = cdburn.premaster_paths(project)
+        try:
+            project['blank'] = int(msg.get('blank') or cdburn.DEFAULT_BLANK)
+        except (TypeError, ValueError):
+            project['blank'] = cdburn.DEFAULT_BLANK
+        _burnerReplan(project)
+        cdburn.carry_premasters(project, before, log=burnerLog)
+        emitBurnerState()
+
+    elif action == 'Burner New Project':
+        burnerWorking = cdburn.new_project('Untitled')
+        emitBurnerState()
+
+    elif action == 'Burner Set Name':
+        # the name is pushed as it is typed, so downloads started before the
+        # project is saved still go to the folder the user asked for
+        name = str(msg.get('name') or '').strip()
+        if not name or name == project.get('name'):
+            pass
+        elif burnerBusy:
+            burnerLog('Rename to "{0}" ignored while "{1}" is running.'.format(
+                name, burnerBusy), 'err')
+        else:
+            old_name = project.get('name')
+            _burnerApplyName(project, name)
+            # a renamed project keeps its saved record, under the new name
+            cdburn.autosave_project(project, previous_name=old_name)
+            emitBurnerState()
+
+    elif action == 'Burner Save Project':
+        name = str(msg.get('name') or '').strip()
+        if name:
+            old_name = project.get('name')
+            username = str(msg.get('username') or project.get('username') or 'guest').lower().strip()
+            _burnerApplyName(project, name)
+            project['username'] = username
+            _burnerReplan(project)
+            cdburn.upsert_project(cdburn.project_key(username, name), project)
+            if old_name and old_name != name:
+                # a renamed project must not stay listed under its old name
+                old_key = cdburn.project_key(username, old_name)
+                if cdburn.get_project(old_key) is project:
+                    cdburn.delete_project(old_key)
+            burnerLog('Saved project "{0}".'.format(name), 'ok')
+        emitBurnerState()
+
+    elif action == 'Burner Load Project':
+        name = str(msg.get('name') or '').strip()
+        found = cdburn.get_project(cdburn.project_key(project.get('username'), name))
+        if found:
+            burnerWorking = found
+            _burnerReplan(burnerWorking)
+            burnerLog('Loaded project "{0}".'.format(name), 'ok')
+        else:
+            burnerLog('No saved project named "{0}".'.format(name), 'err')
+        emitBurnerState()
+
+    elif action == 'Burner Delete Project':
+        name = str(msg.get('name') or '').strip()
+        if cdburn.delete_project(cdburn.project_key(project.get('username'), name)):
+            burnerLog('Deleted project "{0}".'.format(name), 'ok')
+        emitBurnerState()
+
+    elif action == 'Burner Acquire':
+        # the page sends the name box along, so a rename cannot be missed
+        _burnerApplyName(project, msg.get('name'))
+        _burnerBackground('Acquiring audio and premastering',
+                          lambda: _burnerAcquire(project))
+
+    elif action == 'Burner Burn':
+        _burnerBackground('Burning', lambda: _burnerBurn(project, msg))
+
+    elif action == 'Burner Clean':
+        _burnerBackground('Cleaning cache', lambda: _burnerClean(project, msg))
+
+    elif action == 'Burner Import Que':
+        _burnerImportQue(project, msg)
+
+    else:
+        print('burner: unhandled message:', action)
+        return
+
+    # A project the user has already saved follows every change made on the
+    # page, so Load (or a restart) brings back the tracks that are on screen.
+    if action in BURNER_AUTOSAVE_ACTIONS:
+        cdburn.autosave_project(project)
+
+
 def processMessage(json):
     global defaultPlayList, userCount, player1Video, player2Video
     
@@ -1159,7 +2052,7 @@ def processMessage(json):
         clientId = json['clientId']
         
         # check to see if to to load a youtube playlist
-        if 'https://www.youtube.com/playlist' in f_text:
+        if isYouTubePlaylistUrl(f_text):
             playListUser = getUniquePlayListName(playListUser)
             socketio.start_background_task(
                 loadPlaylistInBackground, playListUser, f_text, clientId, mobile
@@ -1173,7 +2066,7 @@ def processMessage(json):
         f_text = json['filter'].strip()
         
         # check to see if to to load a youtube playlist
-        if (username == "guest0") and ('https://www.youtube.com/playlist' in f_text):
+        if (username == "guest0") and isYouTubePlaylistUrl(f_text):
             username = 'guest';
             mergeYouTubePlayList(username, f_text)
             f_text = ""
@@ -1198,7 +2091,7 @@ def processMessage(json):
         pin = json['pin']
         
         # check to see if to to load a youtube playlist and add to que
-        if 'https://www.youtube.com/playlist' in videoId:
+        if isYouTubePlaylistUrl(videoId):
             socketio.start_background_task(
                 loadQueuePlaylistInBackground, username, videoId, clientId, pin
             )
@@ -1220,6 +2113,29 @@ def processMessage(json):
             # videoId = 0 so clear cue list
             json['queListHTML'] = clearQueList(username)
     
+    # download the que as MP3 files - local machine only, like the burner,
+    # because the files land on whatever machine runs the app
+    if 'Download Que' in msgTitle:
+        username = str(json.get('clientId') or '').lower().strip()
+        clientId = json.get('clientId')
+
+        if not burnerMayUse():
+            print('[download] refused Download Que from a remote client', flush=True)
+            # private to the caller: a remote client must not be able to write
+            # into the local page's console line
+            socketio.emit('my response', {
+                'data': 'Download Status',
+                'clientId': clientId,
+                'text': downloadRefusalMessage(),
+                'running': False,
+                'refused': True,
+            }, room=request.sid)
+        elif downloadBusy:
+            emitDownloadStatus(clientId, 'A download is already running - wait for it '
+                                         'to finish.')
+        else:
+            _downloadQue(username, clientId)
+
     # see if to save the video to the playlist
     if 'Video Saved' in msgTitle:
         videoId = json['videoId']
@@ -1508,7 +2424,75 @@ def mobile():
 # route for the MP3 playlist/player page
 @app.route('/mp3')
 def playMP3():
-    return render_template('mp3.html', version=appVersion, bgcolor=bgColor)
+    return render_template('mp3.html', version=appVersion, bgcolor=bgColor,
+                           musicBaseUrl=acquire.get_music_base_url())
+
+# route for the CD burner page
+@app.route('/burner')
+def burner():
+    if not burnerMayUse():
+        return ('<!doctype html><title>DeckCastDJ burner</title>'
+                '<h3>CD burner not available</h3><p>{0}</p>'.format(
+                    burnerRefusalMessage()), 403)
+    return render_template('burner.html', version=appVersion, bgcolor=bgColor)
+
+
+@app.route('/burner/state')
+def burnerState():
+    """Plain HTTP snapshot used while polling a running job.
+
+    Socket.IO pushes from the worker thread sit in the socket queue until the
+    client sends something, so a long job could report nothing for minutes.
+    A normal request/response always answers immediately.
+    """
+    try:
+        if not burnerMayUse():
+            return jsonify({'data': 'Burner Error',
+                            'message': burnerRefusalMessage()}), 403
+        return jsonify(burnerStatePayload(poll=True))
+    except Exception as e:
+        print('burner: state poll failed:', e, flush=True)
+        return jsonify({'data': 'Burner Error', 'message': str(e)}), 500
+
+
+@app.route('/burner/audio')
+def burnerAudio():
+    """Stream one premastered track so the page can preview it.
+
+    The track is addressed by its position in the project, never by file name,
+    so nothing a browser sends reaches the filesystem.
+    """
+    if not burnerMayUse():
+        return jsonify({'data': 'Burner Error', 'message': burnerRefusalMessage()}), 403
+    project = getBurnerWorking()
+    try:
+        index = int(request.args.get('index', '-1'))
+    except (TypeError, ValueError):
+        index = -1
+    tracks = project.get('tracks') or []
+    if not (0 <= index < len(tracks)):
+        return 'No such track.', 404
+    path = cdburn.premaster_path(project, tracks[index])
+    if not path or not os.path.isfile(path):
+        # the check above uses the path as the app knows it (relative to the
+        # folder the app runs from), so the file it means goes in the message:
+        # "the audio is there but the app says it is not" is otherwise a
+        # guessing game
+        print('burner: no audio for track {0} at {1}'.format(index, path), flush=True)
+        return 'That track has not been downloaded yet ({0}).'.format(path), 404
+    # conditional=True so the browser can seek with range requests.
+    #
+    # os.path.abspath is load-bearing: Flask resolves a *relative* path against
+    # app.root_path, and in a packaged build that is the bundle folder (the
+    # _internal folder next to the executable), not the folder the app runs from
+    # - where the audio is and where the check above just found it.  Handing it
+    # the absolute path is what makes the preview work in a distribution as well
+    # as from source.
+    try:
+        return send_file(os.path.abspath(path), mimetype='audio/wav', conditional=True)
+    except Exception as e:
+        print('burner: could not send {0}: {1}'.format(path, e), flush=True)
+        return 'That track could not be read ({0}).'.format(e), 404
 
 # route for the current playing video screen (/playing)
 @app.route('/playing')
@@ -1532,6 +2516,12 @@ def messageReceived(methods=['GET', 'POST']):
 # socket io event handler for custom client messages
 @socketio.on('my event')
 def handle_my_custom_event(json, methods=['GET', 'POST']):
+    # CD burner messages are self contained and must never enter the DJ
+    # dispatch chain, so they are intercepted before processMessage() runs.
+    if str(json.get('data', '')).startswith('Burner '):
+        handleBurnerMessage(json)
+        return
+
     json = processMessage(json)
     
     # Identify client-specific private events that should not be broadcasted globally
@@ -1562,7 +2552,15 @@ def handle_my_custom_event(json, methods=['GET', 'POST']):
 if __name__ == '__main__':
     app.config['TEMPLATES_AUTO_RELOAD'] = True
     app.config['SEND_FILE_MAX_AGE_DEFAULT'] = 0
-                       
+
+    # printed first so a second copy of the app is obvious in the terminal
+    print("DeckCastDJ instance {0} listening on port {1}".format(
+        BURNER_INSTANCE, app_port), flush=True)
+    # the two folders everything else is found from: a packaged build runs from
+    # the executable's folder, which is also where the media tree is looked for
+    print("app folder   {0}".format(base_dir), flush=True)
+    print("media folder {0}".format(os.path.abspath(acquire.CD_DIR)), flush=True)
+
     print("Loading saved playlist and que list ...\n")
     loadInvalidVideosList()
     loadPlayList()
@@ -1573,10 +2571,22 @@ if __name__ == '__main__':
     if(useYoutube):
         # Load youtube playlist for various users
         print("Loading saved youtube playlist ...\n")
-        
+
+        # Seed from the cached file first, so a playlist that YouTube refuses
+        # to serve keeps its previous contents instead of vanishing.
+        seededCount = seedUserPlayListFromCache()
+        if seededCount:
+            print(f"Seeded {seededCount} playlist(s) from the cached file ...\n")
+
         # load up some youtube playlist
         for key, playlistUrl in youtubePL.items():
             loadYouTubePlayList(key, playlistUrl)
+
+        # a playlist that could not be refreshed is still in the list, so make
+        # sure it keeps its button in the UI
+        for key, playlistUrl in youtubePL.items():
+            if key.lower() in userPlayList and key.title() not in youtubePlayListUrls:
+                youtubePlayListUrls[key.title()] = playlistUrl
         
         print("\nDone loading youtube playlist ...\n")
     
@@ -1586,6 +2596,10 @@ if __name__ == '__main__':
         saveUserPlayList()
         
         print("Merging done ...")
+        
+        if stalePlayListKeys:
+            print("Served from cache (YouTube refresh unavailable): "
+                  + ", ".join(sorted(stalePlayListKeys)))
     else:
         print("\nLoading backup playlist ...\n")
         loadBackupUserPlayList()
@@ -1599,6 +2613,9 @@ if __name__ == '__main__':
     
     # load the track numbers database
     loadTrackNumbers()
+
+    # load saved CD burner projects
+    cdburn.load_projects()
     
     serverStarted = True
     
