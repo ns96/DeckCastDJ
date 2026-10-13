@@ -57,7 +57,7 @@ so in the footer and in the directory box instead of silently listing nothing.
 
 ```
 python tools/make_release.py
-# -> dist/DeckCastDJ-2.7.10-2026-10-13.zip   (23 files, 2.2 MB)
+# -> dist/DeckCastDJ-2.7.11-2026-10-13.zip   (23 files, 2.2 MB)
 ```
 
 The archive is code only, so per-machine state survives the update:
@@ -81,9 +81,9 @@ new ships by accident.
 Copy the zip over, unzip it on top of the existing install and restart:
 
 ```
-scp dist/DeckCastDJ-2.7.10-2026-10-13.zip user@host:~/
+scp dist/DeckCastDJ-2.7.11-2026-10-13.zip user@host:~/
 ssh user@host
-unzip -o ~/DeckCastDJ-2.7.10-2026-10-13.zip -d ~/DeckCastDJ
+unzip -o ~/DeckCastDJ-2.7.11-2026-10-13.zip -d ~/DeckCastDJ
 systemctl restart deckcast          # or: kill + nohup python3.11 main.py &
 ```
 
@@ -204,6 +204,8 @@ Three ways:
 2. Pick the disc to write from the **Disc** dropdown, which lists every disc in the plan with its size and whether it is already burned.
 3. `2 · Test Burn` - asks the drive to run the whole burn without writing anything, so the disc stays blank and can be used afterwards. It takes about as long as a real burn and shows the same live progress, which makes it the way to check a disc (and the progress display) without spending one. With no blank disc inserted it says so and touches nothing - and since IMAPI2 (Windows) has no test mode, Windows runs the **audio check** instead: every track is read, its samples located and its sector padding worked out, which is everything a burn does to the audio, with no disc needed and nothing written.
 4. `Burn Disc` - asks for confirmation and writes the selected disc. It refuses - touching nothing - if the disc's folder is not exactly what the page lists (the log names the files that disagree), or if any track's audio cannot be read as 44.1 kHz 16-bit stereo PCM in full.
+
+**`Remove Missing`** (Tracks panel, next to **Clear All**) is for the tracks that can never be burned: a download refused for copyright or a region lock, or one whose conversion failed. It removes every track that has no audio, says how many on the button (`Remove Missing (3)`, greyed out when there are none) and asks first. The tracks that do have audio keep their order, the discs close up around the gaps and the premastered WAVs are renumbered to match, so nothing burnable is thrown away. A downloaded original belonging to a removed track goes with it, and only files the app staged itself are ever deleted.
 
 Discs can be written in any order, and the same disc can be written again (handy when a burn fails or when you want a spare copy). The dropdown follows the plan - it starts on the first disc that still needs writing and steps forward as discs are burned - until you pick one yourself, and then your choice sticks. Burned marks are remembered when a project is saved, loaded or the app is restarted, and are cleared if you change the layout so that disc no longer holds the same audio (in which case it needs writing again).
 

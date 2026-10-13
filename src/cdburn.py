@@ -646,6 +646,49 @@ def move_track(project, index, delta, log=None):
     return True
 
 
+def remove_unpremastered(project, log=None):
+    """Drop every track with no CD-ready WAV.  Returns the tracks removed.
+
+    Some downloads never arrive: the video is blocked by copyright or by a region
+    lock, or the conversion fails.  Such a track can never be burned, but it still
+    holds a track number, a disc and a place in the burn order, so it keeps
+    turning up in the plan and in the folder checks.  This is the tidy-up: every
+    track that has audio stays, in the same order, and the discs close up around
+    the gaps (files included, so names and track numbers still agree).
+
+    A downloaded original that never became a WAV goes with its track, so a retry
+    starts clean - but only files this feature staged are ever deleted, as in
+    _discard_staged_source.
+    """
+    tracks = project.get('tracks') or []
+    going = [t for t in tracks if not is_premastered(project, t)]
+    if not going:
+        return []
+
+    before = premaster_paths(project)
+    project['tracks'] = [t for t in tracks if is_premastered(project, t)]
+    freed = 0
+    discarded = 0
+    for track in going:
+        gone_bytes = _discard_staged_source(track, _resolve_source(track))
+        if gone_bytes:
+            freed += gone_bytes
+            discarded += 1
+    apply_plan(project)
+    carry_premasters(project, before, log=log)
+
+    if log:
+        log('Removed {0} track(s) with no downloaded audio: {1}'.format(
+            len(going),
+            ', '.join(str(t.get('title') or t.get('ref') or '?') for t in going)))
+        if discarded:
+            log('Deleted {0} downloaded original(s) with them, freed {1}.'.format(
+                discarded, acquire.human_bytes(freed)))
+        log('{0} track(s) left; the discs have been replanned around them.'.format(
+            len(project['tracks'])))
+    return going
+
+
 def premaster_name(track):
     """File name used for a premastered track (also defines burn order)."""
     number = int(track.get('trackNo') or 1)

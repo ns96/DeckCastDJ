@@ -9,7 +9,7 @@ can be shared by other users
 @version: 2.7.8 (10/13/2026)
 """
 # this variables are passed onto the html templates
-appVersion = 'v2.7.10 (10/13/2026)'
+appVersion = 'v2.7.11 (10/13/2026)'
 bgColor = '#b2b2de' # no longer used but will keep for backward compatibility
 
 import os
@@ -1292,6 +1292,7 @@ BURNER_DRIVE_TTL = 10
 BURNER_AUTOSAVE_ACTIONS = (
     'Burner Add Url',
     'Burner Remove Track',
+    'Burner Clean Missing',
     'Burner Clear Tracks',
     'Burner Sort Tracks',
     'Burner Move Track',
@@ -1912,6 +1913,14 @@ def handleBurnerMessage(msg):
             tracks.pop(index)
             _burnerReplan(project)
             cdburn.carry_premasters(project, before, log=burnerLog)
+        emitBurnerState()
+
+    elif action == 'Burner Clean Missing':
+        # a refused download (copyright, region lock) leaves a track that can
+        # never be burned, so the button on the Tracks panel clears them out
+        if not cdburn.remove_unpremastered(project, log=burnerLog):
+            burnerLog('Every track has its audio - nothing to remove.', 'ok')
+        _burnerReplan(project)
         emitBurnerState()
 
     elif action == 'Burner Clear Tracks':

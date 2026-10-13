@@ -260,6 +260,8 @@
             <div id="tracksWrap"></div>
             <div class="row" style="margin-top:10px;">
                 <button onclick="clearTracks()">Clear All</button>
+                <button id="cleanMissing" onclick="cleanMissing()"
+                        title="Remove every track whose audio was never downloaded - a download refused for copyright or a region lock, or one that failed. Tracks that do have audio are kept, in the same order.">Remove Missing</button>
                 <button onclick="sendBurner('Burner Sort Tracks')">Sort A-Z</button>
                 <button onclick="stopPreview('Preview stopped.')" data-always-on="1">Stop Play</button>
                 <span class="hint" id="tracksHint"></span>
@@ -503,6 +505,27 @@
         function clearTracks() { if (confirm('Remove all tracks from this project?')) sendBurner('Burner Clear Tracks'); }
         function removeTrack(i) { sendBurner('Burner Remove Track', { index: i }); }
         function moveTrack(i, delta) { sendBurner('Burner Move Track', { index: i, delta: delta }); }
+
+        // Tracks whose audio never arrived - the download was refused for
+        // copyright or a region lock, or the conversion failed - can never be
+        // burned, but each one still holds a track number, a disc and a place in
+        // the burn order.  The button says how many there are and clears them out;
+        // the tracks that do have audio keep their order and are renumbered.
+        function missingTracks(msg) {
+            const project = (msg && msg.project) || {};
+            const total = (project.tracks || []).length;
+            const ready = (msg && typeof msg.premastered === 'number') ? msg.premastered : 0;
+            return Math.max(0, total - ready);
+        }
+
+        function cleanMissing() {
+            const missing = missingTracks(state);
+            if (missing < 1) return;
+            if (!confirm('Remove ' + missing + ' track(s) that have no downloaded audio?\n\n'
+                         + 'Tracks that do have audio are kept, in the same order, and the '
+                         + 'discs are replanned without them.')) return;
+            sendBurner('Burner Clean Missing');
+        }
 
         // ---------------------------------------------------------------------
         // track preview
@@ -884,14 +907,25 @@
             const project = (msg && msg.project) || {};
             const tracks = project.tracks || [];
             const el = document.getElementById('tracksHint');
+            const ready = typeof msg.premastered === 'number' ? msg.premastered : 0;
+            // the clean-up button says what it would remove, and does nothing
+            // when there is nothing to remove (or while a job is running, when
+            // setBusy owns the disabled state)
+            const button = document.getElementById('cleanMissing');
+            if (button) {
+                const missing = tracks.length - ready;
+                button.textContent = missing > 0
+                    ? 'Remove Missing (' + missing + ')' : 'Remove Missing';
+                button.disabled = missing < 1 || !!busy;
+            }
             if (!el) return;
             if (tracks.length === 0) {
                 el.textContent = '';
                 return;
             }
-            const ready = typeof msg.premastered === 'number' ? msg.premastered : 0;
             el.textContent = ready + ' of ' + tracks.length + ' track(s) ready to burn'
-                + (ready < tracks.length ? ' - press Acquire Audio' : '');
+                + (ready < tracks.length ? ' - press Acquire Audio, or Remove Missing to '
+                   + 'drop the ones that will not download' : '');
         }
 
         // ---------------------------------------------------------------------
